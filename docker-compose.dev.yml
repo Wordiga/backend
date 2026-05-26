@@ -4,7 +4,7 @@ services:
     container_name: wd-postgres-dev
     restart: unless-stopped
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT}:5432"
     environment:
       POSTGRES_DB: ${POSTGRES_DB}
       POSTGRES_USER: ${POSTGRES_USER}
@@ -29,10 +29,11 @@ services:
     restart: unless-stopped
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     environment:
       - TZ=Asia/Seoul
-      - SPRING_PROFILES_ACTIVE=dev # dev 프로파일로 구동
-      - SPRING_DATASOURCE_URL=jdbc:postgresql://wd-postgres-dev:5432/${POSTGRES_DB}
+      - SPRING_PROFILES_ACTIVE=dev
     networks:
       - backend-network
     depends_on:
