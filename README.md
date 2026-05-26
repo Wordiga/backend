@@ -1,7 +1,5 @@
 # 워디가 백엔드
 
----
-
 ## 🛠️ 기술 스택
 
 | 분류   | 스택                                              |
@@ -11,7 +9,6 @@
 | Auth | Spring Security / OAuth2 Client (Kakao, Google) |
 | Docs | Springdoc OpenAPI 2.8.8 / Jakarta Validation    |
 
----
 
 ## 🏗️ 패키지 구조
 
@@ -24,7 +21,6 @@ com.wordiga
 └── domain/        # JPA Entity
 ```
 
----
 
 ## 🚀 환경별 구동 가이드
 
@@ -36,9 +32,7 @@ com.wordiga
 docker compose -f docker-compose.local.yml up -d
 ```
 
-IntelliJ 설정:
-
-- **Active profiles**: `local`
+IntelliJ 설정: Application → Edit Configuration → **Active profiles**에 `local` 입력
 
 ### Dev (컨테이너 통합 실행)
 
@@ -50,7 +44,6 @@ docker compose -f docker-compose.dev.yml up -d
 docker compose -f docker-compose.dev.yml up -d --build
 ```
 
----
 
 ## 📄 API 문서 (Swagger)
 
@@ -60,7 +53,12 @@ docker compose -f docker-compose.dev.yml up -d --build
 http://localhost:8080/swagger-ui.html
 ```
 
----
+
+## ☁️ ERD
+
+[ERD Cloud](https://www.erdcloud.com/d/FktM92pdAPkb6sJ62)
+
+
 
 ## 🗃️️ DB 초기화
 
