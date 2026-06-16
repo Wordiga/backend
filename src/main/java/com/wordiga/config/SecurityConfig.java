@@ -44,7 +44,8 @@ public class SecurityConfig {
                                 "/callback.html",
                                 "/scopes.html",
                                 "/favicon.ico",
-                                "/login/oauth2/code/**"
+                                "/login/oauth2/code/**",
+                                "/api/v1/workshops/contents/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
