@@ -45,4 +45,4 @@ springdoc:
 tour-api:
   # 국문 관광정보 서비스 Open API Base URL (TourAPI 4.0 최신 운영서버)
   base-url: https://apis.data.go.kr/B551011/KorService2
-  service-key: ${TOUR_API_ENCODED_KEY}
+  service-key: ${TOUR_API_SERVICE_KEY}
