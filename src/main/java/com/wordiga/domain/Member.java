@@ -25,11 +25,9 @@ public class Member extends BaseTimeEntity {
     @Column(nullable = false, length = 20)
     private OAuthProvider provider;
 
-    @Column(name = "provider_id", length = 100)
     private String providerId;
 
     private String profileImage;
-
 
     private Member(String email, String nickname, OAuthProvider provider, String providerId, String profileImage) {
         this.email = email;

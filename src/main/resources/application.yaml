@@ -57,6 +57,9 @@ tourism:
     mobile-app: WordigaApp
     default-num-of-rows: 10
 
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
 logging:
   level:
     org.springframework.security: DEBUG
