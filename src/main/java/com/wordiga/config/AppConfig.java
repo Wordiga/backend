@@ -1,10 +1,12 @@
 package com.wordiga.config;
 
-import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.json.JsonMapper;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestTemplate;
+
+import static com.fasterxml.jackson.databind.DeserializationFeature.*;
 
 @Configuration
 public class AppConfig {
@@ -16,8 +18,10 @@ public class AppConfig {
 
     @Bean
     public ObjectMapper objectMapper() {
-        ObjectMapper mapper = new ObjectMapper();
-        mapper.configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false);
-        return mapper;
+        return JsonMapper.builder()
+                .disable(FAIL_ON_UNKNOWN_PROPERTIES)
+                .enable(ACCEPT_SINGLE_VALUE_AS_ARRAY)
+                .enable(ACCEPT_EMPTY_STRING_AS_NULL_OBJECT)
+                .build();
     }
 }

@@ -46,3 +46,17 @@ tour-api:
   # 국문 관광정보 서비스 Open API Base URL (TourAPI 4.0 최신 운영서버)
   base-url: https://apis.data.go.kr/B551011/KorService2
   service-key: ${TOUR_API_SERVICE_KEY}
+
+tourism:
+  region:
+    chungnam-code: "44"
+  api:
+    base-url: https://apis.data.go.kr/B551011
+    service-key: ${TOUR_API_SERVICE_KEY}
+    mobile-os: ETC
+    mobile-app: WordigaApp
+    default-num-of-rows: 10
+
+logging:
+  level:
+    org.springframework.security: DEBUG
