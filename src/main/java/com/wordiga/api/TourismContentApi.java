@@ -2,6 +2,7 @@ package com.wordiga.api;
 
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -22,5 +23,11 @@ public interface TourismContentApi {
             String lDongSignguCd,
             int page,
             int size
+    );
+
+    @Operation(summary = "관광 콘텐츠 통합 상세 조회",
+            description = "공통정보, 타입별 소개·반복정보와 이미지를 통합하여 조회합니다.")
+    ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
+            @Parameter(description = "관광 콘텐츠 ID") String contentId
     );
 }

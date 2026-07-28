@@ -3,6 +3,8 @@ package com.wordiga.controller;
 import com.wordiga.api.TourismContentApi;
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
+import com.wordiga.service.TourismContentDetailService;
 import com.wordiga.service.TourismContentService;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -10,6 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -23,6 +26,7 @@ import java.time.LocalDate;
 public class TourismContentController implements TourismContentApi {
 
     private final TourismContentService tourismContentService;
+    private final TourismContentDetailService tourismContentDetailService;
 
     @GetMapping
     public ResponseEntity<TourismContentListResponse> getTourismContentList(
@@ -36,5 +40,11 @@ public class TourismContentController implements TourismContentApi {
 
         return ResponseEntity.ok(tourismContentService.getContentList(
                 type, visitDate, keyword, contentTypeId, lDongSignguCd, page, size));
+    }
+
+    @GetMapping("/{contentId}")
+    public ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
+            @PathVariable String contentId) {
+        return ResponseEntity.ok(tourismContentDetailService.getDetail(contentId));
     }
 }
