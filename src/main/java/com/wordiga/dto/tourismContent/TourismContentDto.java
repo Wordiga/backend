@@ -5,6 +5,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
+import java.util.List;
+
 @Data
 @Builder
 @JsonIgnoreProperties(ignoreUnknown = true)
@@ -20,15 +23,27 @@ public class TourismContentDto {
     @Schema(description = "제목", example = "안면도 꽃지 해수욕장")
     private String title;
 
-    @Schema(description = "주소 (시군구까지)", example = "충남 태안군")
-    private String location;
+    @Schema(description = "주소", example = "충청남도 태안군 안면읍")
+    private String addr1;
 
     @Schema(description = "대표 이미지 URL")
-    private String firstimage;
+    private String firstImage;
 
-    @Schema(description = "예상 소요 시간 (분)", example = "90")
-    private Integer estimatedDurationMin;
+    @Schema(description = "법정동 시군구 코드", example = "380")
+    private String lDongSignguCd;
+
+    @Schema(description = "경도")
+    private BigDecimal mapx;
+
+    @Schema(description = "위도")
+    private BigDecimal mapy;
 
     @Schema(description = "콘텐츠 카테고리명", example = "관광지")
     private String categoryName;
+
+    @Schema(description = "추천 점수")
+    private BigDecimal recommendationScore;
+
+    @Schema(description = "추천 이유")
+    private List<String> recommendationReasons;
 }
