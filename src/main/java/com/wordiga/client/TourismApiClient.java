@@ -6,8 +6,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
+import java.nio.charset.StandardCharsets;
 import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -94,6 +96,32 @@ public class TourismApiClient {
         return callApi(uri, TatsCnctrRateResponse.class);
     }
 
+    public AreaTouDivResponse fetchTouristDiversity(
+            String baseYm, String areaCd, String signguCd, String touDivIxCd) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("baseYm", baseYm);
+        params.put("areaCd", areaCd);
+        params.put("numOfRows", "100");
+        putIfPresent(params, "signguCd", signguCd);
+        putIfPresent(params, "touDivIxCd", touDivIxCd);
+
+        URI uri = buildUri("AreaTarDivService/areaTouDivList", params);
+        return callApi(uri, AreaTouDivResponse.class);
+    }
+
+    public AreaExpDivResponse fetchExpenditureDiversity(
+            String baseYm, String areaCd, String signguCd, String expDivIxCd) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("baseYm", baseYm);
+        params.put("areaCd", areaCd);
+        params.put("numOfRows", "100");
+        putIfPresent(params, "signguCd", signguCd);
+        putIfPresent(params, "expDivIxCd", expDivIxCd);
+
+        URI uri = buildUri("AreaTarDivService/areaExpDivList", params);
+        return callApi(uri, AreaExpDivResponse.class);
+    }
+
     // ─── 지역기반 관광 콘텐츠 조회 (KorService2) ───
 
     public List<AreaBasedItem> fetchAreaBasedContent(String lDongRegnCd, String lDongSignguCd, int numOfRows) {
@@ -114,6 +142,22 @@ public class TourismApiClient {
             return Collections.emptyList();
         }
         return response.getResponse().getBody().getItems().getItem();
+    }
+
+    public AreaBasedResponse searchContent(String keyword, String contentTypeId,
+                                           String lDongRegnCd, String lDongSignguCd,
+                                           int pageNo, int numOfRows) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("keyword", keyword);
+        params.put("pageNo", String.valueOf(pageNo));
+        params.put("numOfRows", String.valueOf(numOfRows));
+        params.put("arrange", "Q");
+        params.put("lDongRegnCd", lDongRegnCd);
+        putIfPresent(params, "contentTypeId", contentTypeId);
+        putIfPresent(params, "lDongSignguCd", lDongSignguCd);
+
+        URI uri = buildUri("KorService2/searchKeyword2", params);
+        return callApi(uri, AreaBasedResponse.class);
     }
 
     // ─── 공통: API 호출 ───
@@ -143,7 +187,10 @@ public class TourismApiClient {
                 .append("&_type=json");
 
         for (Map.Entry<String, String> entry : params.entrySet()) {
-            sb.append("&").append(entry.getKey()).append("=").append(entry.getValue());
+            sb.append("&")
+                    .append(entry.getKey())
+                    .append("=")
+                    .append(UriUtils.encodeQueryParam(entry.getValue(), StandardCharsets.UTF_8));
         }
 
         return URI.create(sb.toString());

@@ -1,0 +1,91 @@
+package com.wordiga.dto.tourismContent.detail;
+
+import com.fasterxml.jackson.annotation.JsonInclude;
+import lombok.Builder;
+import lombok.Getter;
+
+@Getter
+@Builder
+@JsonInclude(JsonInclude.Include.NON_NULL)
+public class TourismIntroDetailDto {
+
+    private String contentId;
+    private String contentTypeId;
+    private String accomCount;
+    private String checkBabyCarriage;
+    private String checkCreditCard;
+    private String checkPet;
+    private String experienceAgeRange;
+    private String experienceGuide;
+    private String heritage1;
+    private String heritage2;
+    private String heritage3;
+    private String infoCenter;
+    private String openDate;
+    private String parking;
+    private String restDate;
+    private String useSeason;
+    private String useTime;
+    private String discountInfo;
+    private String parkingFee;
+    private String useFee;
+    private String scale;
+    private String spendTime;
+    private String ageLimit;
+    private String bookingPlace;
+    private String eventEndDate;
+    private String eventHomepage;
+    private String eventPlace;
+    private String eventStartDate;
+    private String festivalGrade;
+    private String placeInfo;
+    private String playTime;
+    private String program;
+    private String sponsor1;
+    private String sponsor1Tel;
+    private String sponsor2;
+    private String sponsor2Tel;
+    private String subEvent;
+    private String distance;
+    private String schedule;
+    private String takeTime;
+    private String theme;
+    private String openPeriod;
+    private String reservation;
+    private String checkInTime;
+    private String checkOutTime;
+    private String checkCooking;
+    private String foodPlace;
+    private String pickup;
+    private String roomCount;
+    private String reservationUrl;
+    private String roomType;
+    private String subFacility;
+    private String barbecue;
+    private String beauty;
+    private String beverage;
+    private String bicycle;
+    private String campfire;
+    private String fitness;
+    private String karaoke;
+    private String publicBath;
+    private String publicPc;
+    private String sauna;
+    private String seminar;
+    private String sports;
+    private String refundRegulation;
+    private String cultureCenter;
+    private String fairDay;
+    private String openTime;
+    private String restroom;
+    private String saleItem;
+    private String saleItemCost;
+    private String shopGuide;
+    private String firstMenu;
+    private String kidsFacility;
+    private String packing;
+    private String seat;
+    private String smoking;
+    private String treatMenu;
+    private String licenseNumber;
+}

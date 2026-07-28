@@ -3,6 +3,7 @@ package com.wordiga.config;
 import com.wordiga.security.JwtAuthenticationFilter;
 import com.wordiga.security.OidcLoginSuccessHandler;
 import com.wordiga.service.CustomOidcUserService;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,10 +39,16 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(
                                 "/oauth2/**",
                                 "/login/oauth2/code/**",
-                                "/api/v1/products/**"
+                                "/api/v1/tourism/contents",
+                                "/api/v1/tourism/contents/**",
+                                "/api/v1/health",
+                                "/api-docs/**",
+                                "/swagger-ui.html",
+                                "/swagger-ui/**"
                         ).permitAll()
                         .anyRequest().authenticated()
                 )
@@ -59,7 +66,7 @@ public class SecurityConfig {
             @Value("${app.frontend-url}") String frontendUrl) {
         CorsConfiguration config = new CorsConfiguration();
         config.setAllowedOrigins(List.of(frontendUrl));
-        config.setAllowedMethods(List.of("GET", "POST", "PUT", "DELETE"));
+        config.setAllowedMethods(List.of("GET", "POST", "PUT", "PATCH", "DELETE"));
         config.setAllowedHeaders(List.of("*"));
         config.setAllowCredentials(true);
 

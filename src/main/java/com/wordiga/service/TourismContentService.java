@@ -1,17 +1,27 @@
 package com.wordiga.service;
 
 import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.*;
+import com.wordiga.client.dto.AreaBasedItem;
+import com.wordiga.client.dto.AreaBasedResponse;
+import com.wordiga.client.dto.AreaTarExpDsResponse;
+import com.wordiga.client.dto.AreaTarSjrnDsResponse;
+import com.wordiga.client.dto.AreaTarSvcDemItem;
+import com.wordiga.client.dto.AreaTarSvcDemResponse;
+import com.wordiga.client.dto.KtoApiResponse;
 import com.wordiga.config.TourismProperties;
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentDto;
+import com.wordiga.dto.tourismContent.TourismContentListResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -19,128 +29,166 @@ import java.util.Map;
 @RequiredArgsConstructor
 public class TourismContentService {
 
+    private static final int CHUNGNAM_SIGNGU_COUNT = 15;
+    private static final int CONTENTS_PER_SIGNGU = 50;
+
     private final TourismApiClient tourismApiClient;
     private final TourismProperties tourismProperties;
 
-    public List<TourismContentDto> fetchListType(ListType type, String baseYm, int numOfRows) {
-        return switch (type) {
-            case POPULAR -> fetchPopularList(numOfRows);
-            case SEASONAL -> fetchSeasonalList(baseYm, numOfRows);
+    public TourismContentListResponse getContentList(
+            ListType type, LocalDate visitDate, String keyword, String contentTypeId,
+            String lDongSignguCd, int page, int size) {
+        if (keyword != null && !keyword.isBlank()) {
+            return search(keyword.trim(), contentTypeId, lDongSignguCd, page, size);
+        }
+
+        LocalDate targetDate = visitDate == null ? LocalDate.now() : visitDate;
+        List<AreaBasedItem> candidates = switch (type) {
+            case POPULAR -> fetchPopularCandidates();
+            case SEASONAL -> fetchSeasonalCandidates(targetDate);
         };
+
+        List<AreaBasedItem> filtered = candidates.stream()
+                .filter(item -> contentTypeId == null || contentTypeId.isBlank()
+                        || contentTypeId.equals(item.getContenttypeid()))
+                .filter(item -> lDongSignguCd == null || lDongSignguCd.isBlank()
+                        || lDongSignguCd.equals(item.getLDongSignguCd()))
+                .collect(
+                        LinkedHashMap<String, AreaBasedItem>::new,
+                        (items, item) -> items.putIfAbsent(item.getContentid(), item),
+                        LinkedHashMap::putAll
+                )
+                .values().stream().toList();
+
+        return page(filtered, type, page, size);
     }
 
-    /**
-     * 인기순: 소비강도 + 체류강도 종합 → 상위 시군구의 콘텐츠
-     */
-    private List<TourismContentDto> fetchPopularList(int numOfRows) {
+    private TourismContentListResponse search(
+            String keyword, String contentTypeId, String lDongSignguCd, int page, int size) {
+        AreaBasedResponse response = tourismApiClient.searchContent(
+                keyword,
+                contentTypeId,
+                tourismProperties.getRegion().getChungnamCode(),
+                lDongSignguCd,
+                page + 1,
+                size
+        );
+        List<AreaBasedItem> items = extractItems(response);
+        int totalCount = response == null || response.getResponse() == null
+                || response.getResponse().getBody() == null
+                ? items.size()
+                : response.getResponse().getBody().getTotalCount();
+
+        List<TourismContentDto> result = new ArrayList<>();
+        for (int index = 0; index < items.size(); index++) {
+            result.add(toDto(
+                    items.get(index),
+                    rankScore(page * size + index),
+                    List.of("검색어와 일치하는 충청남도 관광 콘텐츠입니다.")
+            ));
+        }
+        return TourismContentListResponse.builder()
+                .items(result)
+                .page(page)
+                .size(size)
+                .hasNext((long) (page + 1) * size < totalCount)
+                .build();
+    }
+
+    private TourismContentListResponse page(
+            List<AreaBasedItem> candidates, ListType type, int page, int size) {
+        int fromIndex = Math.min(page * size, candidates.size());
+        int toIndex = Math.min(fromIndex + size, candidates.size());
+        List<TourismContentDto> items = new ArrayList<>();
+        for (int index = fromIndex; index < toIndex; index++) {
+            String reason = type == ListType.POPULAR
+                    ? "소비 강도와 체류 강도가 높은 지역의 콘텐츠입니다."
+                    : "방문 예정 월의 관광 수요가 높은 지역의 콘텐츠입니다.";
+            items.add(toDto(candidates.get(index), rankScore(index), List.of(reason)));
+        }
+        return TourismContentListResponse.builder()
+                .items(items)
+                .page(page)
+                .size(size)
+                .hasNext(toIndex < candidates.size())
+                .build();
+    }
+
+    private List<AreaBasedItem> fetchPopularCandidates() {
         String chungnamCode = tourismProperties.getRegion().getChungnamCode();
         String currentYm = getCurrentYm();
-
-        // 1. 소비 강도 (외지인 소비액 2201)
-        AreaTarExpDsResponse expResponse = tourismApiClient.fetchExpenditureIntensity(
+        AreaTarExpDsResponse expenditure = tourismApiClient.fetchExpenditureIntensity(
                 currentYm, chungnamCode, null, "2201");
-
-        // 2. 체류 강도 (타권역 방문자 비중 2101)
-        AreaTarSjrnDsResponse sjrnResponse = tourismApiClient.fetchStayIntensity(
+        AreaTarSjrnDsResponse stay = tourismApiClient.fetchStayIntensity(
                 currentYm, chungnamCode, null, "2101");
 
-        // 3. 종합 점수 계산 → 상위 시군구 추출
-        List<String> topSignguCodes = calculatePopularityScore(expResponse, sjrnResponse)
+        List<String> signguCodes = calculatePopularityScore(expenditure, stay)
                 .entrySet().stream()
                 .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
-                .limit(numOfRows)
+                .limit(CHUNGNAM_SIGNGU_COUNT)
                 .map(Map.Entry::getKey)
                 .toList();
-
-        // 4. 상위 시군구 기반 콘텐츠 조회
-        return fetchContentsBySignguCodes(topSignguCodes, numOfRows);
+        return fetchContentsBySignguCodes(signguCodes);
     }
 
-    /**
-     * 시즌 추천: 작년 동월 수요 높았던 시군구의 콘텐츠
-     */
-    private List<TourismContentDto> fetchSeasonalList(String baseYm, int numOfRows) {
-        if (baseYm == null || baseYm.isBlank()) {
-            baseYm = calculateLastYearSameMonth();
-        }
-
-        String chungnamCode = tourismProperties.getRegion().getChungnamCode();
-
-        // 관광 서비스 수요 조회 (전체 지표 11)
+    private List<AreaBasedItem> fetchSeasonalCandidates(LocalDate visitDate) {
+        String baseYm = visitDate.minusYears(1).format(DateTimeFormatter.ofPattern("yyyyMM"));
         AreaTarSvcDemResponse response = tourismApiClient.fetchServiceDemand(
-                baseYm, chungnamCode, null, "11");
+                baseYm, tourismProperties.getRegion().getChungnamCode(), null, "11");
 
-        List<AreaTarSvcDemItem> items = extractItems(response);
-
-        // 수요 높은 시군구 추출
-        List<String> topSignguCodes = items.stream()
+        List<String> signguCodes = extractItems(response).stream()
                 .sorted((a, b) -> Double.compare(
-                        Double.parseDouble(b.getTarSvcDemIxVal()),
-                        Double.parseDouble(a.getTarSvcDemIxVal())))
+                        parseDouble(b.getTarSvcDemIxVal()),
+                        parseDouble(a.getTarSvcDemIxVal())))
                 .map(AreaTarSvcDemItem::getSignguCd)
                 .distinct()
-                .limit(numOfRows)
+                .limit(CHUNGNAM_SIGNGU_COUNT)
                 .toList();
-
-        return fetchContentsBySignguCodes(topSignguCodes, numOfRows);
+        return fetchContentsBySignguCodes(signguCodes);
     }
 
-    /**
-     * 시군구 코드 기반 → 관광 콘텐츠 조회 (TourAPI 지역기반 검색 등 활용)
-     */
-    private List<TourismContentDto> fetchContentsBySignguCodes(List<String> signguCodes, int numOfRows) {
-        String chungnamLDongRegnCd = tourismProperties.getRegion().getChungnamCode(); // "44"
-
+    private List<AreaBasedItem> fetchContentsBySignguCodes(List<String> signguCodes) {
+        String regionCode = tourismProperties.getRegion().getChungnamCode();
         return signguCodes.stream()
-                .map(signguCd -> {
-                    // 수요강도 API signguCd(5자리: 44131) → 법정동 시군구코드(3자리: 131)
-                    String lDongSignguCd = convertToLDongSignguCd(signguCd);
-
-                    return tourismApiClient.fetchAreaBasedContent(
-                            chungnamLDongRegnCd, lDongSignguCd, 1);
-                })
+                .map(this::convertToLDongSignguCd)
+                .map(signguCode -> tourismApiClient.fetchAreaBasedContent(
+                        regionCode, signguCode, CONTENTS_PER_SIGNGU))
                 .flatMap(List::stream)
-                .limit(numOfRows)
-                .map(this::toDto)
                 .toList();
     }
 
-    /**
-     * 수요강도 API의 signguCd(5자리: "44131") → 법정동 시군구코드(3자리: "131")
-     * 앞 2자리는 시도코드이므로 제거
-     */
-    private String convertToLDongSignguCd(String signguCd) {
-        if (signguCd == null || signguCd.length() <= 2) {
-            return null;  // ← 시군구코드 없으면 null → putIfPresent에서 스킵됨
-        }
-        // "44131" → "131", "44230" → "230"
-        return signguCd.substring(2);
-    }
-
-    private TourismContentDto toDto(AreaBasedItem item) {
-        // 주소에서 시군구까지 추출 (예: "충청남도 태안군 안면읍..." → "충남 태안군")
-        String location = extractLocation(item.getAddr1());
-
+    private TourismContentDto toDto(
+            AreaBasedItem item, BigDecimal recommendationScore, List<String> reasons) {
         return TourismContentDto.builder()
                 .contentId(item.getContentid())
                 .contentTypeId(item.getContenttypeid())
                 .title(item.getTitle())
-                .location(location)
-                .firstimage(item.getFirstimage())
+                .addr1(item.getAddr1())
+                .lDongSignguCd(item.getLDongSignguCd())
+                .mapx(toBigDecimal(item.getMapx()))
+                .mapy(toBigDecimal(item.getMapy()))
+                .firstImage(item.getFirstimage())
                 .categoryName(mapCategoryName(item.getContenttypeid()))
+                .recommendationScore(recommendationScore)
+                .recommendationReasons(reasons)
                 .build();
     }
 
-    private String extractLocation(String addr1) {
-        if (addr1 == null || addr1.isBlank()) return "";
-        // "충청남도 태안군 안면읍 꽃지해안로 400" → "충남 태안군"
-        String[] parts = addr1.split(" ");
-        if (parts.length >= 2) {
-            return parts[0] + " " + parts[1];
-        }
-        return addr1;
+    private String convertToLDongSignguCd(String signguCd) {
+        return signguCd == null || signguCd.length() <= 2 ? null : signguCd.substring(2);
     }
 
+    private BigDecimal rankScore(int index) {
+        return BigDecimal.valueOf(Math.max(1, 100 - index));
+    }
+
+    private BigDecimal toBigDecimal(String value) {
+        try {
+            return value == null || value.isBlank() ? null : new BigDecimal(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
+    }
 
     private String mapCategoryName(String contentTypeId) {
         if (contentTypeId == null) return "기타";
@@ -157,18 +205,9 @@ public class TourismContentService {
         };
     }
 
-    // ─── 유틸 메서드 ───
-
-    private String calculateLastYearSameMonth() {
-        LocalDate lastYear = LocalDate.now().minusYears(1);
-        return lastYear.format(DateTimeFormatter.ofPattern("yyyyMM"));
-    }
-
     private String getCurrentYm() {
         LocalDate now = LocalDate.now();
-        LocalDate target = now.getDayOfMonth() >= 16
-                ? now.minusMonths(1)
-                : now.minusMonths(2);
+        LocalDate target = now.getDayOfMonth() >= 16 ? now.minusMonths(1) : now.minusMonths(2);
         return target.format(DateTimeFormatter.ofPattern("yyyyMM"));
     }
 
@@ -183,17 +222,20 @@ public class TourismContentService {
     }
 
     private Map<String, Double> calculatePopularityScore(
-            AreaTarExpDsResponse expResponse, AreaTarSjrnDsResponse sjrnResponse) {
-        Map<String, Double> scoreMap = new HashMap<>();
+            AreaTarExpDsResponse expenditure, AreaTarSjrnDsResponse stay) {
+        Map<String, Double> scores = new HashMap<>();
+        extractItems(expenditure).forEach(item ->
+                scores.merge(item.getSignguCd(), parseDouble(item.getTarExpDsIxVal()) * 0.6, Double::sum));
+        extractItems(stay).forEach(item ->
+                scores.merge(item.getSignguCd(), parseDouble(item.getTarSjrnDsIxVal()) * 0.4, Double::sum));
+        return scores;
+    }
 
-        extractItems(expResponse).forEach(item ->
-                scoreMap.merge(item.getSignguCd(),
-                        Double.parseDouble(item.getTarExpDsIxVal()) * 0.6, Double::sum));
-
-        extractItems(sjrnResponse).forEach(item ->
-                scoreMap.merge(item.getSignguCd(),
-                        Double.parseDouble(item.getTarSjrnDsIxVal()) * 0.4, Double::sum));
-
-        return scoreMap;
+    private double parseDouble(String value) {
+        try {
+            return value == null || value.isBlank() ? 0 : Double.parseDouble(value);
+        } catch (NumberFormatException ignored) {
+            return 0;
+        }
     }
 }
