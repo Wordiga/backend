@@ -6,6 +6,8 @@ import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 
 import java.time.LocalDate;
@@ -22,8 +24,8 @@ public interface TourismContentApi {
             String keyword,
             String contentTypeId,
             String lDongSignguCd,
-            int page,
-            int size
+            @Min(0) int page,
+            @Min(1) @Max(50) int size
     );
 
     @Operation(summary = "관광 콘텐츠 통합 상세 조회",
@@ -32,9 +34,9 @@ public interface TourismContentApi {
             @Parameter(description = "관광 콘텐츠 ID") String contentId,
             LocalDate visitDate,
             List<String> ageGroups,
-            Integer participantCount,
-            Integer maleRatio,
-            Integer femaleRatio,
-            Integer expectedStayMinutes
+            @Min(1) @Max(100) Integer participantCount,
+            @Min(0) @Max(100) Integer maleRatio,
+            @Min(0) @Max(100) Integer femaleRatio,
+            @Min(1) @Max(1440) Integer expectedStayMinutes
     );
 }

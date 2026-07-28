@@ -6,8 +6,6 @@ import com.wordiga.dto.tourismContent.TourismContentListResponse;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import com.wordiga.service.TourismContentDetailService;
 import com.wordiga.service.TourismContentService;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -39,8 +37,8 @@ public class TourismContentController implements TourismContentApi {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String contentTypeId,
             @RequestParam(required = false) String lDongSignguCd,
-            @RequestParam(defaultValue = "0") @Min(0) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(50) int size) {
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(tourismContentService.getContentList(
                 type, visitDate, keyword, contentTypeId, lDongSignguCd, page, size));
@@ -51,10 +49,10 @@ public class TourismContentController implements TourismContentApi {
             @PathVariable String contentId,
             @RequestParam(required = false) LocalDate visitDate,
             @RequestParam(required = false) List<String> ageGroups,
-            @RequestParam(required = false) @Min(1) @Max(100) Integer participantCount,
-            @RequestParam(required = false) @Min(0) @Max(100) Integer maleRatio,
-            @RequestParam(required = false) @Min(0) @Max(100) Integer femaleRatio,
-            @RequestParam(required = false) @Min(1) @Max(1440) Integer expectedStayMinutes) {
+            @RequestParam(required = false) Integer participantCount,
+            @RequestParam(required = false) Integer maleRatio,
+            @RequestParam(required = false) Integer femaleRatio,
+            @RequestParam(required = false) Integer expectedStayMinutes) {
         if (maleRatio != null && femaleRatio != null && maleRatio + femaleRatio != 100) {
             throw new ResponseStatusException(BAD_REQUEST, "성별 비율의 합은 100이어야 합니다.");
         }
