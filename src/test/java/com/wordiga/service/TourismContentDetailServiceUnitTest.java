@@ -11,23 +11,23 @@ import com.wordiga.dto.DetailIntroDto;
 import com.wordiga.dto.tourismContent.detail.SeasonalImageDto;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class TourismContentDetailServiceTest {
+class TourismContentDetailServiceUnitTest {
 
     @Mock
     private WorkshopDetailService workshopDetailService;
@@ -81,13 +81,55 @@ class TourismContentDetailServiceTest {
                 .satisfies(item -> assertThat(item.getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN));
     }
 
-    @Test
-    void rejectsContentOutsideChungnam() {
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common("11"));
+    @ParameterizedTest
+    @CsvSource({
+            "12,관광지",
+            "14,문화시설",
+            "15,행사/공연/축제",
+            "25,여행코스",
+            "28,레포츠",
+            "32,숙박",
+            "38,쇼핑",
+            "39,음식점",
+            "99,기타"
+    })
+    void mapsEverySpendingCategory(String contentTypeId, String categoryName) {
+        ContentDetailDto common = common("44");
+        common.setContenttypeid(contentTypeId);
+        when(workshopDetailService.fetchCommonDetail(contentTypeId)).thenReturn(common);
+        when(workshopDetailService.fetchRepeatInfo(contentTypeId, contentTypeId, 1, 100))
+                .thenReturn(List.of());
+        when(workshopDetailService.fetchImages(contentTypeId, "Y", 1, 100))
+                .thenReturn(List.of());
+        when(tourismApiClient.fetchExpenditureIntensity(
+                anyString(), eq("44"), eq("44200"), eq("2201")))
+                .thenReturn(spendingResponse());
 
-        assertThatThrownBy(() -> service.getDetail("126508", null, List.of()))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
+        TourismContentDetailResponse result = service.getDetail(contentTypeId, null, List.of());
+
+        assertThat(result.getSpendingIndex().getCategoryName()).isEqualTo(categoryName);
+    }
+
+    @Test
+    void handlesMissingSpendingDataAndMalformedCoordinates() {
+        ContentDetailDto common = common("44");
+        common.setLDongSignguCd(null);
+        common.setMapx("invalid");
+        common.setMapy("");
+        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
+        when(workshopDetailService.fetchRepeatInfo("126508", "12", 1, 100))
+                .thenReturn(List.of());
+        when(workshopDetailService.fetchImages("126508", "Y", 1, 100))
+                .thenReturn(List.of());
+        when(tourismApiClient.fetchExpenditureIntensity(
+                anyString(), eq("44"), eq(null), eq("2201")))
+                .thenReturn(null);
+
+        TourismContentDetailResponse result = service.getDetail("126508", null, List.of());
+
+        assertThat(result.getCommon().getMapx()).isNull();
+        assertThat(result.getCommon().getMapy()).isNull();
+        assertThat(result.getSpendingIndex()).isNull();
     }
 
     private ContentDetailDto common(String regionCode) {
