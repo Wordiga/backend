@@ -5,6 +5,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Data
@@ -25,13 +26,19 @@ public class WishResponse {
     private String title;
 
     @Schema(description = "대표 이미지")
-    private String firstimage;
+    private String firstImage;
 
     @Schema(description = "주소")
     private String addr1;
 
+    @Schema(description = "경도")
+    private BigDecimal mapx;
+
+    @Schema(description = "위도")
+    private BigDecimal mapy;
+
     @Schema(description = "시군구 코드")
-    private String sigunguCode;
+    private String lDongSignguCd;
 
     @Schema(description = "시군구명")
     private String sigunguName;
@@ -48,9 +55,11 @@ public class WishResponse {
                 .contentId(wish.getContentId())
                 .contentTypeId(wish.getContentTypeId())
                 .title(wish.getTitle())
-                .firstimage(wish.getFirstimage())
+                .firstImage(wish.getFirstimage())
                 .addr1(wish.getAddr1())
-                .sigunguCode(wish.getSigunguCode())
+                .mapx(wish.getMapx())
+                .mapy(wish.getMapy())
+                .lDongSignguCd(wish.getSigunguCode())
                 .sigunguName(wish.getSigunguName())
                 .folderName(wish.getFolderName())
                 .createdAt(wish.getCreatedAt())

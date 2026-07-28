@@ -13,7 +13,7 @@ public class WishFolderResponse {
     private String folderName;
 
     @Schema(description = "시군구 코드", example = "130")
-    private String sigunguCode;
+    private String lDongSignguCd;
 
     @Schema(description = "폴더 내 위시 개수", example = "5")
     private Long count;

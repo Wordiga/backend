@@ -23,7 +23,7 @@ public class WishController implements WishApi {
 
     @PostMapping
     public ResponseEntity<WishResponse> addWish(
-            @CurrentMemberId Long memberId,  // 깔끔!
+            @CurrentMemberId Long memberId,
             @Valid @RequestBody WishRequest request) {
 
         WishResponse response = wishService.addWish(memberId, request);

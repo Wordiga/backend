@@ -140,6 +140,8 @@ CREATE TABLE wishes
     title           VARCHAR(255) NOT NULL,
     firstimage      VARCHAR(500) NULL,
     addr1           VARCHAR(255) NULL,
+    mapx            NUMERIC(15, 10) NULL,
+    mapy            NUMERIC(15, 10) NULL,
     sigungu_code    VARCHAR(10)  NULL,
     sigungu_name    VARCHAR(50)  NULL,
     folder_name     VARCHAR(50)  NOT NULL DEFAULT '기본 위시리스트',

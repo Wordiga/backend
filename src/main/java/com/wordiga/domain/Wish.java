@@ -3,6 +3,7 @@ package com.wordiga.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -36,6 +37,12 @@ public class Wish {
     @Column(length = 255)
     private String addr1;
 
+    @Column(precision = 15, scale = 10)
+    private BigDecimal mapx;
+
+    @Column(precision = 15, scale = 10)
+    private BigDecimal mapy;
+
     @Column(name = "sigungu_code", length = 10)
     private String sigunguCode;
 
@@ -50,6 +57,7 @@ public class Wish {
 
     public static Wish create(Long memberId, String contentId, String contentTypeId,
                               String title, String firstimage, String addr1,
+                              BigDecimal mapx, BigDecimal mapy,
                               String sigunguCode, String sigunguName, String folderName) {
         return Wish.builder()
                 .memberId(memberId)
@@ -58,6 +66,8 @@ public class Wish {
                 .title(title)
                 .firstimage(firstimage)
                 .addr1(addr1)
+                .mapx(mapx)
+                .mapy(mapy)
                 .sigunguCode(sigunguCode)
                 .sigunguName(sigunguName)
                 .folderName(folderName != null ? folderName : "기본 위시리스트")

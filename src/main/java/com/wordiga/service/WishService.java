@@ -1,14 +1,18 @@
 package com.wordiga.service;
 
 import com.wordiga.domain.Wish;
+import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.wish.WishFolderResponse;
 import com.wordiga.dto.wish.WishRequest;
 import com.wordiga.dto.wish.WishResponse;
 import com.wordiga.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
 
+import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
@@ -18,28 +22,28 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class WishService {
 
-    /**
-     * 충남 16개 시군구 코드 → 이름 매핑
-     */
+    private static final String CHUNGNAM_REGION_CODE = "44";
+
     private static final Map<String, String> CHUNGNAM_SIGUNGU_MAP = Map.ofEntries(
             Map.entry("110", "천안시"),
-            Map.entry("130", "공주시"),
-            Map.entry("140", "보령시"),
-            Map.entry("150", "아산시"),
-            Map.entry("160", "서산시"),
-            Map.entry("170", "논산시"),
-            Map.entry("180", "계룡시"),
-            Map.entry("190", "당진시"),
+            Map.entry("150", "공주시"),
+            Map.entry("180", "보령시"),
+            Map.entry("200", "아산시"),
+            Map.entry("210", "서산시"),
+            Map.entry("230", "논산시"),
+            Map.entry("250", "계룡시"),
+            Map.entry("270", "당진시"),
             Map.entry("310", "금산군"),
             Map.entry("330", "부여군"),
             Map.entry("340", "서천군"),
             Map.entry("350", "청양군"),
             Map.entry("360", "홍성군"),
             Map.entry("370", "예산군"),
-            Map.entry("380", "태안군"),
-            Map.entry("400", "청양군")  // 필요 시 수정
+            Map.entry("380", "태안군")
     );
+
     private final WishRepository wishRepository;
+    private final WorkshopDetailService workshopDetailService;
 
     /**
      * 위시 등록
@@ -56,18 +60,30 @@ public class WishService {
             return WishResponse.from(existing);
         }
 
-        // 폴더명 결정: 시군구 코드로 자동 분류
-        String sigunguName = resolveSigunguName(request.getSigunguCode());
+        ContentDetailDto content = workshopDetailService.fetchCommonDetail(request.getContentId());
+        if (content == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관광 콘텐츠를 찾을 수 없습니다.");
+        }
+        if (!CHUNGNAM_REGION_CODE.equals(content.getLDongRegnCd())) {
+            throw new ResponseStatusException(
+                    HttpStatus.UNPROCESSABLE_CONTENT,
+                    "충청남도 관광 콘텐츠만 위시리스트에 저장할 수 있습니다."
+            );
+        }
+
+        String sigunguName = resolveSigunguName(content.getLDongSignguCd());
         String folderName = sigunguName != null ? sigunguName : "기본 위시리스트";
 
         Wish wish = Wish.create(
                 memberId,
-                request.getContentId(),
-                request.getContentTypeId(),
-                request.getTitle(),
-                request.getFirstimage(),
-                request.getAddr1(),
-                request.getSigunguCode(),
+                content.getContentid(),
+                content.getContenttypeid(),
+                content.getTitle(),
+                content.getFirstimage(),
+                content.getAddr1(),
+                parseCoordinate(content.getMapx()),
+                parseCoordinate(content.getMapy()),
+                content.getLDongSignguCd(),
                 sigunguName,
                 folderName
         );
@@ -94,7 +110,7 @@ public class WishService {
         return summaries.stream()
                 .map(row -> WishFolderResponse.builder()
                         .folderName((String) row[0])
-                        .sigunguCode((String) row[1])
+                        .lDongSignguCd((String) row[1])
                         .count((Long) row[3])
                         .build())
                 .collect(Collectors.toList());
@@ -118,5 +134,16 @@ public class WishService {
             return null;
         }
         return CHUNGNAM_SIGUNGU_MAP.getOrDefault(sigunguCode, null);
+    }
+
+    private BigDecimal parseCoordinate(String value) {
+        if (value == null || value.isBlank()) {
+            return null;
+        }
+        try {
+            return new BigDecimal(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

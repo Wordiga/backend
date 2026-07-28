@@ -1,0 +1,94 @@
+### 공통정보 조회
+GET http://localhost:8080/api/v1/workshops/details/common/126128
+
+###
+
+### 공통정보 조회 - 존재하지 않는 ID (404 확인)
+GET http://localhost:8080/api/v1/workshops/details/common/000000
+
+###
+
+### 소개정보 조회 - 관광지 (contentTypeId=12)
+GET http://localhost:8080/api/v1/workshops/details/intro/126128?contentTypeId=12
+
+###
+
+### 소개정보 조회 - 음식점 (contentTypeId=39)
+GET http://localhost:8080/api/v1/workshops/details/intro/3094599?contentTypeId=39
+
+###
+
+### 소개정보 조회 - 숙박 (contentTypeId=32)
+GET http://localhost:8080/api/v1/workshops/details/intro/2941159?contentTypeId=32
+
+###
+
+### 반복정보 조회 - 관광지
+GET http://localhost:8080/api/v1/workshops/details/info/126128?contentTypeId=12
+
+###
+
+### 반복정보 조회 - 숙박 객실정보
+GET http://localhost:8080/api/v1/workshops/details/info/2941159?contentTypeId=32
+
+###
+
+### 반복정보 조회 - 페이징
+GET http://localhost:8080/api/v1/workshops/details/info/126128?contentTypeId=12&pageNo=1&numOfRows=5
+
+###
+
+### 이미지정보 조회 - 콘텐츠 이미지
+GET http://localhost:8080/api/v1/workshops/details/images/126128
+
+###
+
+### 이미지정보 조회 - 음식메뉴 이미지
+GET http://localhost:8080/api/v1/workshops/details/images/3094599?imageYN=N
+
+###
+
+### 이미지정보 조회 - 페이징
+GET http://localhost:8080/api/v1/workshops/details/images/126128?imageYN=Y&pageNo=1&numOfRows=5
+
+###
+
+### 행사정보 조회 - 필수 파라미터만
+GET http://localhost:8080/api/v1/workshops/details/festivals?eventStartDate=20250101
+
+###
+
+### 행사정보 조회 - 날짜 범위
+GET http://localhost:8080/api/v1/workshops/details/festivals?eventStartDate=20250601&eventEndDate=20250831
+
+###
+
+### 행사정보 조회 - 시군구 + 분류체계 필터
+GET http://localhost:8080/api/v1/workshops/details/festivals?eventStartDate=20250101&eventEndDate=20251231&
+    lDongSignguCd=380&lclsSystm1=EV
+
+###
+
+### 행사정보 조회 - 페이징
+GET http://localhost:8080/api/v1/workshops/details/festivals?eventStartDate=20250301&eventEndDate=20250531&pageNo=1&
+    numOfRows=5
+
+###
+
+### 숙박정보 조회 - 전체
+GET http://localhost:8080/api/v1/workshops/details/stays
+
+###
+
+### 숙박정보 조회 - 시군구 필터
+GET http://localhost:8080/api/v1/workshops/details/stays?lDongSignguCd=380
+
+###
+
+### 숙박정보 조회 - 분류체계 필터
+GET http://localhost:8080/api/v1/workshops/details/stays?lclsSystm1=AC&lclsSystm2=AC03
+
+###
+
+### 숙박정보 조회 - 페이징
+GET http://localhost:8080/api/v1/workshops/details/stays?pageNo=1&numOfRows=5

@@ -17,8 +17,8 @@ import java.util.List;
 public interface WishApi {
 
     @Operation(summary = "위시 등록",
-            description = "콘텐츠를 위시리스트에 등록합니다. 시군구 코드에 따라 자동 폴더링됩니다. " +
-                    "이미 등록된 콘텐츠면 기존 위시를 반환합니다.")
+            description = "콘텐츠 ID로 관광 정보를 조회하여 위시리스트에 등록합니다. " +
+                    "충청남도 시군구에 따라 자동으로 분류하며, 이미 등록된 콘텐츠이면 기존 위시를 반환합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "등록 성공 (또는 이미 존재)"),
             @ApiResponse(responseCode = "401", description = "인증 필요 - 로그인 필요")
@@ -34,7 +34,7 @@ public interface WishApi {
     ResponseEntity<Void> removeWish(Long memberId, WishDeleteRequest request);
 
     @Operation(summary = "위시 폴더 목록 조회",
-            description = "충남 16개 시군구 자동 폴더 및 기본 위시리스트 폴더를 조회합니다. " +
+            description = "충청남도 시군구 자동 폴더와 기본 위시리스트 폴더를 조회합니다. " +
                     "각 폴더의 위시 개수를 함께 반환합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공"),
