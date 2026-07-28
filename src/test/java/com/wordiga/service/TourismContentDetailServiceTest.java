@@ -38,6 +38,9 @@ class TourismContentDetailServiceTest {
     @Spy
     private TourismDetailMapper detailMapper = new TourismDetailMapper();
 
+    @Mock
+    private TourismSatisfactionService satisfactionService;
+
     @InjectMocks
     private TourismContentDetailService service;
 
@@ -67,7 +70,7 @@ class TourismContentDetailServiceTest {
                 anyString(), eq("44"), eq("44200"), eq("2201")))
                 .thenReturn(spendingResponse());
 
-        TourismContentDetailResponse result = service.getDetail("126508");
+        TourismContentDetailResponse result = service.getDetail("126508", null, List.of("20S"));
 
         assertThat(result.getCommon().getTitle()).isEqualTo("현충사");
         assertThat(result.getIntro().getUseTime()).isEqualTo("09:00~18:00");
@@ -82,7 +85,7 @@ class TourismContentDetailServiceTest {
     void rejectsContentOutsideChungnam() {
         when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common("11"));
 
-        assertThatThrownBy(() -> service.getDetail("126508"))
+        assertThatThrownBy(() -> service.getDetail("126508", null, List.of()))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("404");
     }

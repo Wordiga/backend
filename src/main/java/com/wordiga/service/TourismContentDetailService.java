@@ -33,8 +33,10 @@ public class TourismContentDetailService {
     private final WorkshopDetailService workshopDetailService;
     private final TourismApiClient tourismApiClient;
     private final TourismDetailMapper detailMapper;
+    private final TourismSatisfactionService satisfactionService;
 
-    public TourismContentDetailResponse getDetail(String contentId) {
+    public TourismContentDetailResponse getDetail(
+            String contentId, LocalDate visitDate, List<String> ageGroups) {
         ContentDetailDto common = workshopDetailService.fetchCommonDetail(contentId);
         if (common == null || !CHUNGNAM_REGION_CODE.equals(common.getLDongRegnCd())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관광 콘텐츠를 찾을 수 없습니다.");
@@ -54,6 +56,7 @@ public class TourismContentDetailService {
                 .images(images.stream().map(this::toImage).toList())
                 .spendingIndex(fetchSpendingIndex(common))
                 .seasonalImages(images.stream().map(this::toSeasonalImage).toList())
+                .satisfaction(satisfactionService.calculate(common, visitDate, ageGroups))
                 .build();
     }
 

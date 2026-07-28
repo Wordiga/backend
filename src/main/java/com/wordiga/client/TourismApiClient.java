@@ -96,6 +96,32 @@ public class TourismApiClient {
         return callApi(uri, TatsCnctrRateResponse.class);
     }
 
+    public AreaTouDivResponse fetchTouristDiversity(
+            String baseYm, String areaCd, String signguCd, String touDivIxCd) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("baseYm", baseYm);
+        params.put("areaCd", areaCd);
+        params.put("numOfRows", "100");
+        putIfPresent(params, "signguCd", signguCd);
+        putIfPresent(params, "touDivIxCd", touDivIxCd);
+
+        URI uri = buildUri("AreaTarDivService/areaTouDivList", params);
+        return callApi(uri, AreaTouDivResponse.class);
+    }
+
+    public AreaExpDivResponse fetchExpenditureDiversity(
+            String baseYm, String areaCd, String signguCd, String expDivIxCd) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("baseYm", baseYm);
+        params.put("areaCd", areaCd);
+        params.put("numOfRows", "100");
+        putIfPresent(params, "signguCd", signguCd);
+        putIfPresent(params, "expDivIxCd", expDivIxCd);
+
+        URI uri = buildUri("AreaTarDivService/areaExpDivList", params);
+        return callApi(uri, AreaExpDivResponse.class);
+    }
+
     // ─── 지역기반 관광 콘텐츠 조회 (KorService2) ───
 
     public List<AreaBasedItem> fetchAreaBasedContent(String lDongRegnCd, String lDongSignguCd, int numOfRows) {

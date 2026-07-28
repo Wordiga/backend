@@ -15,4 +15,5 @@ public class TourismContentDetailResponse {
     private List<TourismDetailImageDto> images;
     private SpendingIndexDto spendingIndex;
     private List<SeasonalImageDto> seasonalImages;
+    private SatisfactionDto satisfaction;
 }

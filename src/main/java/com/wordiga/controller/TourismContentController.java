@@ -16,8 +16,12 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
+import java.util.List;
+
+import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @RestController
 @RequestMapping("/api/v1/tourism/contents")
@@ -44,7 +48,16 @@ public class TourismContentController implements TourismContentApi {
 
     @GetMapping("/{contentId}")
     public ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
-            @PathVariable String contentId) {
-        return ResponseEntity.ok(tourismContentDetailService.getDetail(contentId));
+            @PathVariable String contentId,
+            @RequestParam(required = false) LocalDate visitDate,
+            @RequestParam(required = false) List<String> ageGroups,
+            @RequestParam(required = false) @Min(1) @Max(100) Integer participantCount,
+            @RequestParam(required = false) @Min(0) @Max(100) Integer maleRatio,
+            @RequestParam(required = false) @Min(0) @Max(100) Integer femaleRatio,
+            @RequestParam(required = false) @Min(1) @Max(1440) Integer expectedStayMinutes) {
+        if (maleRatio != null && femaleRatio != null && maleRatio + femaleRatio != 100) {
+            throw new ResponseStatusException(BAD_REQUEST, "성별 비율의 합은 100이어야 합니다.");
+        }
+        return ResponseEntity.ok(tourismContentDetailService.getDetail(contentId, visitDate, ageGroups));
     }
 }
