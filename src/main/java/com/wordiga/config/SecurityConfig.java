@@ -3,6 +3,7 @@ package com.wordiga.config;
 import com.wordiga.security.JwtAuthenticationFilter;
 import com.wordiga.security.OidcLoginSuccessHandler;
 import com.wordiga.service.CustomOidcUserService;
+import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -38,6 +39,7 @@ public class SecurityConfig {
                         session.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                 )
                 .authorizeHttpRequests(auth -> auth
+                        .dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                         .requestMatchers(
                                 "/oauth2/**",
                                 "/login/oauth2/code/**",
