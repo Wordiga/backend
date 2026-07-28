@@ -6,8 +6,8 @@
 | Controller 테스트 | `@WebMvcTest`, MockMvc |
 | 통합 테스트 | `@SpringBootTest`, Testcontainers `postgres:17-alpine` |
 | 커버리지 | JaCoCo 0.8.15 |
-| 품질 기준 | 핵심 서비스·Controller 라인 커버리지 80% 이상 |
-| 현재 결과 | 583/610 lines, 95.6%, 전체 41 tests 통과 |
+| 품질 기준 | 핵심 서비스·Controller 라인·브랜치 커버리지 각각 80% 이상 |
+| 현재 결과 | 598/610 lines(98.0%), 163/203 branches(80.3%) |
 
 ## 테스트 클래스 분리 기준
 
@@ -56,4 +56,4 @@
 - 공통 요청값 예외 처리
 
 DTO, JPA Entity, Spring 설정, 외부 API 전송 객체처럼 실행 분기보다 선언이 중심인 클래스는
-라인 커버리지 게이트에서 제외합니다.
+라인·브랜치 커버리지 게이트에서 제외합니다.

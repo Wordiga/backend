@@ -80,9 +80,15 @@ class TourismContentControllerTest {
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
                         .param("visitDate", "2026-08-20")
-                        .param("ageGroups", "20S,30S"))
+                        .param("ageGroups", "20S,30S")
+                        .param("maleRatio", "50")
+                        .param("femaleRatio", "50"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.common.contentId").value("126508"))
                 .andExpect(jsonPath("$.common.title").value("현충사"));
+
+        mockMvc.perform(get("/api/v1/tourism/contents/126508")
+                        .param("maleRatio", "50"))
+                .andExpect(status().isOk());
     }
 }

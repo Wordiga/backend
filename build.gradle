@@ -93,6 +93,11 @@ tasks.named('jacocoTestCoverageVerification') {
                 value = 'COVEREDRATIO'
                 minimum = 0.80
             }
+            limit {
+                counter = 'BRANCH'
+                value = 'COVEREDRATIO'
+                minimum = 0.80
+            }
         }
     }
 }
