@@ -5,12 +5,14 @@ import com.wordiga.dto.DetailIntroDto;
 import com.wordiga.dto.tourismContent.detail.TourismDetailInfoDto;
 import com.wordiga.dto.tourismContent.detail.TourismIntroDetailDto;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-class TourismDetailMapperTest {
+class TourismDetailMapperUnitTest {
 
     private final TourismDetailMapper mapper = new TourismDetailMapper();
 
@@ -42,15 +44,48 @@ class TourismDetailMapperTest {
         source.setRoomimg1("https://example.com/1.jpg");
         source.setRoomimg1alt("객실");
         source.setCpyrhtDivCd1("Type1");
+        source.setRoomimg2("https://example.com/2.jpg");
+        source.setRoomimg3("https://example.com/3.jpg");
+        source.setRoomimg4("https://example.com/4.jpg");
+        source.setRoomimg5("https://example.com/5.jpg");
 
         List<TourismDetailInfoDto> result = mapper.toDetails(List.of(source));
 
         assertThat(result).hasSize(1);
         assertThat(result.getFirst().getRoomTitle()).isEqualTo("스탠다드");
-        assertThat(result.getFirst().getRoomImages()).singleElement()
-                .satisfies(image -> {
-                    assertThat(image.getImageUrl()).isEqualTo("https://example.com/1.jpg");
-                    assertThat(image.getCopyrightTypeCode()).isEqualTo("Type1");
+        assertThat(result.getFirst().getRoomImages()).hasSize(5);
+        assertThat(result.getFirst().getRoomImages().getFirst().getImageUrl())
+                .isEqualTo("https://example.com/1.jpg");
+        assertThat(result.getFirst().getRoomImages().getFirst().getCopyrightTypeCode())
+                .isEqualTo("Type1");
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"12", "14", "15", "25", "28", "38", "39", "unknown"})
+    void mapsEverySupportedIntroType(String contentTypeId) {
+        DetailIntroDto source = new DetailIntroDto();
+        source.setContentid("1");
+        source.setContenttypeid(contentTypeId);
+
+        TourismIntroDetailDto result = mapper.toIntro(source);
+
+        assertThat(result.getContentTypeId()).isEqualTo(contentTypeId);
+    }
+
+    @Test
+    void handlesNullAndMalformedDetailValues() {
+        assertThat(mapper.toIntro(null)).isNull();
+        assertThat(mapper.toDetails(null)).isEmpty();
+
+        DetailInfoDto source = new DetailInfoDto();
+        source.setSerialnum("invalid");
+        source.setSubnum("");
+
+        assertThat(mapper.toDetails(List.of(source))).singleElement()
+                .satisfies(detail -> {
+                    assertThat(detail.getSerialNumber()).isNull();
+                    assertThat(detail.getSubNumber()).isNull();
+                    assertThat(detail.getRoomImages()).isEmpty();
                 });
     }
 }

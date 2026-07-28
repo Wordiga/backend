@@ -1,0 +1,54 @@
+package com.wordiga.service;
+
+import com.wordiga.client.TourismApiClient;
+import com.wordiga.dto.ContentDetailDto;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.when;
+
+@ExtendWith(MockitoExtension.class)
+class TourismContentDetailServiceUnitExceptionTest {
+
+    @Mock
+    private WorkshopDetailService workshopDetailService;
+
+    @Mock
+    private TourismApiClient tourismApiClient;
+
+    @Mock
+    private TourismDetailMapper detailMapper;
+
+    @Mock
+    private TourismSatisfactionService satisfactionService;
+
+    @InjectMocks
+    private TourismContentDetailService service;
+
+    @Test
+    void rejectsMissingContent() {
+        when(workshopDetailService.fetchCommonDetail("missing")).thenReturn(null);
+
+        assertThatThrownBy(() -> service.getDetail("missing", null, List.of()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("404");
+    }
+
+    @Test
+    void rejectsContentOutsideChungnam() {
+        ContentDetailDto content = new ContentDetailDto();
+        content.setLDongRegnCd("11");
+        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(content);
+
+        assertThatThrownBy(() -> service.getDetail("126508", null, List.of()))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("404");
+    }
+}

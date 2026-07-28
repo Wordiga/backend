@@ -16,18 +16,16 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class TourismContentDetailServiceTest {
+class TourismContentDetailServiceUnitTest {
 
     @Mock
     private WorkshopDetailService workshopDetailService;
@@ -79,15 +77,6 @@ class TourismContentDetailServiceTest {
         assertThat(result.getSpendingIndex().getIndexValue()).isEqualByComparingTo("112.4");
         assertThat(result.getSeasonalImages()).singleElement()
                 .satisfies(item -> assertThat(item.getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN));
-    }
-
-    @Test
-    void rejectsContentOutsideChungnam() {
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common("11"));
-
-        assertThatThrownBy(() -> service.getDetail("126508", null, List.of()))
-                .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("404");
     }
 
     private ContentDetailDto common(String regionCode) {
