@@ -49,7 +49,8 @@
 | `ProposalServiceUnitExceptionTest` | 성공·예외 | DOCX 검증 | DOCX 필수 ZIP 엔트리와 임의 파일 거부 |
 | `PlanServiceIntegrationTest` | 성공 | AI 일정 저장 | AI 원문·일정 식별자·이동시간·일자별 콘텐츠 저장 |
 | `PlanControllerExceptionTest` | 예외 | 일정·제안서 요청값 오류 | Body 누락, DTO validation, 페이지 범위와 잘못된 enum의 400 공통 오류 응답 |
-| `AiPlanRequestTest` | 성공 | AI 요청 계약 | visit_month·num_people·num_days와 saved/regional 콘텐츠의 snake_case 직렬화 |
+| `AiPlanRequestTest` | 성공 | AI 요청 계약 | visit_month·num_people·num_days와 saved/regional 콘텐츠의 snake_case 직렬화 및 한글 tags 전달 |
+| `PlanGenerationServiceUnitTest` | 성공/외부 오류 | 관광공사 분류명 변환 | 한글 분류명을 AI tags로 전달하고 변환 API 실패 시 tags를 null로 전달 |
 
 ## JaCoCo 관리 범위
 

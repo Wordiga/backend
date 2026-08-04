@@ -1,6 +1,7 @@
 package com.wordiga.service;
 
 import com.wordiga.client.AiServerClient;
+import com.wordiga.client.TourismApiClient;
 import com.wordiga.dto.ai.*;
 import com.wordiga.dto.plan.*;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
@@ -17,19 +18,39 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PlanGenerationServiceUnitTest {
     @Mock TourismContentDetailService tourismContentDetailService;
+    @Mock TourismApiClient tourismApiClient;
     @Mock AiServerClient aiServerClient;
     @Mock PlanWriter planWriter;
     PlanGenerationService service;
-    @BeforeEach void setUp() { service = new PlanGenerationService(tourismContentDetailService, aiServerClient, planWriter); }
+    @BeforeEach void setUp() { service = new PlanGenerationService(tourismContentDetailService, tourismApiClient, aiServerClient, planWriter); }
 
     @Test void callsAiOutsideWriterAndPersistsValidatedResponse() {
         PlanGenerateRequest request = request("126508"); AiPlanResponse response = response("126508");
         when(tourismContentDetailService.getDetail(eq("126508"), any(), any(), eq(2))).thenReturn(detail());
+        when(tourismApiClient.fetchClassificationNames("AC", "AC01", null))
+                .thenReturn(List.of("숙박", "호텔"));
         when(aiServerClient.generatePlan(any())).thenReturn(response);
         when(planWriter.saveGenerated(1L, request, response)).thenReturn(PlanDetailResponse.builder().planId(9L).build());
 
         assertThat(service.generate(1L, request).getPlanId()).isEqualTo(9L);
+        var captor = org.mockito.ArgumentCaptor.forClass(AiPlanRequest.class);
+        verify(aiServerClient).generatePlan(captor.capture());
+        assertThat(captor.getValue().savedContents().get(0).tags()).containsExactly("숙박", "호텔");
         verify(planWriter).saveGenerated(1L, request, response);
+    }
+
+    @Test void sendsKoreanClassificationNamesAndFallsBackToNullOnFailure() {
+        PlanGenerateRequest request = request("126508"); AiPlanResponse response = response("126508");
+        when(tourismContentDetailService.getDetail(eq("126508"), any(), any(), eq(2))).thenReturn(detail());
+        when(tourismApiClient.fetchClassificationNames("AC", "AC01", null))
+                .thenThrow(new RuntimeException("분류 API 장애"));
+        when(aiServerClient.generatePlan(any())).thenReturn(response);
+
+        service.generate(1L, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(AiPlanRequest.class);
+        verify(aiServerClient).generatePlan(captor.capture());
+        assertThat(captor.getValue().savedContents().get(0).tags()).isNull();
     }
 
     @Test void rejectsDuplicateSelectionAndInvalidAiContent() {
@@ -61,6 +82,7 @@ class PlanGenerationServiceUnitTest {
     private TourismContentDetailResponse detail() {
         return TourismContentDetailResponse.builder().common(
                 com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto.builder()
-                        .contentId("126508").contentTypeId("12").title("현충사").build()).build();
+                        .contentId("126508").contentTypeId("12").title("현충사")
+                        .lclsSystm1("AC").lclsSystm2("AC01").build()).build();
     }
 }
