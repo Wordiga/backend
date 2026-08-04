@@ -10,7 +10,6 @@
 
 - [x] OIDC 로그인 및 JWT 발급
   - 현재: Google/Kakao OIDC 사용자 저장과 JWT 발급이 구현되어 있습니다.
-  - 후속: 토큰을 URL query parameter로 전달하지 않는 방식으로 변경해야 합니다.
 
 - [x] JWT 인증 필터
   - 현재: Bearer JWT 검증과 회원 ID 인증 객체 생성이 구현되어 있습니다.
@@ -72,13 +71,20 @@
   - 현재: DB에 저장된 최신 일정으로 AI 서버에 DOCX 생성을 요청하고 형식·크기를 검증합니다.
   - 현재: 비공개 S3 저장, 30일 메타데이터 유효기간, 15분 presigned URL과 일정별 최신순 목록을 제공합니다.
 
+- [x] S3 Lifecycle 정책 적용
+  - 현재: `proposals/` prefix 객체가 생성 후 30일에 삭제되도록 버킷 Lifecycle과 애플리케이션 환경변수를 설정했습니다.
+
 ### Todo
 
-- [ ] 일정 수정 후 AI 재생성 UX 확정
-  - Todo: 화면설계서에서 콘텐츠·참가 인원 수정 후 AI 일정을 언제 다시 요청할지 확정해야 합니다.
+- [ ] OIDC 로그인 토큰 전달 보안 개선
+  - Todo: 자체 JWT를 URL query parameter로 전달하는 현재 방식을 제거해야 합니다.
+  - Todo: HttpOnly 인증 쿠키와 일회용 코드 교환 방식 중 프론트 연동 방식을 확정한 뒤 `oidc-login-api.md`와 구현·테스트를 함께 수정해야 합니다.
+
+- [ ] 일정 수정 후 AI 재생성 및 버전 이력
+  - Todo: 일정 변경 저장 Command API에서 AI가 새로 발급한 `scheduleId`별 결과를 이력으로 보존하고 현재 버전 선택 규칙을 확정해야 합니다.
+  - Todo: 일정 목록에 현재 `scheduleId`를 포함하고 과거 버전 조회 범위·응답 구조를 화면설계서와 맞춰야 합니다.
+  - Todo: 자동 제목은 첫 번째 선택 콘텐츠의 시군구와 시작일자·시군구별 순번을 조합하는 규칙으로 구현해야 합니다.
 
 - [ ] AI 지역 보충 후보 생성
-  - Todo: AI 요청의 `regional_contents` 후보 범위·개수와 캐시 정책을 기획·AI 팀과 확정한 뒤 구현해야 합니다.
-
-- [ ] S3 Lifecycle 정책 적용
-  - Todo: `proposals/` prefix 객체가 생성 후 30일에 삭제되도록 버킷 Lifecycle을 배포 환경에 설정해야 합니다.
+  - Todo: 관광공사 연관 관광지 후보를 KorService2 상세정보로 보강해 AI `regional_contents`로 전달해야 합니다.
+  - Todo: 사용자가 선택한 `saved_contents`는 모두 유지하고, 동일 콘텐츠가 연관 후보에도 존재할 때 `regional_contents` 쪽 중복만 제외해야 합니다.
