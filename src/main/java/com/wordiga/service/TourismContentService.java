@@ -83,8 +83,7 @@ public class TourismContentService {
         for (int index = 0; index < items.size(); index++) {
             result.add(toDto(
                     items.get(index),
-                    rankScore(page * size + index),
-                    List.of("검색어와 일치하는 충청남도 관광 콘텐츠입니다.")
+                    rankScore(page * size + index)
             ));
         }
         return TourismContentListResponse.builder()
@@ -101,10 +100,7 @@ public class TourismContentService {
         int toIndex = Math.min(fromIndex + size, candidates.size());
         List<TourismContentDto> items = new ArrayList<>();
         for (int index = fromIndex; index < toIndex; index++) {
-            String reason = type == ListType.POPULAR
-                    ? "소비 강도와 체류 강도가 높은 지역의 콘텐츠입니다."
-                    : "방문 예정 월의 관광 수요가 높은 지역의 콘텐츠입니다.";
-            items.add(toDto(candidates.get(index), rankScore(index), List.of(reason)));
+            items.add(toDto(candidates.get(index), rankScore(index)));
         }
         return TourismContentListResponse.builder()
                 .items(items)
@@ -158,7 +154,7 @@ public class TourismContentService {
     }
 
     private TourismContentDto toDto(
-            AreaBasedItem item, BigDecimal recommendationScore, List<String> reasons) {
+            AreaBasedItem item, BigDecimal recommendationScore) {
         return TourismContentDto.builder()
                 .contentId(item.getContentid())
                 .contentTypeId(item.getContenttypeid())
@@ -170,7 +166,6 @@ public class TourismContentService {
                 .firstImage(item.getFirstimage())
                 .categoryName(mapCategoryName(item.getContenttypeid()))
                 .recommendationScore(recommendationScore)
-                .recommendationReasons(reasons)
                 .build();
     }
 

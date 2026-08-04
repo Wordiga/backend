@@ -70,6 +70,6 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
     }
     private PlanContentsUpdateRequest.Day day(int number, String date, String id) {
         PlanContentsUpdateRequest.Day d = new PlanContentsUpdateRequest.Day(); d.setDayNumber(number);
-        d.setDate(LocalDate.parse(date)); d.setContentIds(List.of(id)); return d;
+        d.setContentIds(List.of(id)); return d;
     }
 }

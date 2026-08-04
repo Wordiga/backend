@@ -44,6 +44,4 @@ public class TourismContentDto {
     @Schema(description = "추천 점수")
     private BigDecimal recommendationScore;
 
-    @Schema(description = "추천 이유")
-    private List<String> recommendationReasons;
 }

@@ -41,6 +41,14 @@ class PlanGenerationServiceUnitTest {
         verifyNoInteractions(planWriter);
     }
 
+    @Test void rejectsPlanLongerThanThreeDays() {
+        PlanGenerateRequest request = request("A");
+        request.setEndDate(request.getStartDate().plusDays(3));
+
+        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("1~3일");
+        verifyNoInteractions(aiServerClient, planWriter);
+    }
+
     private PlanGenerateRequest request(String... ids) {
         PlanGenerateRequest r = new PlanGenerateRequest(); r.setStartDate(LocalDate.of(2026, 8, 20));
         r.setEndDate(r.getStartDate()); r.setParticipantCount(2); r.setSelectedContentIds(List.of(ids)); return r;

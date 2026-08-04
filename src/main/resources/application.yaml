@@ -70,7 +70,7 @@ proposal:
   s3:
     bucket: ${PROPOSAL_S3_BUCKET:}
     region: ${AWS_REGION:ap-northeast-2}
-    url-validity: 15m
+    url-validity: 1d
     retention: 30d
 
 logging:

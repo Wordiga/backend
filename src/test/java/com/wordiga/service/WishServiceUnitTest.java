@@ -7,6 +7,9 @@ import com.wordiga.dto.wish.WishResponse;
 import com.wordiga.repository.WishRepository;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullSource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -100,11 +103,13 @@ class WishServiceUnitTest {
         assertThat(response.getMapy()).isNull();
     }
 
-    @Test
-    void usesDefaultFolderForBlankRegionAndNullCoordinates() {
+    @ParameterizedTest
+    @NullSource
+    @ValueSource(strings = " ")
+    void usesDefaultFolderForBlankRegionAndNullCoordinates(String sigunguCode) {
         WishRequest request = new WishRequest(); request.setContentId("blank");
         ContentDetailDto content = new ContentDetailDto(); content.setContentid("blank"); content.setTitle("미분류");
-        content.setLDongRegnCd("44"); content.setLDongSignguCd(" ");
+        content.setLDongRegnCd("44"); content.setLDongSignguCd(sigunguCode);
         when(tourismContentDetailService.getCommonDetail("blank")).thenReturn(content);
         when(wishRepository.save(any(Wish.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

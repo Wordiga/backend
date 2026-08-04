@@ -8,5 +8,5 @@ import lombok.Data;
 @Data
 public class PlanUpdateRequest {
     @Size(max = 100) private String title;
-    @Min(1) @Max(100) private Integer participantCount;
+    @Min(1) @Max(50) private Integer participantCount;
 }

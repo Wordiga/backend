@@ -3,9 +3,11 @@ package com.wordiga.controller;
 import com.wordiga.api.TourismContentApi;
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.dto.tourismContent.SigunguResponse;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import com.wordiga.service.TourismContentDetailService;
 import com.wordiga.service.TourismContentService;
+import com.wordiga.service.ChungnamSigungu;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
@@ -14,12 +16,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
 
-import static org.springframework.http.HttpStatus.BAD_REQUEST;
 
 @RestController
 @RequestMapping("/api/v1/tourism/contents")
@@ -29,6 +29,11 @@ public class TourismContentController implements TourismContentApi {
 
     private final TourismContentService tourismContentService;
     private final TourismContentDetailService tourismContentDetailService;
+
+    @GetMapping("/sigungu")
+    public ResponseEntity<List<SigunguResponse>> getSigungu() {
+        return ResponseEntity.ok(ChungnamSigungu.ALL);
+    }
 
     @GetMapping
     public ResponseEntity<TourismContentListResponse> getTourismContentList(
@@ -49,13 +54,7 @@ public class TourismContentController implements TourismContentApi {
             @PathVariable String contentId,
             @RequestParam(required = false) LocalDate visitDate,
             @RequestParam(required = false) List<String> ageGroups,
-            @RequestParam(required = false) Integer participantCount,
-            @RequestParam(required = false) Integer maleRatio,
-            @RequestParam(required = false) Integer femaleRatio,
-            @RequestParam(required = false) Integer expectedStayMinutes) {
-        if (maleRatio != null && femaleRatio != null && maleRatio + femaleRatio != 100) {
-            throw new ResponseStatusException(BAD_REQUEST, "성별 비율의 합은 100이어야 합니다.");
-        }
+            @RequestParam(required = false) Integer participantCount) {
         return ResponseEntity.ok(tourismContentDetailService.getDetail(contentId, visitDate, ageGroups));
     }
 }

@@ -13,7 +13,6 @@ public class TourismContentDetailResponse {
     private TourismIntroDetailDto intro;
     private List<TourismDetailInfoDto> details;
     private List<TourismDetailImageDto> images;
-    private SpendingIndexDto spendingIndex;
     private List<SeasonalImageDto> seasonalImages;
     private SatisfactionDto satisfaction;
 }

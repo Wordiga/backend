@@ -25,12 +25,10 @@ public class PlanGenerationService {
         return planWriter.saveGenerated(memberId, request, response);
     }
     private void validateRequest(PlanGenerateRequest r) {
-        if (r.getStartDate().isAfter(r.getEndDate()) || ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) > 6)
-            invalid(HttpStatus.BAD_REQUEST, "일정 기간은 1~7일이어야 합니다.");
+        if (r.getStartDate().isAfter(r.getEndDate()) || ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) > 2)
+            invalid(HttpStatus.BAD_REQUEST, "일정 기간은 1~3일이어야 합니다.");
         if (new HashSet<>(r.getSelectedContentIds()).size() != r.getSelectedContentIds().size())
             invalid(HttpStatus.BAD_REQUEST, "콘텐츠 ID는 중복될 수 없습니다.");
-        if (r.getMaleRatio() != null && r.getFemaleRatio() != null && r.getMaleRatio() + r.getFemaleRatio() != 100)
-            invalid(HttpStatus.BAD_REQUEST, "성별 비율 합은 100이어야 합니다.");
     }
     private void validateResponse(PlanGenerateRequest r, AiPlanResponse response) {
         if (response.getDays() == null || response.getDays().isEmpty()) invalid(HttpStatus.BAD_GATEWAY, "AI 일정이 비어 있습니다.");

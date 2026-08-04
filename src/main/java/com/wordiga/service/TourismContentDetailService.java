@@ -1,8 +1,6 @@
 package com.wordiga.service;
 
 import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaTarExpDsItem;
-import com.wordiga.client.dto.AreaTarExpDsResponse;
 import com.wordiga.client.dto.KtoApiResponse;
 import com.wordiga.client.dto.PhotoGalleryItem;
 import com.wordiga.client.dto.PhotoGalleryResponse;
@@ -11,7 +9,6 @@ import com.wordiga.dto.DetailImageDto;
 import com.wordiga.dto.DetailInfoDto;
 import com.wordiga.dto.DetailIntroDto;
 import com.wordiga.dto.tourismContent.detail.SeasonalImageDto;
-import com.wordiga.dto.tourismContent.detail.SpendingIndexDto;
 import com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import com.wordiga.dto.tourismContent.detail.TourismDetailImageDto;
@@ -58,7 +55,6 @@ public class TourismContentDetailService {
                 .intro(detailMapper.toIntro(intro))
                 .details(detailMapper.toDetails(details))
                 .images(images.stream().map(this::toImage).toList())
-                .spendingIndex(fetchSpendingIndex(common))
                 .seasonalImages(seasonalImages)
                 .satisfaction(satisfactionService.calculate(common, visitDate, ageGroups))
                 .build();
@@ -149,46 +145,6 @@ public class TourismContentDetailService {
                 .season(SeasonalImageDto.Season.UNKNOWN)
                 .matchConfidence(BigDecimal.ONE)
                 .build();
-    }
-
-    private SpendingIndexDto fetchSpendingIndex(ContentDetailDto common) {
-        String referencePeriod = currentBaseYm();
-        String signguCode = common.getLDongSignguCd() == null
-                ? null
-                : CHUNGNAM_REGION_CODE + common.getLDongSignguCd();
-        AreaTarExpDsResponse response = tourismApiClient.fetchExpenditureIntensity(
-                referencePeriod, CHUNGNAM_REGION_CODE, signguCode, "2201");
-        List<AreaTarExpDsItem> items = extractItems(response);
-        if (items.isEmpty()) {
-            return null;
-        }
-        AreaTarExpDsItem item = items.getFirst();
-        return SpendingIndexDto.builder()
-                .regionName(item.getSignguNm())
-                .categoryName(categoryName(common.getContenttypeid()))
-                .indexValue(toBigDecimal(item.getTarExpDsIxVal()))
-                .referencePeriod(item.getBaseYm())
-                .build();
-    }
-
-    private String currentBaseYm() {
-        LocalDate now = LocalDate.now();
-        LocalDate target = now.getDayOfMonth() >= 16 ? now.minusMonths(1) : now.minusMonths(2);
-        return target.format(DateTimeFormatter.ofPattern("yyyyMM"));
-    }
-
-    private String categoryName(String contentTypeId) {
-        return switch (contentTypeId) {
-            case "12" -> "관광지";
-            case "14" -> "문화시설";
-            case "15" -> "행사/공연/축제";
-            case "25" -> "여행코스";
-            case "28" -> "레포츠";
-            case "32" -> "숙박";
-            case "38" -> "쇼핑";
-            case "39" -> "음식점";
-            default -> "기타";
-        };
     }
 
     private <T> List<T> extractItems(KtoApiResponse<T> response) {

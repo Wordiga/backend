@@ -47,11 +47,12 @@ public class PlanService {
         List<PlanContent> contents = new ArrayList<>();
         Set<String> ids = new HashSet<>();
         for (PlanContentsUpdateRequest.Day day : request.getDays()) {
+            LocalDate date = plan.getStartDate().plusDays(day.getDayNumber() - 1L);
             int sequence = 1;
             for (String contentId : day.getContentIds()) {
                 if (!ids.add(contentId)) invalid("콘텐츠 ID는 중복될 수 없습니다.");
                 ContentDetailDto c = tourismContentDetailService.getCommonDetail(contentId);
-                contents.add(PlanContent.createForUpdate(plan, day.getDayNumber(), day.getDate(), sequence++, contentId,
+                contents.add(PlanContent.createForUpdate(plan, day.getDayNumber(), date, sequence++, contentId,
                         c.getTitle(), c.getContenttypeid(), c.getAddr1(), c.getFirstimage(), decimal(c.getMapx()), decimal(c.getMapy())));
             }
         }
@@ -66,13 +67,12 @@ public class PlanService {
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다.")); }
     private PlanDetailResponse detail(Plan p, List<String> warnings) { return PlanDetailResponse.from(p, warnings); }
     private void validateDays(Plan p, List<PlanContentsUpdateRequest.Day> days) {
-        LocalDate expected = p.getStartDate(); int number = 1;
+        int number = 1;
         for (PlanContentsUpdateRequest.Day day : days) {
-            if (day.getDayNumber() != number++ || !day.getDate().equals(expected) || day.getDate().isAfter(p.getEndDate()))
-                invalid("일차와 날짜는 일정 기간 안에서 연속되어야 합니다.");
-            expected = expected.plusDays(1);
+            if (day.getDayNumber() != number++) invalid("일차는 1부터 연속되어야 합니다.");
         }
-        if (!expected.minusDays(1).equals(p.getEndDate())) invalid("모든 일정 날짜를 전달해야 합니다.");
+        if (days.size() != java.time.temporal.ChronoUnit.DAYS.between(p.getStartDate(), p.getEndDate()) + 1)
+            invalid("모든 일정 일차를 전달해야 합니다.");
     }
     private BigDecimal decimal(String value) { try { return value == null || value.isBlank() ? null : new BigDecimal(value); }
         catch (NumberFormatException e) { return null; } }
