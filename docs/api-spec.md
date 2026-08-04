@@ -5,6 +5,7 @@
 | Method | Path | Auth | 설명 |
 |---|---|---|---|
 | GET | `/api/v1/tourism/contents` | X | 관광 콘텐츠 목록 조회 |
+| GET | `/api/v1/tourism/contents/sigungu` | X | 충청남도 시군구 목록 조회 |
 | GET | `/api/v1/tourism/contents/{contentId}` | X | 관광 콘텐츠 통합 상세 조회 |
 | POST | `/api/v1/wishes` | O | 위시 등록 및 지역 자동 분류 |
 | DELETE | `/api/v1/wishes` | O | 위시 삭제 |
@@ -56,36 +57,37 @@ GET /api/v1/tourism/contents
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `type` | Enum | N | 메인 화면 구역입니다. `POPULAR`, `SEASONAL`을 사용하며 기본값은 `POPULAR`입니다. | `POPULAR` |
-| `visitDate` | LocalDate | N | 계절 정렬의 기준 방문일입니다. 없으면 오늘을 사용합니다. | `2026-08-20` |
-| `keyword` | String | N | 콘텐츠명 검색어입니다. | `공주` |
-| `contentTypeId` | Integer | N | 관광타입 ID입니다. | `12` |
-| `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드입니다. | `200` |
-| `page` | Integer | N | 0부터 시작하는 페이지입니다. 기본값은 `0`입니다. | `0` |
-| `size` | Integer | N | 페이지 크기입니다. 기본값은 `20`, 최댓값은 `50`입니다. | `20` |
+| `type` | Enum | N | 메인 화면 구역 `POPULAR`, `SEASONAL`을 사용하며 기본값은 `POPULAR` | `POPULAR` |
+| `visitDate` | LocalDate | N | 계절 정렬 기준일, 미입력 시 오늘 | `2026-08-20` |
+| `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
+| `contentTypeId` | Integer | N | 관광타입 ID | `12` |
+| `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드 | `200` |
+| `page` | Integer | N | 0부터 시작하는 페이지 기본값은 `0` | `0` |
+| `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
 
 ### Request Body
 
-없습니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
 
 ### Response Body
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `items` | ContentSummary[] | Y | 관광 콘텐츠 목록입니다. |
-| `items[].contentId` | String | Y | 관광 콘텐츠 ID입니다. |
-| `items[].contentTypeId` | String | Y | 관광타입 ID입니다. |
-| `items[].title` | String | Y | 콘텐츠명입니다. |
-| `items[].addr1` | String | N | 주소입니다. |
-| `items[].lDongSignguCd` | String | N | 법정동 시군구 코드입니다. |
-| `items[].mapx` | BigDecimal | N | 경도입니다. |
-| `items[].mapy` | BigDecimal | N | 위도입니다. |
-| `items[].firstImage` | String | N | 대표 이미지 URL입니다. |
-| `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수입니다. |
-| `items[].recommendationReasons` | String[] | Y | 추천 사유입니다. |
-| `page` | Integer | Y | 현재 페이지입니다. |
-| `size` | Integer | Y | 페이지 크기입니다. |
-| `hasNext` | Boolean | Y | 다음 페이지 존재 여부입니다. |
+| `items` | ContentSummary[] | Y | 관광 콘텐츠 목록 |
+| `items[].contentId` | String | Y | 관광 콘텐츠 ID |
+| `items[].contentTypeId` | String | Y | 관광타입 ID |
+| `items[].title` | String | Y | 콘텐츠명 |
+| `items[].addr1` | String | N | 주소 |
+| `items[].lDongSignguCd` | String | N | 법정동 시군구 코드 |
+| `items[].mapx` | BigDecimal | N | 경도 |
+| `items[].mapy` | BigDecimal | N | 위도 |
+| `items[].firstImage` | String | N | 대표 이미지 URL |
+| `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수 |
+| `page` | Integer | Y | 현재 페이지 |
+| `size` | Integer | Y | 페이지 크기 |
+| `hasNext` | Boolean | Y | 다음 페이지 존재 여부 |
 
 ### Response Example
 
@@ -101,11 +103,7 @@ GET /api/v1/tourism/contents
       "mapx": 126.9891281,
       "mapy": 36.8051452,
       "firstImage": "https://example.com/main.jpg",
-      "recommendationScore": 88.3,
-      "recommendationReasons": [
-        "위시리스트의 역사 관광지와 유사합니다.",
-        "방문 예정 월에 적합합니다."
-      ]
+      "recommendationScore": 88.3
     }
   ],
   "page": 0,
@@ -129,11 +127,36 @@ GET /api/v1/tourism/contents
 
 ### 정렬 및 구현 계획
 
-- 검색 후보는 한국관광공사 `areaBasedList2`, `searchKeyword2`, `searchFestival2`, `searchStay2`를 조건에 맞게 사용합니다.
+- 검색어가 있으면 한국관광공사 `searchKeyword2`, 없으면 `areaBasedList2`로 후보를 조회합니다.
 - `POPULAR` 기본 점수는 소비 강도 60%, 체류 강도 40%로 계산합니다.
 - `SEASONAL` 기본 점수는 방문 예정 월의 관광 서비스 수요를 사용합니다.
 - 최종 정렬은 `recommendationScore DESC, contentId ASC`입니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.
+
+### 충청남도 시군구 목록 조회
+
+```http
+GET /api/v1/tourism/contents/sigungu
+```
+
+관련 기능: 관광 콘텐츠 지역 필터용 충청남도 법정동 시군구 코드 조회
+
+인증: 불필요
+
+### Request Body
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
+
+### Response Body
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `[].code` | String | Y | 법정동 시군구 코드 |
+| `[].name` | String | Y | 시군구명 |
+
+천안시 동남구·서북구를 구분한 16개 항목을 코드 오름차순으로 반환합니다.
 
 ## 2. 관광 콘텐츠 통합 상세 조회
 
@@ -143,8 +166,7 @@ GET /api/v1/tourism/contents/{contentId}
 
 관련 기능:
 
-* 상세정보 화면에 필요한 공통정보, 관광타입별 소개정보, 반복정보, 이미지, 만족도, 소비지수, 계절 사진을 한 번에 제공합니다.
-* 상세정보의 하트 버튼과 일정 만들기 화면에서 사용합니다.
+* 관광 콘텐츠 하나의 공통정보, 관광타입별 소개정보, 반복정보, 이미지, 만족도, 계절 사진을 조회합니다.
 
 인증: 불필요
 
@@ -152,225 +174,223 @@ GET /api/v1/tourism/contents/{contentId}
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `contentId` | String | Y | 한국관광공사 관광 콘텐츠 ID입니다. | `126508` |
+| `contentId` | String | Y | 한국관광공사 관광 콘텐츠 ID | `126508` |
 
 ### Query Parameter
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `visitDate` | LocalDate | N | 집중률과 계절 사진 판단 기준일입니다. 없으면 오늘을 사용합니다. | `2026-08-20` |
-| `participantCount` | Integer | N | 만족도 산출에 참고할 인원입니다. | `8` |
-| `ageGroups` | String[] | N | 만족도 산출에 참고할 연령대입니다. | `20S,30S` |
-| `maleRatio` | Integer | N | 남성 비율입니다. | `50` |
-| `femaleRatio` | Integer | N | 여성 비율입니다. | `50` |
-| `expectedStayMinutes` | Integer | N | 희망 체류시간입니다. | `90` |
+| `visitDate` | LocalDate | N | 집중률·계절 사진 판단 기준일, 미입력 시 오늘 | `2026-08-20` |
+| `participantCount` | Integer | N | 만족도 산출에 참고할 인원 | `8` |
+| `ageGroups` | String[] | N | 연령대 코드 `10S`~`70S` | `20S,30S` |
 
 ### Request Body
 
-없습니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
 
 ### Response Body - 최상위
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `common` | CommonDetail | Y | 모든 관광타입의 공통정보입니다. |
-| `intro` | IntroDetail | Y | `contentTypeId`별 소개정보입니다. 해당 타입 필드를 모두 제공합니다. |
-| `details` | DetailInfo[] | Y | 타입별 반복정보입니다. 숙박은 객실, 여행코스는 코스 항목을 제공합니다. |
-| `images` | DetailImage[] | Y | 상세 이미지와 저작권 정보입니다. |
-| `spendingIndex` | SpendingIndex | N | 지역·업종 소비지수입니다. 실제 평균 소비액이 아닙니다. |
-| `seasonalImages` | SeasonalImage[] | Y | 촬영일을 기준으로 계절을 의미화한 사진입니다. |
-| `satisfaction` | Satisfaction | N | 관광 수요 기반 예상 만족도입니다. |
+| `common` | CommonDetail | Y | 모든 관광타입의 공통정보 |
+| `intro` | IntroDetail | Y | `contentTypeId`별 소개정보 전체 필드 |
+| `details` | DetailInfo[] | Y | 타입별 반복정보, 숙박 객실·여행코스 항목 |
+| `images` | DetailImage[] | Y | 상세 이미지와 저작권 정보 |
+| `seasonalImages` | SeasonalImage[] | Y | 촬영일을 기준으로 계절을 의미화한 사진 |
+| `satisfaction` | Satisfaction | N | 관광 수요 기반 예상 만족도 |
 
 ### Response Body - CommonDetail
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `contentId` | String | Y | 콘텐츠 ID입니다. |
-| `contentTypeId` | String | Y | 관광타입 ID입니다. |
-| `title` | String | Y | 콘텐츠명입니다. |
-| `createdTime` | String | N | 한국관광공사 등록 시각입니다. |
-| `modifiedTime` | String | N | 한국관광공사 수정 시각입니다. 촬영일로 사용하지 않습니다. |
-| `tel` | String | N | 전화번호입니다. |
-| `telName` | String | N | 전화번호 명칭입니다. |
-| `homepage` | String | N | 홈페이지입니다. |
-| `firstImage` | String | N | 대표 이미지입니다. |
-| `firstImage2` | String | N | 대표 썸네일입니다. |
-| `copyrightTypeCode` | String | N | 이미지 저작권 유형입니다. |
-| `addr1` | String | N | 주소입니다. |
-| `addr2` | String | N | 상세 주소입니다. |
-| `zipcode` | String | N | 우편번호입니다. |
-| `mapx` | BigDecimal | N | 경도입니다. |
-| `mapy` | BigDecimal | N | 위도입니다. |
-| `mapLevel` | String | N | 지도 레벨입니다. |
-| `overview` | String | N | 콘텐츠 개요입니다. |
-| `lDongRegnCd` | String | N | 법정동 시도 코드입니다. |
-| `lDongSignguCd` | String | N | 법정동 시군구 코드입니다. |
-| `lclsSystm1` | String | N | 분류체계 대분류입니다. |
-| `lclsSystm2` | String | N | 분류체계 중분류입니다. |
-| `lclsSystm3` | String | N | 분류체계 소분류입니다. |
+| `contentId` | String | Y | 콘텐츠 ID |
+| `contentTypeId` | String | Y | 관광타입 ID |
+| `title` | String | Y | 콘텐츠명 |
+| `createdTime` | String | N | 한국관광공사 등록 시각 |
+| `modifiedTime` | String | N | 한국관광공사 수정 시각 |
+| `tel` | String | N | 전화번호 |
+| `telName` | String | N | 전화번호 명칭 |
+| `homepage` | String | N | 홈페이지 |
+| `firstImage` | String | N | 대표 이미지 |
+| `firstImage2` | String | N | 대표 썸네일 |
+| `copyrightTypeCode` | String | N | 이미지 저작권 유형 |
+| `addr1` | String | N | 주소 |
+| `addr2` | String | N | 상세 주소 |
+| `zipcode` | String | N | 우편번호 |
+| `mapx` | BigDecimal | N | 경도 |
+| `mapy` | BigDecimal | N | 위도 |
+| `mapLevel` | String | N | 지도 레벨 |
+| `overview` | String | N | 콘텐츠 개요 |
+| `lDongRegnCd` | String | N | 법정동 시도 코드 |
+| `lDongSignguCd` | String | N | 법정동 시군구 코드 |
+| `lclsSystm1` | String | N | 분류체계 대분류 |
+| `lclsSystm2` | String | N | 분류체계 중분류 |
+| `lclsSystm3` | String | N | 분류체계 소분류 |
 
 ### Response Body - IntroDetail 관광지 `contentTypeId=12`
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `accomCount` | String | N | 수용 인원입니다. |
-| `checkBabyCarriage` | String | N | 유모차 대여 가능 여부입니다. |
-| `checkCreditCard` | String | N | 신용카드 사용 가능 여부입니다. |
-| `checkPet` | String | N | 반려동물 동반 가능 여부입니다. |
-| `experienceAgeRange` | String | N | 체험 가능 연령입니다. |
-| `experienceGuide` | String | N | 체험 안내입니다. |
-| `heritage1` | String | N | 세계문화유산 여부입니다. |
-| `heritage2` | String | N | 세계자연유산 여부입니다. |
-| `heritage3` | String | N | 세계기록유산 여부입니다. |
-| `infoCenter` | String | N | 문의 및 안내 정보입니다. |
-| `openDate` | String | N | 개장일입니다. |
-| `parking` | String | N | 주차시설 정보입니다. |
-| `restDate` | String | N | 쉬는 날입니다. |
-| `useSeason` | String | N | 이용 가능한 시기입니다. |
-| `useTime` | String | N | 이용시간입니다. |
+| `accomCount` | String | N | 수용 인원 |
+| `checkBabyCarriage` | String | N | 유모차 대여 가능 여부 |
+| `checkCreditCard` | String | N | 신용카드 사용 가능 여부 |
+| `checkPet` | String | N | 반려동물 동반 가능 여부 |
+| `experienceAgeRange` | String | N | 체험 가능 연령 |
+| `experienceGuide` | String | N | 체험 안내 |
+| `heritage1` | String | N | 세계문화유산 여부 |
+| `heritage2` | String | N | 세계자연유산 여부 |
+| `heritage3` | String | N | 세계기록유산 여부 |
+| `infoCenter` | String | N | 문의 및 안내 정보 |
+| `openDate` | String | N | 개장일 |
+| `parking` | String | N | 주차시설 정보 |
+| `restDate` | String | N | 쉬는 날 |
+| `useSeason` | String | N | 이용 가능한 시기 |
+| `useTime` | String | N | 이용시간 |
 
 ### Response Body - IntroDetail 문화시설 `contentTypeId=14`
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `accomCount` | String | N | 수용 인원입니다. |
-| `checkBabyCarriage` | String | N | 유모차 대여 가능 여부입니다. |
-| `checkCreditCard` | String | N | 신용카드 사용 가능 여부입니다. |
-| `checkPet` | String | N | 반려동물 동반 가능 여부입니다. |
-| `discountInfo` | String | N | 할인 정보입니다. |
-| `infoCenter` | String | N | 문의 및 안내 정보입니다. |
-| `parking` | String | N | 주차시설 정보입니다. |
-| `parkingFee` | String | N | 주차요금입니다. |
-| `restDate` | String | N | 쉬는 날입니다. |
-| `useFee` | String | N | 이용요금입니다. |
-| `useTime` | String | N | 이용시간입니다. |
-| `scale` | String | N | 시설 규모입니다. |
-| `spendTime` | String | N | 관람 소요시간입니다. |
+| `accomCount` | String | N | 수용 인원 |
+| `checkBabyCarriage` | String | N | 유모차 대여 가능 여부 |
+| `checkCreditCard` | String | N | 신용카드 사용 가능 여부 |
+| `checkPet` | String | N | 반려동물 동반 가능 여부 |
+| `discountInfo` | String | N | 할인 정보 |
+| `infoCenter` | String | N | 문의 및 안내 정보 |
+| `parking` | String | N | 주차시설 정보 |
+| `parkingFee` | String | N | 주차요금 |
+| `restDate` | String | N | 쉬는 날 |
+| `useFee` | String | N | 이용요금 |
+| `useTime` | String | N | 이용시간 |
+| `scale` | String | N | 시설 규모 |
+| `spendTime` | String | N | 관람 소요시간 |
 
 ### Response Body - IntroDetail 행사·공연·축제 `contentTypeId=15`
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `ageLimit` | String | N | 관람 가능 연령입니다. |
-| `bookingPlace` | String | N | 예매처입니다. |
-| `discountInfo` | String | N | 할인 정보입니다. |
-| `eventEndDate` | LocalDate | N | 행사 종료일입니다. |
-| `eventHomepage` | String | N | 행사 홈페이지입니다. |
-| `eventPlace` | String | N | 행사 장소입니다. |
-| `eventStartDate` | LocalDate | N | 행사 시작일입니다. |
-| `festivalGrade` | String | N | 축제 등급입니다. |
-| `placeInfo` | String | N | 행사장 위치 안내입니다. |
-| `playTime` | String | N | 공연시간입니다. |
-| `program` | String | N | 행사 프로그램입니다. |
-| `spendTime` | String | N | 관람 소요시간입니다. |
-| `sponsor1` | String | N | 주최자 정보입니다. |
-| `sponsor1Tel` | String | N | 주최자 연락처입니다. |
-| `sponsor2` | String | N | 주관사 정보입니다. |
-| `sponsor2Tel` | String | N | 주관사 연락처입니다. |
-| `subEvent` | String | N | 부대행사 정보입니다. |
-| `useTime` | String | N | 이용요금입니다. |
+| `ageLimit` | String | N | 관람 가능 연령 |
+| `bookingPlace` | String | N | 예매처 |
+| `discountInfo` | String | N | 할인 정보 |
+| `eventEndDate` | LocalDate | N | 행사 종료일 |
+| `eventHomepage` | String | N | 행사 홈페이지 |
+| `eventPlace` | String | N | 행사 장소 |
+| `eventStartDate` | LocalDate | N | 행사 시작일 |
+| `festivalGrade` | String | N | 축제 등급 |
+| `placeInfo` | String | N | 행사장 위치 안내 |
+| `playTime` | String | N | 공연시간 |
+| `program` | String | N | 행사 프로그램 |
+| `spendTime` | String | N | 관람 소요시간 |
+| `sponsor1` | String | N | 주최자 정보 |
+| `sponsor1Tel` | String | N | 주최자 연락처 |
+| `sponsor2` | String | N | 주관사 정보 |
+| `sponsor2Tel` | String | N | 주관사 연락처 |
+| `subEvent` | String | N | 부대행사 정보 |
+| `useTime` | String | N | 이용요금 |
 
 ### Response Body - IntroDetail 여행코스 `contentTypeId=25`
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `distance` | String | N | 코스 총거리입니다. |
-| `infoCenter` | String | N | 문의 및 안내 정보입니다. |
-| `schedule` | String | N | 코스 일정입니다. |
-| `takeTime` | String | N | 코스 총 소요시간입니다. |
-| `theme` | String | N | 코스 테마입니다. |
+| `distance` | String | N | 코스 총거리 |
+| `infoCenter` | String | N | 문의 및 안내 정보 |
+| `schedule` | String | N | 코스 일정 |
+| `takeTime` | String | N | 코스 총 소요시간 |
+| `theme` | String | N | 코스 테마 |
 
 ### Response Body - IntroDetail 레포츠 `contentTypeId=28`
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `accomCount` | String | N | 수용 인원입니다. |
-| `checkBabyCarriage` | String | N | 유모차 대여 가능 여부입니다. |
-| `checkCreditCard` | String | N | 신용카드 사용 가능 여부입니다. |
-| `checkPet` | String | N | 반려동물 동반 가능 여부입니다. |
-| `experienceAgeRange` | String | N | 체험 가능 연령입니다. |
-| `infoCenter` | String | N | 문의 및 안내 정보입니다. |
-| `openPeriod` | String | N | 개장 기간입니다. |
-| `parkingFee` | String | N | 주차요금입니다. |
-| `parking` | String | N | 주차시설 정보입니다. |
-| `reservation` | String | N | 예약 안내입니다. |
-| `restDate` | String | N | 쉬는 날입니다. |
-| `scale` | String | N | 시설 규모입니다. |
-| `useFee` | String | N | 입장료입니다. |
-| `useTime` | String | N | 이용시간입니다. |
+| `accomCount` | String | N | 수용 인원 |
+| `checkBabyCarriage` | String | N | 유모차 대여 가능 여부 |
+| `checkCreditCard` | String | N | 신용카드 사용 가능 여부 |
+| `checkPet` | String | N | 반려동물 동반 가능 여부 |
+| `experienceAgeRange` | String | N | 체험 가능 연령 |
+| `infoCenter` | String | N | 문의 및 안내 정보 |
+| `openPeriod` | String | N | 개장 기간 |
+| `parkingFee` | String | N | 주차요금 |
+| `parking` | String | N | 주차시설 정보 |
+| `reservation` | String | N | 예약 안내 |
+| `restDate` | String | N | 쉬는 날 |
+| `scale` | String | N | 시설 규모 |
+| `useFee` | String | N | 입장료 |
+| `useTime` | String | N | 이용시간 |
 
 ### Response Body - IntroDetail 숙박 `contentTypeId=32`
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `accomCount` | String | N | 수용 가능 인원입니다. |
-| `checkInTime` | String | N | 입실시간입니다. |
-| `checkOutTime` | String | N | 퇴실시간입니다. |
-| `checkCooking` | String | N | 객실 내 취사 가능 여부입니다. |
-| `foodPlace` | String | N | 식음료장 정보입니다. |
-| `infoCenter` | String | N | 문의 및 안내 정보입니다. |
-| `parking` | String | N | 주차시설 정보입니다. |
-| `pickup` | String | N | 픽업 서비스 정보입니다. |
-| `roomCount` | String | N | 객실 수입니다. |
-| `reservation` | String | N | 예약 안내입니다. |
-| `reservationUrl` | String | N | 예약 홈페이지입니다. |
-| `roomType` | String | N | 객실 유형입니다. |
-| `scale` | String | N | 숙박시설 규모입니다. |
-| `subFacility` | String | N | 기타 부대시설입니다. |
-| `barbecue` | String | N | 바비큐장 여부입니다. |
-| `beauty` | String | N | 뷰티시설 여부입니다. |
-| `beverage` | String | N | 식음료장 여부입니다. |
-| `bicycle` | String | N | 자전거 대여 여부입니다. |
-| `campfire` | String | N | 캠프파이어 가능 여부입니다. |
-| `fitness` | String | N | 피트니스센터 여부입니다. |
-| `karaoke` | String | N | 노래방 여부입니다. |
-| `publicBath` | String | N | 공용 샤워실 여부입니다. |
-| `publicPc` | String | N | 공용 PC실 여부입니다. |
-| `sauna` | String | N | 사우나실 여부입니다. |
-| `seminar` | String | N | 세미나실 여부입니다. |
-| `sports` | String | N | 스포츠시설 여부입니다. |
-| `refundRegulation` | String | N | 환불 규정입니다. |
+| `accomCount` | String | N | 수용 가능 인원 |
+| `checkInTime` | String | N | 입실시간 |
+| `checkOutTime` | String | N | 퇴실시간 |
+| `checkCooking` | String | N | 객실 내 취사 가능 여부 |
+| `foodPlace` | String | N | 식음료장 정보 |
+| `infoCenter` | String | N | 문의 및 안내 정보 |
+| `parking` | String | N | 주차시설 정보 |
+| `pickup` | String | N | 픽업 서비스 정보 |
+| `roomCount` | String | N | 객실 수 |
+| `reservation` | String | N | 예약 안내 |
+| `reservationUrl` | String | N | 예약 홈페이지 |
+| `roomType` | String | N | 객실 유형 |
+| `scale` | String | N | 숙박시설 규모 |
+| `subFacility` | String | N | 기타 부대시설 |
+| `barbecue` | String | N | 바비큐장 여부 |
+| `beauty` | String | N | 뷰티시설 여부 |
+| `beverage` | String | N | 식음료장 여부 |
+| `bicycle` | String | N | 자전거 대여 여부 |
+| `campfire` | String | N | 캠프파이어 가능 여부 |
+| `fitness` | String | N | 피트니스센터 여부 |
+| `karaoke` | String | N | 노래방 여부 |
+| `publicBath` | String | N | 공용 샤워실 여부 |
+| `publicPc` | String | N | 공용 PC실 여부 |
+| `sauna` | String | N | 사우나실 여부 |
+| `seminar` | String | N | 세미나실 여부 |
+| `sports` | String | N | 스포츠시설 여부 |
+| `refundRegulation` | String | N | 환불 규정 |
 
 ### Response Body - IntroDetail 쇼핑 `contentTypeId=38`
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `checkBabyCarriage` | String | N | 유모차 대여 가능 여부입니다. |
-| `checkCreditCard` | String | N | 신용카드 사용 가능 여부입니다. |
-| `checkPet` | String | N | 반려동물 동반 가능 여부입니다. |
-| `cultureCenter` | String | N | 문화센터 정보입니다. |
-| `fairDay` | String | N | 장이 서는 날입니다. |
-| `infoCenter` | String | N | 문의 및 안내 정보입니다. |
-| `openDate` | String | N | 개장일입니다. |
-| `openTime` | String | N | 영업시간입니다. |
-| `parking` | String | N | 주차시설 정보입니다. |
-| `restDate` | String | N | 쉬는 날입니다. |
-| `restroom` | String | N | 화장실 정보입니다. |
-| `saleItem` | String | N | 판매 품목입니다. |
-| `saleItemCost` | String | N | 판매 품목별 가격입니다. |
-| `scale` | String | N | 매장 규모입니다. |
-| `shopGuide` | String | N | 매장 안내입니다. |
+| `checkBabyCarriage` | String | N | 유모차 대여 가능 여부 |
+| `checkCreditCard` | String | N | 신용카드 사용 가능 여부 |
+| `checkPet` | String | N | 반려동물 동반 가능 여부 |
+| `cultureCenter` | String | N | 문화센터 정보 |
+| `fairDay` | String | N | 장이 서는 날 |
+| `infoCenter` | String | N | 문의 및 안내 정보 |
+| `openDate` | String | N | 개장일 |
+| `openTime` | String | N | 영업시간 |
+| `parking` | String | N | 주차시설 정보 |
+| `restDate` | String | N | 쉬는 날 |
+| `restroom` | String | N | 화장실 정보 |
+| `saleItem` | String | N | 판매 품목 |
+| `saleItemCost` | String | N | 판매 품목별 가격 |
+| `scale` | String | N | 매장 규모 |
+| `shopGuide` | String | N | 매장 안내 |
 
 ### Response Body - IntroDetail 음식점 `contentTypeId=39`
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `checkCreditCard` | String | N | 신용카드 사용 가능 여부입니다. |
-| `discountInfo` | String | N | 할인 정보입니다. |
-| `firstMenu` | String | N | 대표 메뉴입니다. |
-| `infoCenter` | String | N | 문의 및 안내 정보입니다. |
-| `kidsFacility` | String | N | 어린이 놀이방 여부입니다. |
-| `openDate` | String | N | 개업일입니다. |
-| `openTime` | String | N | 영업시간입니다. |
-| `packing` | String | N | 포장 가능 여부입니다. |
-| `parking` | String | N | 주차시설 정보입니다. |
-| `reservation` | String | N | 예약 안내입니다. |
-| `restDate` | String | N | 쉬는 날입니다. |
-| `scale` | String | N | 음식점 규모입니다. |
-| `seat` | String | N | 좌석 수입니다. |
-| `smoking` | String | N | 금연·흡연 여부입니다. |
-| `treatMenu` | String | N | 취급 메뉴입니다. |
-| `licenseNumber` | String | N | 인허가 번호입니다. |
+| `checkCreditCard` | String | N | 신용카드 사용 가능 여부 |
+| `discountInfo` | String | N | 할인 정보 |
+| `firstMenu` | String | N | 대표 메뉴 |
+| `infoCenter` | String | N | 문의 및 안내 정보 |
+| `kidsFacility` | String | N | 어린이 놀이방 여부 |
+| `openDate` | String | N | 개업일 |
+| `openTime` | String | N | 영업시간 |
+| `packing` | String | N | 포장 가능 여부 |
+| `parking` | String | N | 주차시설 정보 |
+| `reservation` | String | N | 예약 안내 |
+| `restDate` | String | N | 쉬는 날 |
+| `scale` | String | N | 음식점 규모 |
+| `seat` | String | N | 좌석 수 |
+| `smoking` | String | N | 금연·흡연 여부 |
+| `treatMenu` | String | N | 취급 메뉴 |
+| `licenseNumber` | String | N | 인허가 번호 |
 
 ### Response Body - DetailInfo
 
@@ -378,79 +398,75 @@ GET /api/v1/tourism/contents/{contentId}
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `serialNumber` | Integer | N | 반복정보 순서입니다. |
-| `infoName` | String | N | 반복정보 제목입니다. |
-| `infoText` | String | N | 반복정보 내용입니다. |
-| `fieldType` | String | N | 반복정보 유형 구분값입니다. |
+| `serialNumber` | Integer | N | 반복정보 순서 |
+| `infoName` | String | N | 반복정보 제목 |
+| `infoText` | String | N | 반복정보 내용 |
+| `fieldType` | String | N | 반복정보 유형 구분값 |
 
 여행코스:
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `subContentId` | String | N | 하위 콘텐츠 ID입니다. |
-| `subDetailAlt` | String | N | 코스 이미지 설명입니다. |
-| `subDetailImage` | String | N | 코스 이미지 URL입니다. |
-| `subDetailOverview` | String | N | 코스 개요입니다. |
-| `subName` | String | N | 코스명입니다. |
-| `subNumber` | Integer | N | 코스 순서입니다. |
+| `subContentId` | String | N | 하위 콘텐츠 ID |
+| `subDetailAlt` | String | N | 코스 이미지 설명 |
+| `subDetailImage` | String | N | 코스 이미지 URL |
+| `subDetailOverview` | String | N | 코스 개요 |
+| `subName` | String | N | 코스명 |
+| `subNumber` | Integer | N | 코스 순서 |
 
 숙박 객실:
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `roomCode` | String | N | 객실 코드입니다. |
-| `roomTitle` | String | N | 객실명입니다. |
-| `roomSizePyeong` | BigDecimal | N | 객실 크기(평)입니다. |
-| `roomCount` | Integer | N | 객실 수입니다. |
-| `roomBaseCount` | Integer | N | 기준 인원입니다. |
-| `roomMaxCount` | Integer | N | 최대 인원입니다. |
-| `roomOffSeasonWeekdayMinFee` | Long | N | 비수기 주중 최소 요금입니다. |
-| `roomOffSeasonWeekendMinFee` | Long | N | 비수기 주말 최소 요금입니다. |
-| `roomPeakSeasonWeekdayMinFee` | Long | N | 성수기 주중 최소 요금입니다. |
-| `roomPeakSeasonWeekendMinFee` | Long | N | 성수기 주말 최소 요금입니다. |
-| `roomIntro` | String | N | 객실 소개입니다. |
-| `roomBathFacility` | String | N | 목욕시설 여부입니다. |
-| `roomBath` | String | N | 욕조 여부입니다. |
-| `roomHomeTheater` | String | N | 홈시어터 여부입니다. |
-| `roomAirCondition` | String | N | 에어컨 여부입니다. |
-| `roomTv` | String | N | TV 여부입니다. |
-| `roomPc` | String | N | PC 여부입니다. |
-| `roomCable` | String | N | 케이블 설치 여부입니다. |
-| `roomInternet` | String | N | 인터넷 가능 여부입니다. |
-| `roomRefrigerator` | String | N | 냉장고 여부입니다. |
-| `roomToiletries` | String | N | 세면도구 여부입니다. |
-| `roomSofa` | String | N | 소파 여부입니다. |
-| `roomCook` | String | N | 취사용품 여부입니다. |
-| `roomTable` | String | N | 테이블 여부입니다. |
-| `roomHairDryer` | String | N | 헤어드라이어 여부입니다. |
-| `roomSizeSquareMeters` | BigDecimal | N | 객실 크기(제곱미터)입니다. |
-| `roomImages` | RoomImage[] | Y | 객실 이미지 목록입니다. 이미지가 없으면 빈 배열입니다. |
+| `roomCode` | String | N | 객실 코드 |
+| `roomTitle` | String | N | 객실명 |
+| `roomSizePyeong` | BigDecimal | N | 객실 크기(평) |
+| `roomCount` | Integer | N | 객실 수 |
+| `roomBaseCount` | Integer | N | 기준 인원 |
+| `roomMaxCount` | Integer | N | 최대 인원 |
+| `roomOffSeasonWeekdayMinFee` | Long | N | 비수기 주중 최소 요금 |
+| `roomOffSeasonWeekendMinFee` | Long | N | 비수기 주말 최소 요금 |
+| `roomPeakSeasonWeekdayMinFee` | Long | N | 성수기 주중 최소 요금 |
+| `roomPeakSeasonWeekendMinFee` | Long | N | 성수기 주말 최소 요금 |
+| `roomIntro` | String | N | 객실 소개 |
+| `roomBathFacility` | String | N | 목욕시설 여부 |
+| `roomBath` | String | N | 욕조 여부 |
+| `roomHomeTheater` | String | N | 홈시어터 여부 |
+| `roomAirCondition` | String | N | 에어컨 여부 |
+| `roomTv` | String | N | TV 여부 |
+| `roomPc` | String | N | PC 여부 |
+| `roomCable` | String | N | 케이블 설치 여부 |
+| `roomInternet` | String | N | 인터넷 가능 여부 |
+| `roomRefrigerator` | String | N | 냉장고 여부 |
+| `roomToiletries` | String | N | 세면도구 여부 |
+| `roomSofa` | String | N | 소파 여부 |
+| `roomCook` | String | N | 취사용품 여부 |
+| `roomTable` | String | N | 테이블 여부 |
+| `roomHairDryer` | String | N | 헤어드라이어 여부 |
+| `roomSizeSquareMeters` | BigDecimal | N | 객실 크기(제곱미터) |
+| `roomImages` | RoomImage[] | Y | 객실 이미지 목록 이미지가 없으면 빈 배열 |
 
 객실 이미지 `RoomImage`:
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `imageUrl` | String | Y | 객실 이미지 URL입니다. |
-| `alt` | String | N | 객실 이미지 설명입니다. |
-| `copyrightTypeCode` | String | N | 이미지 저작권 유형입니다. |
+| `imageUrl` | String | Y | 객실 이미지 URL |
+| `alt` | String | N | 객실 이미지 설명 |
+| `copyrightTypeCode` | String | N | 이미지 저작권 유형 |
 
-### Response Body - 부가 산출정보
+### Response Body - 계절 이미지 및 만족도
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `spendingIndex.regionName` | String | Y | 소비지수 집계 지역입니다. |
-| `spendingIndex.categoryName` | String | Y | 소비지수 업종입니다. |
-| `spendingIndex.indexValue` | BigDecimal | Y | 기준값 100 대비 소비지수입니다. |
-| `spendingIndex.referencePeriod` | String | Y | 집계 기준 기간입니다. |
-| `seasonalImages[].imageUrl` | String | Y | 사진 URL입니다. |
-| `seasonalImages[].shootingDate` | LocalDate | N | 실제 촬영일입니다. |
-| `seasonalImages[].season` | Enum | Y | `SPRING`, `SUMMER`, `AUTUMN`, `WINTER`, `UNKNOWN`입니다. |
-| `seasonalImages[].matchConfidence` | BigDecimal | Y | 장소 일치 신뢰도입니다. |
-| `satisfaction.totalScore` | BigDecimal | Y | 최종 만족도입니다. |
-| `satisfaction.popularityScore` | ScoreComponent | Y | 인기도 점수입니다. |
-| `satisfaction.ageFitScore` | ScoreComponent | Y | 연령 적합도입니다. |
-| `satisfaction.stayFitScore` | ScoreComponent | Y | 체류 적합도입니다. |
-| `satisfaction.comfortScore` | ScoreComponent | Y | 쾌적도 점수입니다. |
+| `seasonalImages[].imageUrl` | String | Y | 사진 URL |
+| `seasonalImages[].shootingDate` | LocalDate | N | 실제 촬영일 |
+| `seasonalImages[].season` | Enum | Y | `SPRING`, `SUMMER`, `AUTUMN`, `WINTER`, `UNKNOWN` |
+| `seasonalImages[].matchConfidence` | BigDecimal | Y | 장소 일치 신뢰도 |
+| `satisfaction.totalScore` | BigDecimal | Y | 최종 만족도 |
+| `satisfaction.popularityScore` | ScoreComponent | Y | 인기도 점수 |
+| `satisfaction.ageFitScore` | ScoreComponent | Y | 연령 적합도 |
+| `satisfaction.stayFitScore` | ScoreComponent | Y | 체류 적합도 |
+| `satisfaction.comfortScore` | ScoreComponent | Y | 쾌적도 점수 |
 
 ### Response Example
 
@@ -542,12 +558,6 @@ GET /api/v1/tourism/contents/{contentId}
     }
   ],
   "images": [],
-  "spendingIndex": {
-    "regionName": "아산시",
-    "categoryName": "숙박",
-    "indexValue": 112.4,
-    "referencePeriod": "2026-06"
-  },
   "seasonalImages": [],
   "satisfaction": {
     "totalScore": 84.7,
@@ -585,9 +595,7 @@ GET /api/v1/tourism/contents/{contentId}
 
 ### Validation
 
-- `participantCount`는 1~100이어야 합니다.
-- 성별 비율을 모두 전달한 경우 합계가 100이어야 합니다.
-- `expectedStayMinutes`는 1~1440이어야 합니다.
+- `participantCount`는 1~50이어야 합니다.
 - 충청남도 콘텐츠가 아니면 404를 반환합니다.
 
 ### 산출식 및 구현 계획
@@ -603,9 +611,10 @@ comfortScore = 100 - concentrationRate
 
 - `detailCommon2`, `detailIntro2`, `detailInfo2`, `detailImage2`를 호출하여 하나의 응답으로 조합합니다.
 - 소개정보는 `contentTypeId`에 해당하는 모든 필드를 전달합니다.
+- `contentTypeId`에 따라 해당 관광타입의 `IntroDetail`과 `DetailInfo` 구조를 반환합니다.
+- 숙박 수용 가능 여부를 별도로 계산하지 않고 관광공사 `accomCount`와 객실별 `roomCount`를 전달합니다.
 - 숙박 객실과 여행코스 하위 콘텐츠는 `detailInfo2`의 전체 반복 결과를 전달합니다.
-- 소비액으로 오해되지 않도록 실제 금액이 아니라 지역·업종 소비지수를 제공합니다.
-- 계절 사진은 대한민국 관광사진 API의 촬영일을 사용합니다. 수정일을 촬영일로 대체하지 않습니다.
+- 계절 사진은 대한민국 관광사진 API의 촬영일을 사용합니다.
 - 촬영일이 없으면 `season=UNKNOWN`으로 제공합니다.
 - 만족도 구성요소 하나가 누락되면 중립값 50과 `imputed=true`를 제공합니다. 모든 구성요소가 누락되면 `satisfaction=null`로 제공합니다.
 
@@ -617,7 +626,7 @@ POST /api/v1/wishes
 
 관련 기능:
 
-* 회원이 콘텐츠 카드 또는 상세정보의 하트 버튼으로 위시를 등록합니다.
+* 회원이 콘텐츠 카드 또는 상세정보의 찜하기 버튼으로 위시를 등록합니다.
 * 서버가 관광공사 상세정보를 조회하여 충청남도 시군구별로 자동 분류합니다.
 
 인증: 필수
@@ -630,22 +639,22 @@ POST /api/v1/wishes
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `contentId` | String | Y | 저장할 관광 콘텐츠 ID입니다. |
+| `contentId` | String | Y | 저장할 관광 콘텐츠 ID |
 
 ### Response Body
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `id` | Long | Y | 위시 ID입니다. |
-| `contentId` | String | Y | 콘텐츠 ID입니다. |
-| `contentTypeId` | String | N | 관광타입 ID입니다. |
-| `title` | String | Y | 콘텐츠명입니다. |
-| `firstImage` | String | N | 대표 이미지입니다. |
-| `addr1` | String | N | 주소입니다. |
-| `lDongSignguCd` | String | N | 법정동 시군구 코드입니다. |
-| `sigunguName` | String | N | 시군구명입니다. |
-| `folderName` | String | Y | 자동 분류된 폴더명입니다. |
-| `createdAt` | LocalDateTime | Y | 등록 시각입니다. |
+| `id` | Long | Y | 위시 ID |
+| `contentId` | String | Y | 콘텐츠 ID |
+| `contentTypeId` | String | N | 관광타입 ID |
+| `title` | String | Y | 콘텐츠명 |
+| `firstImage` | String | N | 대표 이미지 |
+| `addr1` | String | N | 주소 |
+| `lDongSignguCd` | String | N | 법정동 시군구 코드 |
+| `sigunguName` | String | N | 시군구명 |
+| `folderName` | String | Y | 자동 분류된 폴더명 |
+| `createdAt` | LocalDateTime | Y | 등록 시각 |
 
 ### Response Example
 
@@ -681,9 +690,9 @@ POST /api/v1/wishes
 
 ### 구현 계획
 
-- 이번 검토에서 요청 DTO를 `contentId` 하나로 축소하였습니다.
-- 시군구 코드표를 충청남도 15개 시군구 코드로 수정하였습니다.
-- 현재는 기존 `WorkshopDetailService`를 재사용합니다. 통합 상세 API 구현 시 관광 콘텐츠 서비스로 이동합니다.
+- 서버가 통합 관광 상세 서비스를 호출해 콘텐츠를 검증하고 저장용 스냅샷을 생성합니다.
+- 시군구 코드는 천안시 동남구·서북구를 포함한 16개 코드로 폴더명을 결정합니다.
+- 별도 폴더 엔티티가 없어 마지막 위시 삭제 시 빈 폴더도 조회 결과에서 사라집니다.
 
 ## 4. 위시 삭제
 
@@ -693,7 +702,7 @@ DELETE /api/v1/wishes
 
 관련 기능:
 
-* 회원이 하트 버튼을 해제하여 위시를 삭제합니다.
+* 회원이 찜하기 버튼을 해제하여 위시를 삭제합니다.
 
 인증: 필수
 
@@ -705,11 +714,13 @@ DELETE /api/v1/wishes
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `contentId` | String | Y | 삭제할 관광 콘텐츠 ID입니다. |
+| `contentId` | String | Y | 삭제할 관광 콘텐츠 ID |
 
 ### Response Body
 
-본문이 없는 `200 OK`를 반환합니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 본문 없음 (`200 OK`) |
 
 ### Response Example
 
@@ -729,8 +740,7 @@ HTTP/1.1 200 OK
 
 ### 구현 계획
 
-- 현재 Controller 계약을 유지합니다.
-- 멱등 삭제가 필요하면 없는 위시도 동일하게 200으로 처리합니다.
+- 회원·콘텐츠 ID 조건으로 삭제하며 대상이 없어도 `200 OK`를 반환합니다.
 
 ## 5. 위시 폴더 목록 조회
 
@@ -750,16 +760,18 @@ GET /api/v1/wishes/folders
 
 ### Request Body
 
-없습니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
 
 ### Response Body
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `folderName` | String | Y | 시군구명 또는 기본 위시리스트입니다. |
-| `lDongSignguCd` | String | N | 법정동 시군구 코드입니다. |
-| `count` | Long | Y | 폴더의 위시 수입니다. |
-| `thumbnailUrl` | String | N | 폴더에서 가장 최근에 저장한 위시의 이미지입니다. |
+| `folderName` | String | Y | 시군구명 또는 기본 위시리스트 |
+| `lDongSignguCd` | String | N | 법정동 시군구 코드 |
+| `count` | Long | Y | 폴더의 위시 수 |
+| `thumbnailUrl` | String | N | 폴더에서 가장 최근에 저장한 위시의 이미지 |
 
 ### Response Example
 
@@ -804,7 +816,7 @@ GET /api/v1/wishes/folders/{folderName}
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `folderName` | String | Y | 시군구명 또는 기본 위시리스트입니다. | `아산시` |
+| `folderName` | String | Y | 시군구명 또는 기본 위시리스트 | `아산시` |
 
 ### Query Parameter
 
@@ -812,11 +824,27 @@ GET /api/v1/wishes/folders/{folderName}
 
 ### Request Body
 
-없습니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
 
 ### Response Body
 
-위시 등록 응답 배열을 반환합니다. 지도 표시를 위해 향후 `mapx`, `mapy`를 위시 저장 모델과 응답에 추가해야 합니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `items[]` | Wish[] | Y | 위시 목록 |
+| `items[].id` | Long | Y | 위시 ID |
+| `items[].contentId` | String | Y | 콘텐츠 ID |
+| `items[].contentTypeId` | String | N | 관광타입 ID |
+| `items[].title` | String | Y | 콘텐츠명 |
+| `items[].firstImage` | String | N | 대표 이미지 |
+| `items[].addr1` | String | N | 주소 |
+| `items[].lDongSignguCd` | String | N | 법정동 시군구 코드 |
+| `items[].sigunguName` | String | N | 시군구명 |
+| `items[].folderName` | String | Y | 자동 분류 폴더명 |
+| `items[].mapx` | BigDecimal | N | 경도 |
+| `items[].mapy` | BigDecimal | N | 위도 |
+| `items[].createdAt` | LocalDateTime | Y | 등록 시각 |
 
 ### Response Example
 
@@ -852,6 +880,7 @@ GET /api/v1/wishes/folders/{folderName}
 ### 정렬 기준
 
 - `createdAt DESC, id DESC`로 정렬합니다.
+- 목록 항목은 위시 등록 시 저장한 관광정보 스냅샷이며 조회 시 관광공사 API를 다시 호출하지 않습니다.
 
 ## 7. AI 일정 생성 및 저장
 
@@ -874,37 +903,48 @@ POST /api/v1/plans/generate
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `title` | String | N | 일정 제목입니다. |
-| `startDate` | LocalDate | Y | 시작일입니다. |
-| `endDate` | LocalDate | Y | 종료일입니다. |
-| `participantCount` | Integer | Y | 참가 인원입니다. |
-| `ageGroups` | String[] | N | 참가자 연령대입니다. |
-| `maleRatio` | Integer | N | 남성 비율입니다. |
-| `femaleRatio` | Integer | N | 여성 비율입니다. |
-| `selectedContentIds` | String[] | Y | 선택한 콘텐츠 ID입니다. 리스트 순서를 사용자가 선택한 우선순위로 사용합니다. |
-| `budgetPerPerson` | Long | N | 1인 예산입니다. |
-| `additionalRequest` | String | N | AI에 전달할 추가 요청입니다. |
+| `title` | String | N | 일정 제목 |
+| `startDate` | LocalDate | Y | 시작일 |
+| `endDate` | LocalDate | Y | 종료일 |
+| `participantCount` | Integer | Y | 참가 인원 |
+| `ageGroups` | String[] | N | 참가자 연령대 |
+| `selectedContentIds` | String[] | Y | 선택 콘텐츠 ID, 배열 순서가 사용자 우선순위 |
 
 ### Response Body
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `planId` | Long | Y | 저장된 일정 ID입니다. |
-| `scheduleId` | String | N | AI 서버 일정 식별자입니다. |
-| `title` | String | Y | 일정 제목입니다. |
-| `startDate` | LocalDate | Y | 시작일입니다. |
-| `endDate` | LocalDate | Y | 종료일입니다. |
-| `participantCount` | Integer | Y | 참가 인원입니다. |
-| `estimatedBudget` | EstimatedBudget | N | 예상 예산입니다. |
-| `days` | PlanDay[] | Y | 일자별 일정입니다. |
-| `warnings` | String[] | Y | 데이터 부족 또는 휴무 경고입니다. |
-| `createdAt` | OffsetDateTime | Y | 저장 시각입니다. |
-
-`PlanDay`는 `dayNumber`, `date`, `contents`를 제공합니다.
-
-`contents[]`는 `sequence`, `contentId`, `title`, `contentTypeId`, `addr1`, `mapx`,
-`mapy`, `startTime`, `endTime`, `durationMinutes`, `travelTimeMinutes`,
-`travelDistanceMeters`, `estimatedCost`, `memo`를 제공합니다.
+| `planId` | Long | Y | 저장된 일정 ID |
+| `scheduleId` | String | N | AI 서버 일정 식별자 |
+| `title` | String | Y | 일정 제목 |
+| `startDate` | LocalDate | Y | 시작일 |
+| `endDate` | LocalDate | Y | 종료일 |
+| `participantCount` | Integer | Y | 참가 인원 |
+| `estimatedBudget` | EstimatedBudget | N | 예상 예산 |
+| `estimatedBudget.totalAmount` | Long | N | 전체 예상 금액 |
+| `estimatedBudget.perPersonAmount` | Long | N | 1인당 예상 금액 |
+| `estimatedBudget.currency` | String | N | 통화 코드 |
+| `estimatedBudget.breakdown` | BudgetBreakdown[] | N | 항목별 예상 금액 |
+| `days` | PlanDay[] | Y | 일자별 일정 |
+| `days[].dayNumber` | Integer | Y | 일차 |
+| `days[].date` | LocalDate | Y | 일정 날짜 |
+| `days[].contents` | PlanContent[] | Y | 일정 콘텐츠 목록 |
+| `days[].contents[].sequence` | Integer | Y | 일자 내 순서 |
+| `days[].contents[].contentId` | String | Y | 콘텐츠 ID |
+| `days[].contents[].title` | String | Y | 콘텐츠명 |
+| `days[].contents[].contentTypeId` | String | N | 관광타입 ID |
+| `days[].contents[].addr1` | String | N | 주소 |
+| `days[].contents[].mapx` | BigDecimal | N | 경도 |
+| `days[].contents[].mapy` | BigDecimal | N | 위도 |
+| `days[].contents[].startTime` | LocalTime | N | 시작 시각 |
+| `days[].contents[].endTime` | LocalTime | N | 종료 시각 |
+| `days[].contents[].durationMinutes` | Integer | N | 체류시간(분) |
+| `days[].contents[].travelTimeMinutes` | Integer | N | 이전 콘텐츠부터 이동시간(분) |
+| `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m) |
+| `days[].contents[].estimatedCost` | Long | N | 예상 비용 |
+| `days[].contents[].memo` | String | N | 일정 메모 |
+| `warnings` | String[] | Y | 데이터 부족 또는 휴무 경고 |
+| `createdAt` | OffsetDateTime | Y | 저장 시각 |
 
 ### Response Example
 
@@ -964,18 +1004,35 @@ POST /api/v1/plans/generate
 ### Validation
 
 - 시작일은 종료일보다 늦을 수 없습니다.
-- 일정 기간은 최대 7일입니다.
-- 참가 인원은 1~100명입니다.
+- 일정 기간은 최대 3일입니다.
+- 참가 인원은 1~50명입니다.
 - `selectedContentIds`는 중복 없이 1~10개입니다.
 - AI 응답의 날짜는 요청 기간 안에 있어야 합니다.
 - 일자별 `sequence`는 1부터 중복 없이 이어져야 합니다.
 
 ### 구현 계획
 
-- 백엔드는 선택 콘텐츠의 타입별 상세정보, 좌표, 운영정보, 만족도와 소비지수를 AI 요청에 포함합니다.
-- AI 서버가 이동시간과 이동거리를 제공합니다.
-- AI 응답 원문 JSON과 조회에 필요한 정규화 데이터를 한 트랜잭션으로 저장합니다.
-- AI 응답 계약은 GitHub Issue #10에서 확정합니다.
+- 백엔드는 선택 콘텐츠의 타입별 상세정보, 좌표, 운영정보와 만족도를 AI 서버에 HTTP POST로 전달합니다.
+- 사용자 입력 예산은 받지 않습니다.
+- 백엔드는 콘텐츠별 `useFee`, 축제 이용요금, 숙박 객실 최소요금, 입장료·관람료·이용료 반복정보를 비용 원문과 함께 AI 서버에 전달합니다.
+- 콘텐츠 비용은 `amount`, `unit`, `quantity`, `calculatedAmount`, 원천 필드·원문과 평균가격 대체 여부를 포함합니다.
+- 인당 요금은 참가 인원, 숙박은 객실 최대 인원으로 계산한 객실 수를 반영합니다.
+- `totalCostRange.minimumAmount`는 실제 수집 비용만 합산하고 계산 불가능한 콘텐츠는 제외합니다.
+- `totalCostRange.maximumAmount`는 비용 미상 콘텐츠에 관광타입별 기본 평균가격을 적용해 합산합니다.
+
+| contentTypeId | 유형 | 기본 평균가격 | 단위 |
+|---:|---|---:|---|
+| `12` | 관광지 | 10,000원 | 1인 |
+| `14` | 문화시설 | 10,000원 | 1인 |
+| `15` | 행사·축제 | 20,000원 | 1인 |
+| `25` | 여행코스 | 0원 | 전체 |
+| `28` | 레포츠 | 30,000원 | 1인 |
+| `32` | 숙박 | 100,000원 | 객실 1박 |
+| `38` | 쇼핑 | 0원 | 전체 |
+| `39` | 음식점 | 15,000원 | 1인 |
+- AI 서버 호출은 DB 트랜잭션 밖에서 수행하고 연결 2초·응답 45초 타임아웃을 적용합니다.
+- AI 응답의 날짜·순서·콘텐츠 ID를 검증한 뒤 원문 JSON과 조회용 데이터를 5초 제한의 단일 트랜잭션으로 저장합니다.
+- `memo`와 `warnings`는 AI 서버 생성값이며 운영 안내와 데이터 부족 정보를 그대로 저장합니다.
 
 ## 8. 내 일정 목록 조회
 
@@ -993,18 +1050,33 @@ GET /api/v1/plans
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `page` | Integer | N | 0부터 시작하는 페이지입니다. | `0` |
-| `size` | Integer | N | 페이지 크기입니다. 기본값은 `20`, 최댓값은 `50`입니다. | `20` |
-| `sort` | Enum | N | `LATEST`, `START_DATE_ASC`를 사용하며 기본값은 `LATEST`입니다. | `LATEST` |
+| `page` | Integer | N | 0부터 시작하는 페이지 | `0` |
+| `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
+| `sort` | Enum | N | `LATEST`, `START_DATE_ASC`를 사용하며 기본값은 `LATEST` | `LATEST` |
 
 ### Request Body
 
-없습니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
 
 ### Response Body
 
-`items[]`는 `planId`, `title`, `startDate`, `endDate`, `participantCount`,
-`thumbnailUrl`, `contentCount`, `createdAt`, `updatedAt`을 제공합니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `items` | PlanSummary[] | Y | 일정 목록 |
+| `items[].planId` | Long | Y | 일정 ID |
+| `items[].title` | String | Y | 일정 제목 |
+| `items[].startDate` | LocalDate | Y | 시작일 |
+| `items[].endDate` | LocalDate | Y | 종료일 |
+| `items[].participantCount` | Integer | Y | 참가 인원 |
+| `items[].thumbnailUrl` | String | N | 첫 일정 콘텐츠 대표 이미지 |
+| `items[].contentCount` | Integer | Y | 일정 콘텐츠 수 |
+| `items[].createdAt` | LocalDateTime | Y | 생성 시각 |
+| `items[].updatedAt` | LocalDateTime | Y | 수정 시각 |
+| `page` | Integer | Y | 현재 페이지 번호 |
+| `size` | Integer | Y | 페이지 크기 |
+| `hasNext` | Boolean | Y | 다음 페이지 존재 여부 |
 
 ### Response Example
 
@@ -1062,7 +1134,7 @@ GET /api/v1/plans/{planId}
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `planId` | Long | Y | 일정 ID입니다. | `77` |
+| `planId` | Long | Y | 일정 ID | `77` |
 
 ### Query Parameter
 
@@ -1070,11 +1142,42 @@ GET /api/v1/plans/{planId}
 
 ### Request Body
 
-없습니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
 
 ### Response Body
 
-API 7의 응답과 동일하게 `days[].contents[]` 전체를 제공하며 `updatedAt`을 추가합니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `planId` | Long | Y | 일정 ID |
+| `scheduleId` | String | N | AI 서버 일정 식별자 |
+| `title` | String | Y | 일정 제목 |
+| `startDate` | LocalDate | Y | 시작일 |
+| `endDate` | LocalDate | Y | 종료일 |
+| `participantCount` | Integer | Y | 참가 인원 |
+| `estimatedBudget` | EstimatedBudget | N | 예상 예산 |
+| `days` | PlanDay[] | Y | 일자별 일정 |
+| `days[].dayNumber` | Integer | Y | 일차 |
+| `days[].date` | LocalDate | Y | 일정 날짜 |
+| `days[].contents` | PlanContent[] | Y | 일정 콘텐츠 목록 |
+| `days[].contents[].sequence` | Integer | Y | 일자 내 순서 |
+| `days[].contents[].contentId` | String | Y | 콘텐츠 ID |
+| `days[].contents[].title` | String | Y | 콘텐츠명 |
+| `days[].contents[].contentTypeId` | String | N | 관광타입 ID |
+| `days[].contents[].addr1` | String | N | 주소 |
+| `days[].contents[].mapx` | BigDecimal | N | 경도 |
+| `days[].contents[].mapy` | BigDecimal | N | 위도 |
+| `days[].contents[].startTime` | LocalTime | N | 시작 시각 |
+| `days[].contents[].endTime` | LocalTime | N | 종료 시각 |
+| `days[].contents[].durationMinutes` | Integer | N | 체류시간(분) |
+| `days[].contents[].travelTimeMinutes` | Integer | N | 이전 콘텐츠부터 이동시간(분) |
+| `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m) |
+| `days[].contents[].estimatedCost` | Long | N | 예상 비용 |
+| `days[].contents[].memo` | String | N | 일정 메모 |
+| `warnings` | String[] | Y | 경고 목록 |
+| `createdAt` | LocalDateTime | Y | 생성 시각 |
+| `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
 ### Response Example
 
@@ -1148,12 +1251,18 @@ PATCH /api/v1/plans/{planId}
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `title` | String | N | 변경할 일정 제목입니다. |
-| `participantCount` | Integer | N | 변경할 참가 인원입니다. |
+| `title` | String | N | 변경할 일정 제목 |
+| `participantCount` | Integer | N | 변경할 참가 인원 |
 
 ### Response Body
 
-`planId`, `title`, `participantCount`, `estimatedBudget`, `updatedAt`을 제공합니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `planId` | Long | Y | 일정 ID |
+| `title` | String | Y | 일정 제목 |
+| `participantCount` | Integer | Y | 참가 인원 |
+| `estimatedBudget` | EstimatedBudget | N | 예상 예산 |
+| `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
 ### Response Example
 
@@ -1184,7 +1293,7 @@ PATCH /api/v1/plans/{planId}
 
 - 최소 한 필드를 전달해야 합니다.
 - 제목은 공백 제거 후 1~100자여야 합니다.
-- 참가 인원은 1~100명이어야 합니다.
+- 참가 인원은 1~50명이어야 합니다.
 
 ## 11. 내 일정 콘텐츠 수정
 
@@ -1203,14 +1312,32 @@ PUT /api/v1/plans/{planId}/contents
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `days` | PlanDayUpdate[] | Y | 일자별 콘텐츠 목록입니다. |
-| `days[].dayNumber` | Integer | Y | 1부터 시작하는 일차입니다. |
-| `days[].date` | LocalDate | Y | 해당 일차의 날짜입니다. |
-| `days[].contentIds` | String[] | Y | 해당 일차의 콘텐츠 ID 목록입니다. 리스트 순서가 표시 순서입니다. |
+| `days` | PlanDayUpdate[] | Y | 일자별 콘텐츠 목록 |
+| `days[].dayNumber` | Integer | Y | 1부터 시작하는 일차 |
+| `days[].contentIds` | String[] | Y | 해당 일차의 콘텐츠 ID 목록 리스트 순서가 표시 순서 |
 
 ### Response Body
 
-API 9의 일정 상세 응답을 반환합니다. AI 재계산 전까지 변경된 구간의 이동시간과 예산은 `null`로 제공합니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `planId` | Long | Y | 일정 ID |
+| `scheduleId` | String | N | AI 서버 일정 식별자 |
+| `title` | String | Y | 일정 제목 |
+| `startDate` | LocalDate | Y | 시작일 |
+| `endDate` | LocalDate | Y | 종료일 |
+| `participantCount` | Integer | Y | 참가 인원 |
+| `estimatedBudget` | EstimatedBudget | N | AI 재계산 전 `null` |
+| `days` | PlanDay[] | Y | 일자별 일정 |
+| `days[].dayNumber` | Integer | Y | 일차 |
+| `days[].date` | LocalDate | Y | 일정 날짜 |
+| `days[].contents` | PlanContent[] | Y | 변경된 콘텐츠 목록 |
+| `days[].contents[].sequence` | Integer | Y | 요청 배열 기준 순서 |
+| `days[].contents[].contentId` | String | Y | 콘텐츠 ID |
+| `days[].contents[].title` | String | Y | 콘텐츠명 |
+| `days[].contents[].travelTimeMinutes` | Integer | N | AI 재계산 전 `null` |
+| `warnings` | String[] | Y | 이동시간 재계산 경고 |
+| `createdAt` | LocalDateTime | Y | 생성 시각 |
+| `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
 ### Request Example
 
@@ -1219,7 +1346,6 @@ API 9의 일정 상세 응답을 반환합니다. AI 재계산 전까지 변경�
   "days": [
     {
       "dayNumber": 1,
-      "date": "2026-08-20",
       "contentIds": [
         "126508",
         "2754012"
@@ -1227,7 +1353,6 @@ API 9의 일정 상세 응답을 반환합니다. AI 재계산 전까지 변경�
     },
     {
       "dayNumber": 2,
-      "date": "2026-08-21",
       "contentIds": [
         "3011445"
       ]
@@ -1294,14 +1419,13 @@ API 9의 일정 상세 응답을 반환합니다. AI 재계산 전까지 변경�
 
 ### Validation
 
-- `days`의 날짜는 일정 시작일부터 종료일까지 중복 없이 이어져야 합니다.
 - `dayNumber`는 1부터 중복 없이 이어져야 합니다.
 - 모든 `contentIds`를 합친 결과는 중복 없이 1~10개여야 합니다.
 - 모든 콘텐츠는 충청남도 범위여야 합니다.
 
 ### 구현 계획
 
-- 각 `days[].contentIds`의 리스트 index를 해당 일차의 `sequence`로 저장합니다.
+- 서버가 `startDate + dayNumber - 1`로 날짜를 계산하고 `contentIds` 배열 순서를 `sequence`로 저장합니다.
 - 콘텐츠가 변경되면 기존 일자·시각·이동시간 배치는 더 이상 유효하지 않습니다.
 - 일자 또는 순서가 바뀐 이동 구간은 AI 재계산 전까지 이동시간을 `null`로 제공합니다.
 
@@ -1319,11 +1443,15 @@ DELETE /api/v1/plans/{planId}
 
 ### Request Body
 
-없습니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
 
 ### Response Body
 
-`204 No Content`를 반환합니다.
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 본문 없음 (`204 No Content`) |
 
 ### Response Example
 
@@ -1342,7 +1470,7 @@ HTTP/1.1 204 No Content
 
 - 본인 소유 일정만 삭제합니다.
 
-## 13. AI 제안서 DOCS 생성
+## 13. AI 제안서 DOCX 생성
 
 ```http
 POST /api/v1/plans/{planId}/proposals
@@ -1351,7 +1479,7 @@ POST /api/v1/plans/{planId}/proposals
 관련 기능:
 
 * 저장된 일정으로 외부 AI 서버에 제안서 생성을 요청합니다.
-* 생성된 DOCS 파일을 응답합니다.
+* 생성된 DOCX를 비공개 S3에 30일 보관하고 미리보기·다운로드 URL을 응답합니다.
 
 인증: 필수
 
@@ -1359,25 +1487,37 @@ POST /api/v1/plans/{planId}/proposals
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `proposalTitle` | String | N | 제안서 제목입니다. |
-| `organizationName` | String | N | 조직명입니다. |
-| `purpose` | String | N | 워크숍 목적입니다. |
-| `additionalRequest` | String | N | AI 서버에 전달할 추가 요청입니다. |
+| `proposalTitle` | String | N | 제안서 제목 |
+| `organizationName` | String | N | 조직명 |
+| `purpose` | String | N | 워크숍 목적 |
+| `additionalRequest` | String | N | AI 서버에 전달할 추가 요청 |
 
 ### Response Body
 
-- Content-Type: `application/vnd.openxmlformats-officedocument.wordprocessingml.document`
-- Content-Disposition: `attachment; filename="{proposalTitle}.docx"`
-- Body: DOCS 파일 binary
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `proposalId` | Long | Y | 저장된 제안서 ID |
+| `planId` | Long | Y | 제안서의 기준 일정 ID |
+| `fileName` | String | Y | `.docx` 확장자를 포함한 파일명 |
+| `fileSize` | Long | Y | DOCX 파일 크기이며 단위는 byte |
+| `previewUrl` | String | Y | 프론트 DOCX 뷰어용 1일 유효 presigned URL |
+| `downloadUrl` | String | Y | 다운로드용 1일 유효 presigned URL |
+| `createdAt` | LocalDateTime | Y | 제안서 생성 시각 |
+| `expiresAt` | LocalDateTime | Y | 제안서 보관 만료 시각 |
 
 ### Response Example
 
-```http
-HTTP/1.1 200 OK
-Content-Type: application/vnd.openxmlformats-officedocument.wordprocessingml.document
-Content-Disposition: attachment; filename="asan-workshop-proposal.docx"
-
-{binary}
+```json
+{
+  "proposalId": 15,
+  "planId": 77,
+  "fileName": "아산 워크숍 제안서.docx",
+  "fileSize": 152340,
+  "previewUrl": "https://presigned.example.com/proposal.docx",
+  "downloadUrl": "https://presigned.example.com/proposal.docx",
+  "createdAt": "2026-08-04T10:00:00+09:00",
+  "expiresAt": "2026-09-03T10:00:00+09:00"
+}
 ```
 
 ### Error Code
@@ -1400,5 +1540,76 @@ Content-Disposition: attachment; filename="asan-workshop-proposal.docx"
 ### 구현 계획
 
 - 백엔드는 저장된 일정 전체를 AI 제안서 서버에 전달합니다.
-- AI 서버에서 받은 DOCX bytes를 검증한 뒤 스트리밍 응답합니다.
-- 장기 보관 요구가 확정되지 않았으므로 현재 설계에서는 파일을 DB에 저장하지 않습니다.
+- AI 서버에서 받은 DOCX bytes를 검증한 뒤 비공개 S3에 저장합니다.
+- S3 객체는 Lifecycle 정책으로 30일 뒤 삭제하며 접근 URL은 1일 동안 유효합니다.
+
+## 14. 일정별 제안서 목록 조회
+
+```http
+GET /api/v1/plans/{planId}/proposals
+```
+
+인증: 필수
+
+### Path Parameter
+
+| 이름 | 타입 | 필수 | 설명 | 예시 |
+|---|---|---|---|---|
+| `planId` | Long | Y | 제안서를 조회할 일정 ID | `77` |
+
+### Query Parameter
+
+없습니다.
+
+### Request Body
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| - | - | - | 요청 본문 없음 |
+
+### Response Body
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `proposalId` | Long | Y | 저장된 제안서 ID |
+| `planId` | Long | Y | 제안서의 기준 일정 ID |
+| `fileName` | String | Y | `.docx` 확장자를 포함한 파일명 |
+| `fileSize` | Long | Y | DOCX 파일 크기이며 단위는 byte |
+| `previewUrl` | String | Y | 조회 시 새로 발급한 1일 유효 미리보기 URL |
+| `downloadUrl` | String | Y | 조회 시 새로 발급한 1일 유효 다운로드 URL |
+| `createdAt` | LocalDateTime | Y | 제안서 생성 시각 |
+| `expiresAt` | LocalDateTime | Y | 제안서 보관 만료 시각 |
+
+### Response Example
+
+```json
+[
+  {
+    "proposalId": 15,
+    "planId": 77,
+    "fileName": "아산 워크숍 제안서.docx",
+    "fileSize": 152340,
+    "previewUrl": "https://presigned.example.com/proposal.docx",
+    "downloadUrl": "https://presigned.example.com/proposal.docx",
+    "createdAt": "2026-08-04T10:00:00+09:00",
+    "expiresAt": "2026-09-03T10:00:00+09:00"
+  }
+]
+```
+
+### Error Code
+
+| code | name | http code | description |
+|---|---|---:|---|
+| `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
+| `PLAN_NOT_FOUND` | 일정 없음 | 404 | 일정을 찾을 수 없습니다. |
+| `PROPOSAL_STORAGE_UNAVAILABLE` | 저장소 장애 | 503 | 제안서 접근 URL을 발급할 수 없습니다. |
+
+### Validation
+
+- 본인 소유 일정의 제안서만 조회합니다.
+- 보관 만료 시각이 지나지 않은 제안서만 반환합니다.
+
+### 정렬 기준
+
+- `createdAt DESC, proposalId DESC`로 정렬합니다.
