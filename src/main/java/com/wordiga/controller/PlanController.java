@@ -4,6 +4,10 @@ import com.wordiga.api.PlanApi;
 import com.wordiga.dto.plan.*;
 import com.wordiga.security.CurrentMemberId;
 import com.wordiga.service.PlanService;
+import com.wordiga.service.PlanGenerationService;
+import com.wordiga.service.ProposalService;
+import com.wordiga.dto.proposal.*;
+import java.util.List;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -18,6 +22,14 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class PlanController implements PlanApi {
     private final PlanService planService;
+    private final PlanGenerationService planGenerationService;
+    private final ProposalService proposalService;
+
+    @PostMapping("/generate")
+    public ResponseEntity<PlanDetailResponse> generatePlan(@CurrentMemberId Long memberId,
+                                                            @RequestBody PlanGenerateRequest request) {
+        return ResponseEntity.ok(planGenerationService.generate(memberId, request));
+    }
 
     @GetMapping
     public ResponseEntity<PlanListResponse> getPlans(@CurrentMemberId Long memberId,
@@ -44,5 +56,16 @@ public class PlanController implements PlanApi {
     public ResponseEntity<Void> deletePlan(@CurrentMemberId Long memberId, @PathVariable Long planId) {
         planService.deletePlan(memberId, planId);
         return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{planId}/proposals")
+    public ResponseEntity<ProposalResponse> createProposal(@CurrentMemberId Long memberId, @PathVariable Long planId,
+                                                            @RequestBody ProposalCreateRequest request) {
+        return ResponseEntity.ok(proposalService.create(memberId, planId, request));
+    }
+
+    @GetMapping("/{planId}/proposals")
+    public ResponseEntity<List<ProposalResponse>> getProposals(@CurrentMemberId Long memberId, @PathVariable Long planId) {
+        return ResponseEntity.ok(proposalService.list(memberId, planId));
     }
 }

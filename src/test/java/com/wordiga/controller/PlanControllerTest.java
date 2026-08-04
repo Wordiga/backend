@@ -3,6 +3,9 @@ package com.wordiga.controller;
 import com.wordiga.dto.plan.*;
 import com.wordiga.security.JwtTokenProvider;
 import com.wordiga.service.PlanService;
+import com.wordiga.service.PlanGenerationService;
+import com.wordiga.service.ProposalService;
+import com.wordiga.dto.proposal.ProposalResponse;
 import org.junit.jupiter.api.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -23,6 +26,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class PlanControllerTest {
     @Autowired MockMvc mockMvc;
     @MockitoBean PlanService planService;
+    @MockitoBean PlanGenerationService planGenerationService;
+    @MockitoBean ProposalService proposalService;
     @MockitoBean JwtTokenProvider jwtTokenProvider;
     @BeforeEach void login() { SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken("1", null, List.of())); }
@@ -44,6 +49,21 @@ class PlanControllerTest {
                 .andExpect(status().isOk());
         mockMvc.perform(delete("/api/v1/plans/9")).andExpect(status().isNoContent());
         verify(planService).deletePlan(1L, 9L);
+    }
+
+    @Test void handlesGenerationAndProposalEndpoints() throws Exception {
+        when(planGenerationService.generate(eq(1L), any())).thenReturn(detail());
+        when(proposalService.create(eq(1L), eq(9L), any())).thenReturn(
+                ProposalResponse.builder().proposalId(3L).planId(9L).fileName("proposal.docx").build());
+        when(proposalService.list(1L, 9L)).thenReturn(List.of());
+
+        mockMvc.perform(post("/api/v1/plans/generate").contentType("application/json").content("""
+                {"startDate":"2026-08-20","endDate":"2026-08-21","participantCount":2,
+                 "selectedContentIds":["126508"]}
+                """)).andExpect(status().isOk()).andExpect(jsonPath("$.planId").value(9));
+        mockMvc.perform(post("/api/v1/plans/9/proposals").contentType("application/json").content("{}"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.fileName").value("proposal.docx"));
+        mockMvc.perform(get("/api/v1/plans/9/proposals")).andExpect(status().isOk());
     }
 
     private PlanDetailResponse detail() { return PlanDetailResponse.builder().planId(9L).title("일정")

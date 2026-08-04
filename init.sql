@@ -65,6 +65,11 @@ CREATE TABLE plans
     end_date          DATE         NULL,
     participant_count INT          NOT NULL DEFAULT 1,
     plan_type         VARCHAR(50)  NULL,
+    schedule_id       VARCHAR(100) NULL,
+    ai_response_json  TEXT         NULL,
+    estimated_total_amount BIGINT  NULL,
+    estimated_per_person_amount BIGINT NULL,
+    ai_warnings       VARCHAR(2000) NULL,
     created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -121,6 +126,27 @@ ALTER TABLE plan_contents
 CREATE INDEX idx_plan_contents_plan ON plan_contents (plan_id);
 CREATE INDEX idx_plan_contents_sequence ON plan_contents (plan_id, sequence);
 CREATE INDEX idx_plan_contents_day_sequence ON plan_contents (plan_id, plan_date, sequence);
+
+-- ========================
+-- proposals
+-- ========================
+
+CREATE TABLE proposals
+(
+    id          BIGSERIAL    NOT NULL,
+    plan_id     BIGINT       NOT NULL,
+    s3_key      VARCHAR(500) NOT NULL,
+    file_name   VARCHAR(255) NOT NULL,
+    file_size   BIGINT       NOT NULL,
+    expires_at  TIMESTAMP    NOT NULL,
+    created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT pk_proposals PRIMARY KEY (id),
+    CONSTRAINT uk_proposals_s3_key UNIQUE (s3_key),
+    CONSTRAINT fk_proposals_plan FOREIGN KEY (plan_id) REFERENCES plans (id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_proposals_plan_created ON proposals (plan_id, created_at DESC, id DESC);
 
 
 -- ========================

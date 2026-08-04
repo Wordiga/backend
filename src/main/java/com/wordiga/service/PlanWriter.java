@@ -1,0 +1,43 @@
+package com.wordiga.service;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordiga.domain.Plan;
+import com.wordiga.domain.PlanContent;
+import com.wordiga.dto.ai.AiPlanResponse;
+import com.wordiga.dto.plan.PlanDetailResponse;
+import com.wordiga.dto.plan.PlanGenerateRequest;
+import com.wordiga.repository.MemberRepository;
+import com.wordiga.repository.PlanRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+@Service @RequiredArgsConstructor
+public class PlanWriter {
+    private final PlanRepository planRepository;
+    private final MemberRepository memberRepository;
+    private final ObjectMapper objectMapper;
+
+    @Transactional(timeout = 5)
+    public PlanDetailResponse saveGenerated(Long memberId, PlanGenerateRequest request, AiPlanResponse ai) {
+        Plan plan = Plan.create(memberRepository.getReferenceById(memberId),
+                request.getTitle() == null || request.getTitle().isBlank() ? "충남 여행 일정" : request.getTitle().strip(),
+                request.getStartDate(), request.getEndDate(), request.getParticipantCount(), "AI");
+        for (AiPlanResponse.Day day : ai.getDays()) for (AiPlanResponse.Content c : day.getContents())
+            plan.addContent(PlanContent.createFromAi(plan, day.getDayNumber(), day.getDate(), c.getSequence(),
+                    c.getContentId(), c.getTitle(), c.getContentTypeId(), c.getAddr1(), c.getMapx(), c.getMapy(),
+                    c.getStartTime(), c.getEndTime(), c.getDurationMinutes(), c.getTravelTimeMinutes(),
+                    c.getTravelDistanceMeters(), c.getEstimatedCost(), c.getMemo()));
+        AiPlanResponse.EstimatedBudget budget = ai.getEstimatedBudget();
+        plan.applyAiResult(ai.getScheduleId(), json(ai), budget == null ? null : budget.getTotalAmount(),
+                budget == null ? null : budget.getPerPersonAmount(), ai.getWarnings());
+        return PlanDetailResponse.from(planRepository.save(plan), ai.getWarnings() == null ? java.util.List.of() : ai.getWarnings());
+    }
+    private String json(AiPlanResponse response) {
+        try { return objectMapper.writeValueAsString(response); }
+        catch (JsonProcessingException e) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 응답을 저장할 수 없습니다.", e); }
+    }
+}

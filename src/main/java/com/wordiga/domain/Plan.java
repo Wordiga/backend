@@ -38,6 +38,22 @@ public class Plan extends BaseTimeEntity {
     @Column(name = "plan_type", length = 50)
     private String planType;
 
+    @Column(name = "schedule_id", length = 100)
+    private String scheduleId;
+
+    @Lob
+    @Column(name = "ai_response_json")
+    private String aiResponseJson;
+
+    @Column(name = "estimated_total_amount")
+    private Long estimatedTotalAmount;
+
+    @Column(name = "estimated_per_person_amount")
+    private Long estimatedPerPersonAmount;
+
+    @Column(name = "ai_warnings", length = 2000)
+    private String aiWarnings;
+
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanContent> planContents = new ArrayList<>();
 
@@ -68,5 +84,13 @@ public class Plan extends BaseTimeEntity {
     public void replaceContents(List<PlanContent> contents) {
         planContents.clear();
         planContents.addAll(contents);
+    }
+
+    public void applyAiResult(String scheduleId, String aiResponseJson, Long totalAmount, Long perPersonAmount, List<String> warnings) {
+        this.scheduleId = scheduleId;
+        this.aiResponseJson = aiResponseJson;
+        this.estimatedTotalAmount = totalAmount;
+        this.estimatedPerPersonAmount = perPersonAmount;
+        this.aiWarnings = warnings == null ? null : String.join("\n", warnings);
     }
 }

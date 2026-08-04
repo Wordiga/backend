@@ -7,6 +7,7 @@ import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.plan.*;
 import com.wordiga.repository.MemberRepository;
 import com.wordiga.repository.PlanRepository;
+import com.wordiga.dto.ai.AiPlanResponse;
 import com.wordiga.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -23,6 +24,7 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
     @Autowired PlanService planService;
     @Autowired PlanRepository planRepository;
     @Autowired MemberRepository memberRepository;
+    @Autowired PlanWriter planWriter;
     @MockitoBean TourismContentDetailService tourismContentDetailService;
 
     @AfterEach void cleanUp() { planRepository.deleteAll(); memberRepository.deleteAll(); }
@@ -44,6 +46,22 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
 
         planService.deletePlan(member.getId(), plan.getId());
         assertThat(planRepository.findById(plan.getId())).isEmpty();
+    }
+
+    @Test void storesCompleteAiScheduleInOneTransaction() {
+        Member member = memberRepository.save(Member.create("generated@test.com", "생성", OAuthProvider.GOOGLE, "generated", null));
+        PlanGenerateRequest request = new PlanGenerateRequest(); request.setTitle("AI 일정");
+        request.setStartDate(LocalDate.of(2026, 8, 20)); request.setEndDate(request.getStartDate()); request.setParticipantCount(2);
+        AiPlanResponse.Content content = new AiPlanResponse.Content(); content.setSequence(1); content.setContentId("126508");
+        content.setTitle("현충사"); content.setTravelTimeMinutes(15);
+        AiPlanResponse.Day day = new AiPlanResponse.Day(); day.setDayNumber(1); day.setDate(request.getStartDate()); day.setContents(List.of(content));
+        AiPlanResponse ai = new AiPlanResponse(); ai.setScheduleId("ai-1"); ai.setDays(List.of(day)); ai.setWarnings(List.of("경고"));
+
+        PlanDetailResponse saved = planWriter.saveGenerated(member.getId(), request, ai);
+
+        assertThat(saved.getScheduleId()).isEqualTo("ai-1");
+        assertThat(saved.getDays().getFirst().getContents().getFirst().getTravelTimeMinutes()).isEqualTo(15);
+        assertThat(planRepository.findById(saved.getPlanId())).get().extracting(Plan::getAiResponseJson).asString().contains("ai-1");
     }
 
     private ContentDetailDto content() {

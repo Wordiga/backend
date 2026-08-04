@@ -87,4 +87,21 @@ public class PlanContent {
         content.mapy = mapy;
         return content;
     }
+
+    public static PlanContent createFromAi(Plan plan, int dayNumber, LocalDate date, int sequence,
+                                            String contentId, String title, String contentTypeId, String addr1,
+                                            BigDecimal mapx, BigDecimal mapy, LocalTime startTime, LocalTime endTime,
+                                            Integer duration, Integer travelTime, Integer travelDistance,
+                                            Long estimatedCost, String memo) {
+        PlanContent content = createForUpdate(plan, dayNumber, date, sequence, contentId, title,
+                contentTypeId, addr1, null, mapx, mapy);
+        content.startTime = startTime;
+        content.endTime = endTime;
+        content.duration = duration;
+        content.travelTimeMinutes = travelTime;
+        content.travelDistanceMeters = travelDistance;
+        content.estimatedCost = estimatedCost;
+        content.memo = memo;
+        return content;
+    }
 }
