@@ -88,10 +88,23 @@ CREATE TABLE plan_contents
     id              BIGSERIAL    NOT NULL,
     plan_id         BIGINT       NOT NULL,
     sequence        INT          NOT NULL,
+    day_number      INT          NOT NULL,
+    plan_date       DATE         NOT NULL,
+    content_id      VARCHAR(50)  NOT NULL,
     content_title   VARCHAR(255) NOT NULL,
     content_type_id VARCHAR(20)  NULL,
     scheduled_time  TIMESTAMP    NULL,
-    duration        INT          NULL
+    duration        INT          NULL,
+    addr1           VARCHAR(255) NULL,
+    thumbnail_url   VARCHAR(500) NULL,
+    mapx            NUMERIC(15, 10) NULL,
+    mapy            NUMERIC(15, 10) NULL,
+    start_time      TIME         NULL,
+    end_time        TIME         NULL,
+    travel_time_minutes INT      NULL,
+    travel_distance_meters INT   NULL,
+    estimated_cost  BIGINT       NULL,
+    memo            VARCHAR(255) NULL
 );
 
 ALTER TABLE plan_contents
@@ -107,6 +120,7 @@ ALTER TABLE plan_contents
 
 CREATE INDEX idx_plan_contents_plan ON plan_contents (plan_id);
 CREATE INDEX idx_plan_contents_sequence ON plan_contents (plan_id, sequence);
+CREATE INDEX idx_plan_contents_day_sequence ON plan_contents (plan_id, plan_date, sequence);
 
 
 -- ========================

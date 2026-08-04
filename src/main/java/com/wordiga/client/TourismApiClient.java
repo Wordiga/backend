@@ -160,6 +160,15 @@ public class TourismApiClient {
         return callApi(uri, AreaBasedResponse.class);
     }
 
+    public PhotoGalleryResponse searchPhotos(String keyword) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("keyword", keyword);
+        params.put("pageNo", "1");
+        params.put("numOfRows", "20");
+        params.put("arrange", "A");
+        return callApi(buildUri("PhotoGalleryService1/gallerySearchList1", params), PhotoGalleryResponse.class);
+    }
+
     // ─── 공통: API 호출 ───
 
     private <T> T callApi(URI uri, Class<T> responseType) {

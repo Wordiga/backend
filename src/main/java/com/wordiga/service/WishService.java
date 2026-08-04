@@ -7,13 +7,12 @@ import com.wordiga.dto.wish.WishRequest;
 import com.wordiga.dto.wish.WishResponse;
 import com.wordiga.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.util.List;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -21,8 +20,6 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class WishService {
-
-    private static final String CHUNGNAM_REGION_CODE = "44";
 
     private static final Map<String, String> CHUNGNAM_SIGUNGU_MAP = Map.ofEntries(
             Map.entry("110", "천안시"),
@@ -43,7 +40,7 @@ public class WishService {
     );
 
     private final WishRepository wishRepository;
-    private final WorkshopDetailService workshopDetailService;
+    private final TourismContentDetailService tourismContentDetailService;
 
     /**
      * 위시 등록
@@ -60,16 +57,7 @@ public class WishService {
             return WishResponse.from(existing);
         }
 
-        ContentDetailDto content = workshopDetailService.fetchCommonDetail(request.getContentId());
-        if (content == null) {
-            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관광 콘텐츠를 찾을 수 없습니다.");
-        }
-        if (!CHUNGNAM_REGION_CODE.equals(content.getLDongRegnCd())) {
-            throw new ResponseStatusException(
-                    HttpStatus.UNPROCESSABLE_CONTENT,
-                    "충청남도 관광 콘텐츠만 위시리스트에 저장할 수 있습니다."
-            );
-        }
+        ContentDetailDto content = tourismContentDetailService.getCommonDetail(request.getContentId());
 
         String sigunguName = resolveSigunguName(content.getLDongSignguCd());
         String folderName = sigunguName != null ? sigunguName : "기본 위시리스트";
@@ -105,15 +93,12 @@ public class WishService {
      * - 충남 16개 시군구 자동 폴더 + 기본 위시리스트
      */
     public List<WishFolderResponse> getWishFolders(Long memberId) {
-        List<Object[]> summaries = wishRepository.findFolderSummariesByMemberId(memberId);
-
-        return summaries.stream()
-                .map(row -> WishFolderResponse.builder()
-                        .folderName((String) row[0])
-                        .lDongSignguCd((String) row[1])
-                        .count((Long) row[3])
-                        .build())
-                .collect(Collectors.toList());
+        Map<String, List<Wish>> folders = wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(memberId).stream()
+                .collect(Collectors.groupingBy(Wish::getFolderName, LinkedHashMap::new, Collectors.toList()));
+        return folders.values().stream().sorted(java.util.Comparator.comparing(wishes -> wishes.getFirst().getFolderName()))
+                .map(wishes -> WishFolderResponse.builder()
+                .folderName(wishes.getFirst().getFolderName()).lDongSignguCd(wishes.getFirst().getSigunguCode())
+                .count((long) wishes.size()).thumbnailUrl(wishes.getFirst().getFirstimage()).build()).toList();
     }
 
     /**

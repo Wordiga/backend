@@ -4,6 +4,8 @@ import com.wordiga.client.TourismApiClient;
 import com.wordiga.client.dto.AreaTarExpDsItem;
 import com.wordiga.client.dto.AreaTarExpDsResponse;
 import com.wordiga.client.dto.KtoApiResponse;
+import com.wordiga.client.dto.PhotoGalleryItem;
+import com.wordiga.client.dto.PhotoGalleryResponse;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.DetailImageDto;
 import com.wordiga.dto.DetailInfoDto;
@@ -22,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
@@ -69,6 +72,7 @@ class TourismContentDetailServiceUnitTest {
         when(tourismApiClient.fetchExpenditureIntensity(
                 anyString(), eq("44"), eq("44200"), eq("2201")))
                 .thenReturn(spendingResponse());
+        when(tourismApiClient.searchPhotos("현충사")).thenReturn(photoResponse("202606"));
 
         TourismContentDetailResponse result = service.getDetail("126508", null, List.of("20S"));
 
@@ -78,7 +82,34 @@ class TourismContentDetailServiceUnitTest {
                 .satisfies(item -> assertThat(item.getInfoName()).isEqualTo("입장료"));
         assertThat(result.getSpendingIndex().getIndexValue()).isEqualByComparingTo("112.4");
         assertThat(result.getSeasonalImages()).singleElement()
-                .satisfies(item -> assertThat(item.getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN));
+                .satisfies(item -> {
+                    assertThat(item.getSeason()).isEqualTo(SeasonalImageDto.Season.SUMMER);
+                    assertThat(item.getShootingDate()).isNull();
+                });
+    }
+
+    @Test
+    void mapsExactShootingDateAndUnknownInvalidDate() {
+        PhotoGalleryItem exact = new PhotoGalleryItem(); exact.setGalPhotographyMonth("20260315");
+        PhotoGalleryItem invalid = new PhotoGalleryItem(); invalid.setGalPhotographyMonth("unknown");
+        PhotoGalleryItem malformed = new PhotoGalleryItem(); malformed.setGalPhotographyMonth("20261340");
+        PhotoGalleryItem malformedMonth = new PhotoGalleryItem(); malformedMonth.setGalPhotographyMonth("202613");
+
+        assertThat(service.toSeasonalImage(exact)).satisfies(image -> {
+            assertThat(image.getShootingDate()).isEqualTo("2026-03-15");
+            assertThat(image.getSeason()).isEqualTo(SeasonalImageDto.Season.SPRING);
+        });
+        assertThat(service.toSeasonalImage(invalid).getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN);
+        assertThat(service.toSeasonalImage(malformed).getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN);
+        assertThat(service.toSeasonalImage(malformedMonth).getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN);
+    }
+
+    @Test
+    void commonDetailRejectsMissingAndOutsideChungnam() {
+        when(workshopDetailService.fetchCommonDetail("missing")).thenReturn(null);
+        when(workshopDetailService.fetchCommonDetail("seoul")).thenReturn(common("11"));
+        assertThatThrownBy(() -> service.getCommonDetail("missing")).hasMessageContaining("404");
+        assertThatThrownBy(() -> service.getCommonDetail("seoul")).hasMessageContaining("404");
     }
 
     @ParameterizedTest
@@ -142,6 +173,18 @@ class TourismContentDetailServiceUnitTest {
         common.setMapx("126.9891281");
         common.setMapy("36.8051452");
         return common;
+    }
+
+    private PhotoGalleryResponse photoResponse(String shootingMonth) {
+        PhotoGalleryItem item = new PhotoGalleryItem();
+        item.setGalWebImageUrl("https://example.com/photo.jpg");
+        item.setGalPhotographyMonth(shootingMonth);
+        PhotoGalleryResponse result = new PhotoGalleryResponse();
+        KtoApiResponse.Response<PhotoGalleryItem> response = new KtoApiResponse.Response<>();
+        KtoApiResponse.Body<PhotoGalleryItem> body = new KtoApiResponse.Body<>();
+        KtoApiResponse.Items<PhotoGalleryItem> items = new KtoApiResponse.Items<>();
+        items.setItem(List.of(item)); body.setItems(items); response.setBody(body); result.setResponse(response);
+        return result;
     }
 
     private AreaTarExpDsResponse spendingResponse() {

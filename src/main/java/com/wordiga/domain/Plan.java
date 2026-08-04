@@ -2,6 +2,7 @@ package com.wordiga.domain;
 
 import jakarta.persistence.*;
 import lombok.AccessLevel;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
@@ -11,6 +12,7 @@ import java.util.List;
 @Entity
 @Table(name = "plans")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@Getter
 public class Plan extends BaseTimeEntity {
 
     @Id
@@ -56,5 +58,15 @@ public class Plan extends BaseTimeEntity {
 
     public void addContent(PlanContent content) {
         this.planContents.add(content);
+    }
+
+    public void update(String title, Integer participantCount) {
+        if (title != null) this.title = title.strip();
+        if (participantCount != null) this.participantCount = participantCount;
+    }
+
+    public void replaceContents(List<PlanContent> contents) {
+        planContents.clear();
+        planContents.addAll(contents);
     }
 }

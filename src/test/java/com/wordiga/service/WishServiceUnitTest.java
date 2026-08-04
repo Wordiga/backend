@@ -27,7 +27,7 @@ class WishServiceUnitTest {
     private WishRepository wishRepository;
 
     @Mock
-    private WorkshopDetailService workshopDetailService;
+    private TourismContentDetailService tourismContentDetailService;
 
     @InjectMocks
     private WishService wishService;
@@ -48,7 +48,7 @@ class WishServiceUnitTest {
         content.setLDongRegnCd("44");
         content.setLDongSignguCd("200");
 
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(content);
+        when(tourismContentDetailService.getCommonDetail("126508")).thenReturn(content);
         when(wishRepository.save(any(Wish.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         WishResponse response = wishService.addWish(1L, request);
@@ -75,7 +75,7 @@ class WishServiceUnitTest {
         WishResponse response = wishService.addWish(1L, request);
 
         assertThat(response.getTitle()).isEqualTo("현충사");
-        verifyNoInteractions(workshopDetailService);
+        verifyNoInteractions(tourismContentDetailService);
         verify(wishRepository, never()).save(any());
     }
 
@@ -90,7 +90,7 @@ class WishServiceUnitTest {
         content.setLDongSignguCd("999");
         content.setMapx("invalid");
         content.setMapy("");
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(content);
+        when(tourismContentDetailService.getCommonDetail("126508")).thenReturn(content);
         when(wishRepository.save(any(Wish.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
         WishResponse response = wishService.addWish(1L, request);
@@ -101,17 +101,33 @@ class WishServiceUnitTest {
     }
 
     @Test
+    void usesDefaultFolderForBlankRegionAndNullCoordinates() {
+        WishRequest request = new WishRequest(); request.setContentId("blank");
+        ContentDetailDto content = new ContentDetailDto(); content.setContentid("blank"); content.setTitle("미분류");
+        content.setLDongRegnCd("44"); content.setLDongSignguCd(" ");
+        when(tourismContentDetailService.getCommonDetail("blank")).thenReturn(content);
+        when(wishRepository.save(any(Wish.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        WishResponse response = wishService.addWish(1L, request);
+
+        assertThat(response.getFolderName()).isEqualTo("기본 위시리스트");
+        assertThat(response.getMapx()).isNull();
+    }
+
+    @Test
     void delegatesFolderQueriesAndDelete() {
         Wish wish = Wish.create(
-                1L, "126508", "12", "현충사", null, null,
+                1L, "126508", "12", "현충사", "https://example.com/latest.jpg", null,
                 null, null, "200", "아산시", "아산시");
-        when(wishRepository.findFolderSummariesByMemberId(1L))
-                .thenReturn(List.<Object[]>of(new Object[]{"아산시", "200", "아산시", 1L}));
+        when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of(wish));
         when(wishRepository.findByMemberIdAndFolderNameOrderByCreatedAtDesc(1L, "아산시"))
                 .thenReturn(List.of(wish));
 
         assertThat(wishService.getWishFolders(1L)).singleElement()
-                .satisfies(folder -> assertThat(folder.getCount()).isEqualTo(1));
+                .satisfies(folder -> {
+                    assertThat(folder.getCount()).isEqualTo(1);
+                    assertThat(folder.getThumbnailUrl()).isEqualTo("https://example.com/latest.jpg");
+                });
         assertThat(wishService.getWishesByFolder(1L, "아산시")).hasSize(1);
         wishService.removeWish(1L, "126508");
 

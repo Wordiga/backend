@@ -759,6 +759,7 @@ GET /api/v1/wishes/folders
 | `folderName` | String | Y | 시군구명 또는 기본 위시리스트입니다. |
 | `lDongSignguCd` | String | N | 법정동 시군구 코드입니다. |
 | `count` | Long | Y | 폴더의 위시 수입니다. |
+| `thumbnailUrl` | String | N | 폴더에서 가장 최근에 저장한 위시의 이미지입니다. |
 
 ### Response Example
 
@@ -767,7 +768,8 @@ GET /api/v1/wishes/folders
   {
     "folderName": "아산시",
     "lDongSignguCd": "200",
-    "count": 3
+    "count": 3,
+    "thumbnailUrl": "https://example.com/main.jpg"
   }
 ]
 ```

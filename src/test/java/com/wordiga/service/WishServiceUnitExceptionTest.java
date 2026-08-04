@@ -20,7 +20,7 @@ class WishServiceUnitExceptionTest {
     private WishRepository wishRepository;
 
     @Mock
-    private WorkshopDetailService workshopDetailService;
+    private TourismContentDetailService tourismContentDetailService;
 
     @InjectMocks
     private WishService wishService;
@@ -28,7 +28,8 @@ class WishServiceUnitExceptionTest {
     @Test
     void rejectsMissingTourismContent() {
         WishRequest request = request();
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(null);
+        when(tourismContentDetailService.getCommonDetail("126508"))
+                .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
         assertThatThrownBy(() -> wishService.addWish(1L, request))
                 .isInstanceOf(ResponseStatusException.class)
@@ -38,13 +39,24 @@ class WishServiceUnitExceptionTest {
     @Test
     void rejectsContentOutsideChungnam() {
         WishRequest request = request();
-        ContentDetailDto content = new ContentDetailDto();
-        content.setLDongRegnCd("11");
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(content);
+        when(tourismContentDetailService.getCommonDetail("126508"))
+                .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.NOT_FOUND));
 
         assertThatThrownBy(() -> wishService.addWish(1L, request))
                 .isInstanceOf(ResponseStatusException.class)
-                .hasMessageContaining("422");
+                .hasMessageContaining("404");
+    }
+
+    @Test
+    void propagatesTourismApiFailureWithoutSaving() {
+        WishRequest request = request();
+        when(tourismContentDetailService.getCommonDetail("126508"))
+                .thenThrow(new ResponseStatusException(org.springframework.http.HttpStatus.SERVICE_UNAVAILABLE,
+                        "관광공사 API를 사용할 수 없습니다."));
+
+        assertThatThrownBy(() -> wishService.addWish(1L, request))
+                .isInstanceOf(ResponseStatusException.class).hasMessageContaining("503");
+        org.mockito.Mockito.verify(wishRepository, org.mockito.Mockito.never()).save(org.mockito.ArgumentMatchers.any());
     }
 
     private WishRequest request() {
