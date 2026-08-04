@@ -65,6 +65,15 @@ class TourismContentControllerTest {
     }
 
     @Test
+    void returnsSixteenChungnamSigungu() throws Exception {
+        mockMvc.perform(get("/api/v1/tourism/contents/sigungu"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(16))
+                .andExpect(jsonPath("$[0].name").value("천안시 동남구"))
+                .andExpect(jsonPath("$[1].name").value("천안시 서북구"));
+    }
+
+    @Test
     void returnsIntegratedDetail() throws Exception {
         TourismCommonDetailDto common = TourismCommonDetailDto.builder()
                 .contentId("126508")
@@ -80,15 +89,12 @@ class TourismContentControllerTest {
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
                         .param("visitDate", "2026-08-20")
-                        .param("ageGroups", "20S,30S")
-                        .param("maleRatio", "50")
-                        .param("femaleRatio", "50"))
+                        .param("ageGroups", "20S,30S"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.common.contentId").value("126508"))
                 .andExpect(jsonPath("$.common.title").value("현충사"));
 
-        mockMvc.perform(get("/api/v1/tourism/contents/126508")
-                        .param("maleRatio", "50"))
+        mockMvc.perform(get("/api/v1/tourism/contents/126508"))
                 .andExpect(status().isOk());
     }
 }

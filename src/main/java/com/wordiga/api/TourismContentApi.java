@@ -2,6 +2,7 @@ package com.wordiga.api;
 
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.dto.tourismContent.SigunguResponse;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -15,6 +16,9 @@ import java.util.List;
 
 @Tag(name = "Tourism Contents", description = "관광 콘텐츠 조회 API")
 public interface TourismContentApi {
+
+    @Operation(summary = "충청남도 시군구 조회")
+    ResponseEntity<List<SigunguResponse>> getSigungu();
 
     @Operation(summary = "관광 콘텐츠 조회",
             description = "방문일과 검색 조건에 따라 충청남도 관광 콘텐츠를 조회합니다.")
@@ -34,9 +38,6 @@ public interface TourismContentApi {
             @Parameter(description = "관광 콘텐츠 ID") String contentId,
             LocalDate visitDate,
             List<String> ageGroups,
-            @Min(1) @Max(100) Integer participantCount,
-            @Min(0) @Max(100) Integer maleRatio,
-            @Min(0) @Max(100) Integer femaleRatio,
-            @Min(1) @Max(1440) Integer expectedStayMinutes
+            @Min(1) @Max(50) Integer participantCount
     );
 }

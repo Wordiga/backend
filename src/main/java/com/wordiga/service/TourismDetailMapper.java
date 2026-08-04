@@ -70,7 +70,7 @@ public class TourismDetailMapper {
                     .sponsor2(source.getSponsor2())
                     .sponsor2Tel(source.getSponsor2tel())
                     .subEvent(source.getSubevent())
-                    .useTime(source.getUsetimefestival());
+                    .useFee(source.getUsetimefestival());
             case "25" -> target
                     .distance(source.getDistance())
                     .infoCenter(source.getInfocentertourcourse())

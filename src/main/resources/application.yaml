@@ -60,6 +60,19 @@ tourism:
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
 
+ai:
+  server:
+    base-url: ${AI_SERVER_BASE_URL:http://127.0.0.1:8000}
+    connect-timeout: 2s
+    read-timeout: 45s
+
+proposal:
+  s3:
+    bucket: ${PROPOSAL_S3_BUCKET:}
+    region: ${AWS_REGION:ap-northeast-2}
+    url-validity: 1d
+    retention: 30d
+
 logging:
   level:
     org.springframework.security: DEBUG

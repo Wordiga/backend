@@ -21,24 +21,6 @@ import java.util.stream.Collectors;
 @Transactional(readOnly = true)
 public class WishService {
 
-    private static final Map<String, String> CHUNGNAM_SIGUNGU_MAP = Map.ofEntries(
-            Map.entry("110", "천안시"),
-            Map.entry("150", "공주시"),
-            Map.entry("180", "보령시"),
-            Map.entry("200", "아산시"),
-            Map.entry("210", "서산시"),
-            Map.entry("230", "논산시"),
-            Map.entry("250", "계룡시"),
-            Map.entry("270", "당진시"),
-            Map.entry("310", "금산군"),
-            Map.entry("330", "부여군"),
-            Map.entry("340", "서천군"),
-            Map.entry("350", "청양군"),
-            Map.entry("360", "홍성군"),
-            Map.entry("370", "예산군"),
-            Map.entry("380", "태안군")
-    );
-
     private final WishRepository wishRepository;
     private final TourismContentDetailService tourismContentDetailService;
 
@@ -118,7 +100,7 @@ public class WishService {
         if (sigunguCode == null || sigunguCode.isBlank()) {
             return null;
         }
-        return CHUNGNAM_SIGUNGU_MAP.getOrDefault(sigunguCode, null);
+        return ChungnamSigungu.NAMES.get(sigunguCode);
     }
 
     private BigDecimal parseCoordinate(String value) {

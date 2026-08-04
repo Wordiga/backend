@@ -70,6 +70,6 @@ class PlanServiceUnitTest {
 
     private PlanContentsUpdateRequest.Day day(int number, String date, String... ids) {
         PlanContentsUpdateRequest.Day day = new PlanContentsUpdateRequest.Day(); day.setDayNumber(number);
-        day.setDate(LocalDate.parse(date)); day.setContentIds(List.of(ids)); return day;
+        day.setContentIds(List.of(ids)); return day;
     }
 }

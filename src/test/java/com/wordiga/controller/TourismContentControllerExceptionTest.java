@@ -37,10 +37,9 @@ class TourismContentControllerExceptionTest {
     }
 
     @Test
-    void rejectsInvalidGenderRatioSum() throws Exception {
+    void rejectsParticipantCountOverFifty() throws Exception {
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
-                        .param("maleRatio", "40")
-                        .param("femaleRatio", "40"))
+                        .param("participantCount", "51"))
                 .andExpect(status().isBadRequest());
     }
 
