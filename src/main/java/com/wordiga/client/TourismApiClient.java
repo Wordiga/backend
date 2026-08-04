@@ -162,6 +162,29 @@ public class TourismApiClient {
         return callApi(uri, AreaBasedResponse.class);
     }
 
+    public List<RelatedTourismItem> fetchRelatedTourism(String baseYm, String areaCd, String signguCd,
+                                                        String keyword, int numOfRows) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("baseYm", baseYm);
+        params.put("areaCd", areaCd);
+        params.put("signguCd", signguCd);
+        params.put("keyword", keyword);
+        params.put("pageNo", "1");
+        params.put("numOfRows", String.valueOf(numOfRows));
+        RelatedTourismResponse response = callApi(
+                buildUri("TarRlteTarService1/searchKeyword1", params), RelatedTourismResponse.class);
+        if (response.getResponse() != null && response.getResponse().getHeader() != null
+                && response.getResponse().getHeader().getResultCode() != null
+                && !"0000".equals(response.getResponse().getHeader().getResultCode())) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "관광공사 연관 관광지 API를 사용할 수 없습니다.");
+        }
+        if (response.getResponse() == null || response.getResponse().getBody() == null
+                || response.getResponse().getBody().getItems() == null
+                || response.getResponse().getBody().getItems().getItem() == null) return List.of();
+        return response.getResponse().getBody().getItems().getItem();
+    }
+
     public List<String> fetchClassificationNames(String lclsSystm1, String lclsSystm2, String lclsSystm3) {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("pageNo", "1");

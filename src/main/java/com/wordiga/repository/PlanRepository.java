@@ -10,4 +10,5 @@ import java.util.Optional;
 public interface PlanRepository extends JpaRepository<Plan, Long> {
     Page<Plan> findByMemberId(Long memberId, Pageable pageable);
     Optional<Plan> findByIdAndMemberId(Long id, Long memberId);
+    boolean existsByMemberIdAndTitle(Long memberId, String title);
 }

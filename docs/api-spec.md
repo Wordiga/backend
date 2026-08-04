@@ -894,6 +894,8 @@ POST /api/v1/plans/generate
 
 * 상세정보의 단일 콘텐츠 또는 일정설계에서 선택한 최대 10개 콘텐츠로 AI 일정을 생성합니다.
 * AI 서버 응답을 저장한 뒤 화면에 일자별 일정과 이동시간을 제공합니다.
+* 동일 조건으로 다시 호출해도 기존 일정을 덮어쓰지 않고 새 `planId`와 AI가 발급한 새 `scheduleId`로 저장합니다.
+* 제목을 생략하면 첫 번째 선택 콘텐츠의 시군구와 시작일로 `{시군구} {MMdd}`를 사용하며, 같은 회원에게 같은 제목이 있으면 ` 1`, ` 2` 순번을 붙입니다.
 
 인증: 필수
 
@@ -1009,13 +1011,15 @@ POST /api/v1/plans/generate
 - `selectedContentIds`는 중복 없이 1~10개입니다.
 - AI 응답의 날짜는 요청 기간 안에 있어야 합니다.
 - 일자별 `sequence`는 1부터 중복 없이 이어져야 합니다.
+- AI 응답에는 사용자가 선택한 `saved_contents`가 모두 포함되어야 하며, 전달된 `regional_contents`도 일정에 포함할 수 있습니다.
 
 ### 구현 계획
 
 - AI 서버에는 `visit_month`, `num_people`, `num_days`, `saved_content_ids`, `saved_contents`,
   `regional_contents`, `age_groups`, `gender_ratio`, `preferences` snake_case 필드로 전달합니다.
 - `saved_contents`는 콘텐츠 ID·제목·카테고리·주소·좌표·시군구·운영정보·분류 태그·연락처·개요·이미지·평균 체류시간·행사기간을 포함합니다.
-- 아직 지역 보충 후보 정책이 확정되지 않아 `regional_contents`는 빈 배열로 전달합니다.
+- `regional_contents`는 관광공사 `TarRlteTarService1/searchKeyword1`의 연관 관광지명을 `KorService2/searchKeyword2`로 콘텐츠 ID와 매칭하고 상세정보로 보강해 최대 15개 전달합니다.
+- 사용자가 선택한 `saved_contents`는 모두 유지하며, 동일 콘텐츠가 연관 후보에도 있으면 `regional_contents`에서만 제외합니다.
 - 백엔드는 선택 콘텐츠의 타입별 상세정보, 좌표와 운영정보를 AI 서버에 HTTP POST로 전달합니다.
 - 사용자 입력 예산은 받지 않습니다.
 - 백엔드는 콘텐츠별 `useFee`, 축제 이용요금, 숙박 객실 최소요금, 입장료·관람료·이용료 반복정보를 비용 원문과 함께 AI 서버에 전달합니다.
@@ -1070,6 +1074,7 @@ GET /api/v1/plans
 |---|---|---|---|
 | `items` | PlanSummary[] | Y | 일정 목록 |
 | `items[].planId` | Long | Y | 일정 ID |
+| `items[].scheduleId` | String | N | AI 서버 일정 식별자 |
 | `items[].title` | String | Y | 일정 제목 |
 | `items[].startDate` | LocalDate | Y | 시작일 |
 | `items[].endDate` | LocalDate | Y | 종료일 |
@@ -1089,6 +1094,7 @@ GET /api/v1/plans
   "items": [
     {
       "planId": 77,
+      "scheduleId": "ai-schedule-20260728-001",
       "title": "아산 역사 워크숍",
       "startDate": "2026-08-20",
       "endDate": "2026-08-21",

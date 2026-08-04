@@ -23,19 +23,21 @@ public record AiPlanRequest(
         Object preferences) {
 
     public static AiPlanRequest from(PlanGenerateRequest request, List<TourismContentDetailResponse> details) {
-        return from(request, details, Map.of());
+        return from(request, details, List.of(), Map.of());
     }
 
-    public static AiPlanRequest from(PlanGenerateRequest request, List<TourismContentDetailResponse> details,
+    public static AiPlanRequest from(PlanGenerateRequest request, List<TourismContentDetailResponse> savedDetails,
+                                     List<TourismContentDetailResponse> regionalDetails,
                                      Map<String, List<String>> tagsByContentId) {
         return new AiPlanRequest(
                 request.getStartDate().getMonthValue(),
                 request.getParticipantCount(),
                 (int) ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1,
                 request.getSelectedContentIds(),
-                details.stream().map(detail -> Content.from(
+                savedDetails.stream().map(detail -> Content.from(
                         detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
-                List.of(),
+                regionalDetails.stream().map(detail -> Content.from(
+                        detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
                 request.getAgeGroups(),
                 null,
                 null);
