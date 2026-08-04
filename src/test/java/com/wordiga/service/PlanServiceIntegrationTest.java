@@ -1,0 +1,57 @@
+package com.wordiga.service;
+
+import com.wordiga.domain.Member;
+import com.wordiga.domain.OAuthProvider;
+import com.wordiga.domain.Plan;
+import com.wordiga.dto.ContentDetailDto;
+import com.wordiga.dto.plan.*;
+import com.wordiga.repository.MemberRepository;
+import com.wordiga.repository.PlanRepository;
+import com.wordiga.support.PostgresIntegrationTest;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
+
+import java.time.LocalDate;
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.when;
+
+class PlanServiceIntegrationTest extends PostgresIntegrationTest {
+    @Autowired PlanService planService;
+    @Autowired PlanRepository planRepository;
+    @Autowired MemberRepository memberRepository;
+    @MockitoBean TourismContentDetailService tourismContentDetailService;
+
+    @AfterEach void cleanUp() { planRepository.deleteAll(); memberRepository.deleteAll(); }
+
+    @Test void queriesUpdatesContentsAndDeletesOwnedPlanInPostgres() {
+        Member member = memberRepository.save(Member.create("plan@test.com", "테스터", OAuthProvider.GOOGLE, "plan", null));
+        Plan plan = planRepository.save(Plan.create(member, "충남 여행", LocalDate.of(2026, 8, 20),
+                LocalDate.of(2026, 8, 21), 2, null));
+        when(tourismContentDetailService.getCommonDetail("126508")).thenReturn(content());
+        PlanContentsUpdateRequest contents = new PlanContentsUpdateRequest();
+        contents.setDays(List.of(day(1, "2026-08-20", "126508"), day(2, "2026-08-21", "126508-2")));
+        when(tourismContentDetailService.getCommonDetail("126508-2")).thenReturn(content());
+
+        assertThat(planService.getPlans(member.getId(), 0, 20, PlanSort.LATEST).getItems()).hasSize(1);
+        assertThat(planService.updateContents(member.getId(), plan.getId(), contents).getDays()).hasSize(2);
+        PlanUpdateRequest update = new PlanUpdateRequest(); update.setTitle("수정 여행"); update.setParticipantCount(4);
+        assertThat(planService.updatePlan(member.getId(), plan.getId(), update).getParticipantCount()).isEqualTo(4);
+        assertThat(planService.getPlan(member.getId(), plan.getId()).getDays()).hasSize(2);
+
+        planService.deletePlan(member.getId(), plan.getId());
+        assertThat(planRepository.findById(plan.getId())).isEmpty();
+    }
+
+    private ContentDetailDto content() {
+        ContentDetailDto c = new ContentDetailDto(); c.setTitle("현충사"); c.setContenttypeid("12");
+        c.setFirstimage("https://example.com/image.jpg"); c.setAddr1("충청남도 아산시"); return c;
+    }
+    private PlanContentsUpdateRequest.Day day(int number, String date, String id) {
+        PlanContentsUpdateRequest.Day d = new PlanContentsUpdateRequest.Day(); d.setDayNumber(number);
+        d.setDate(LocalDate.parse(date)); d.setContentIds(List.of(id)); return d;
+    }
+}
