@@ -2,6 +2,7 @@ package com.wordiga.config;
 
 import com.wordiga.security.JwtAuthenticationFilter;
 import com.wordiga.security.OidcLoginSuccessHandler;
+import com.wordiga.security.RestAuthenticationEntryPoint;
 import com.wordiga.service.CustomOidcUserService;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +30,7 @@ public class SecurityConfig {
     private final JwtAuthenticationFilter jwtAuthenticationFilter;
     private final CustomOidcUserService oidcUserService;
     private final OidcLoginSuccessHandler oidcLoginSuccessHandler;
+    private final RestAuthenticationEntryPoint authenticationEntryPoint;
 
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
@@ -56,6 +58,7 @@ public class SecurityConfig {
                         .userInfoEndpoint(userInfo -> userInfo.oidcUserService(oidcUserService))
                         .successHandler(oidcLoginSuccessHandler)
                 )
+                .exceptionHandling(exceptions -> exceptions.authenticationEntryPoint(authenticationEntryPoint))
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();

@@ -4,6 +4,8 @@ import com.wordiga.client.TourismApiClient;
 import com.wordiga.client.dto.AreaTarExpDsItem;
 import com.wordiga.client.dto.AreaTarExpDsResponse;
 import com.wordiga.client.dto.KtoApiResponse;
+import com.wordiga.client.dto.PhotoGalleryItem;
+import com.wordiga.client.dto.PhotoGalleryResponse;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.DetailImageDto;
 import com.wordiga.dto.DetailInfoDto;
@@ -20,6 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
 import java.util.List;
@@ -48,6 +51,7 @@ public class TourismContentDetailService {
                 contentId, common.getContenttypeid(), 1, 100);
         List<DetailImageDto> images = workshopDetailService.fetchImages(
                 contentId, "Y", 1, 100);
+        List<SeasonalImageDto> seasonalImages = seasonalImages(common, images);
 
         return TourismContentDetailResponse.builder()
                 .common(toCommon(common))
@@ -55,9 +59,48 @@ public class TourismContentDetailService {
                 .details(detailMapper.toDetails(details))
                 .images(images.stream().map(this::toImage).toList())
                 .spendingIndex(fetchSpendingIndex(common))
-                .seasonalImages(images.stream().map(this::toSeasonalImage).toList())
+                .seasonalImages(seasonalImages)
                 .satisfaction(satisfactionService.calculate(common, visitDate, ageGroups))
                 .build();
+    }
+
+    public ContentDetailDto getCommonDetail(String contentId) {
+        ContentDetailDto common = workshopDetailService.fetchCommonDetail(contentId);
+        if (common == null || !CHUNGNAM_REGION_CODE.equals(common.getLDongRegnCd())) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관광 콘텐츠를 찾을 수 없습니다.");
+        }
+        return common;
+    }
+
+    private List<SeasonalImageDto> seasonalImages(ContentDetailDto common, List<DetailImageDto> fallback) {
+        List<PhotoGalleryItem> photos = extractItems(tourismApiClient.searchPhotos(common.getTitle()));
+        if (photos.isEmpty()) return fallback.stream().map(this::toSeasonalImage).toList();
+        return photos.stream().map(this::toSeasonalImage).toList();
+    }
+
+    SeasonalImageDto toSeasonalImage(PhotoGalleryItem source) {
+        String value = source.getGalPhotographyMonth();
+        Integer month = null;
+        LocalDate date = null;
+        try {
+            if (value != null && value.matches("\\d{8}")) {
+                date = LocalDate.parse(value, DateTimeFormatter.BASIC_ISO_DATE); month = date.getMonthValue();
+            } else if (value != null && value.matches("\\d{6}")) {
+                month = YearMonth.parse(value, DateTimeFormatter.ofPattern("yyyyMM")).getMonthValue();
+            }
+        } catch (RuntimeException ignored) { }
+        return SeasonalImageDto.builder().imageUrl(source.getGalWebImageUrl()).thumbnailUrl(source.getGalWebImageUrl())
+                .shootingDate(date).season(toSeason(month)).matchConfidence(BigDecimal.ONE).build();
+    }
+
+    private SeasonalImageDto.Season toSeason(Integer month) {
+        if (month == null) return SeasonalImageDto.Season.UNKNOWN;
+        return switch (month) {
+            case 3, 4, 5 -> SeasonalImageDto.Season.SPRING;
+            case 6, 7, 8 -> SeasonalImageDto.Season.SUMMER;
+            case 9, 10, 11 -> SeasonalImageDto.Season.AUTUMN;
+            default -> SeasonalImageDto.Season.WINTER;
+        };
     }
 
     private TourismCommonDetailDto toCommon(ContentDetailDto source) {

@@ -8,10 +8,12 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpEntity;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
 import org.springframework.web.util.UriUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -132,7 +134,8 @@ public class WorkshopDetailService {
             return parseItems(body, itemType);
         } catch (Exception e) {
             log.error("[TourAPI Detail] 예외: {}", e.getMessage(), e);
-            return Collections.emptyList();
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "관광공사 API를 사용할 수 없습니다.", e);
         }
     }
 

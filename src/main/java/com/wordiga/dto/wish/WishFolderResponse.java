@@ -17,4 +17,7 @@ public class WishFolderResponse {
 
     @Schema(description = "폴더 내 위시 개수", example = "5")
     private Long count;
+
+    @Schema(description = "폴더에서 가장 최근에 저장한 위시 이미지")
+    private String thumbnailUrl;
 }
