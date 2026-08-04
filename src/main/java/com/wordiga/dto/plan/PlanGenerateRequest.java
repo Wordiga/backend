@@ -13,5 +13,4 @@ public class PlanGenerateRequest {
     @NotNull @Min(1) @Max(50) private Integer participantCount;
     @Size(max = 10) private List<String> ageGroups;
     @NotEmpty @Size(max = 10) private List<@NotBlank String> selectedContentIds;
-    @PositiveOrZero private Long budgetPerPerson;
 }
