@@ -1,18 +1,23 @@
 package com.wordiga.service;
 
 import com.wordiga.client.AiServerClient;
+import com.wordiga.client.TourismApiClient;
 import com.wordiga.dto.ai.*;
 import com.wordiga.dto.plan.*;
+import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
+@Slf4j
 @Service @RequiredArgsConstructor
 public class PlanGenerationService {
     private final TourismContentDetailService tourismContentDetailService;
+    private final TourismApiClient tourismApiClient;
     private final AiServerClient aiServerClient;
     private final PlanWriter planWriter;
 
@@ -21,10 +26,40 @@ public class PlanGenerationService {
         var details = request.getSelectedContentIds().stream()
                 .map(id -> tourismContentDetailService.getDetail(
                         id, request.getStartDate(), request.getAgeGroups(), request.getParticipantCount())).toList();
-        AiPlanResponse response = aiServerClient.generatePlan(AiPlanRequest.from(request, details));
+        AiPlanResponse response = aiServerClient.generatePlan(AiPlanRequest.from(request, details, resolveTags(details)));
         validateResponse(request, response);
         return planWriter.saveGenerated(memberId, request, response);
     }
+
+    private Map<String, List<String>> resolveTags(List<TourismContentDetailResponse> details) {
+        Map<List<String>, List<String>> cache = new HashMap<>();
+        Map<String, List<String>> result = new HashMap<>();
+        for (var detail : details) {
+            var common = detail.getCommon();
+            List<String> codes = List.of(value(common.getLclsSystm1()), value(common.getLclsSystm2()),
+                    value(common.getLclsSystm3()));
+            if (codes.get(0).isEmpty()) continue;
+            List<String> names = cache.get(codes);
+            if (cache.containsKey(codes)) {
+                if (names != null) result.put(common.getContentId(), names);
+                continue;
+            }
+            try {
+                names = tourismApiClient.fetchClassificationNames(
+                        emptyToNull(codes.get(0)), emptyToNull(codes.get(1)), emptyToNull(codes.get(2)));
+                cache.put(codes, names);
+                if (names != null) result.put(common.getContentId(), names);
+            } catch (RuntimeException exception) {
+                cache.put(codes, null);
+                log.warn("[AI 일정] 관광 분류명 조회 실패: contentId={}, codes={}",
+                        common.getContentId(), codes, exception);
+            }
+        }
+        return result;
+    }
+
+    private String value(String value) { return value == null ? "" : value; }
+    private String emptyToNull(String value) { return value.isEmpty() ? null : value; }
     private void validateRequest(PlanGenerateRequest r) {
         if (r.getStartDate().isAfter(r.getEndDate()) || ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) > 2)
             invalid(HttpStatus.BAD_REQUEST, "일정 기간은 1~3일이어야 합니다.");

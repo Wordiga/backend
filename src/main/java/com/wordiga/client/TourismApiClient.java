@@ -162,6 +162,39 @@ public class TourismApiClient {
         return callApi(uri, AreaBasedResponse.class);
     }
 
+    public List<String> fetchClassificationNames(String lclsSystm1, String lclsSystm2, String lclsSystm3) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("pageNo", "1");
+        params.put("numOfRows", "1000");
+        params.put("lclsSystmListYn", "Y");
+        putIfPresent(params, "lclsSystm1", lclsSystm1);
+        putIfPresent(params, "lclsSystm2", lclsSystm2);
+        putIfPresent(params, "lclsSystm3", lclsSystm3);
+
+        ClassificationSystemResponse response = callApi(
+                buildUri("KorService2/lclsSystmCode2", params), ClassificationSystemResponse.class);
+        if (response.getResponse() != null && response.getResponse().getHeader() != null
+                && response.getResponse().getHeader().getResultCode() != null
+                && !"0000".equals(response.getResponse().getHeader().getResultCode())) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "관광공사 분류체계 API를 사용할 수 없습니다.");
+        }
+        if (response.getResponse() == null || response.getResponse().getBody() == null
+                || response.getResponse().getBody().getItems() == null
+                || response.getResponse().getBody().getItems().getItem() == null) return null;
+
+        return response.getResponse().getBody().getItems().getItem().stream()
+                .filter(item -> java.util.Objects.equals(lclsSystm1, item.getLclsSystm1Cd())
+                        && (lclsSystm2 == null || java.util.Objects.equals(lclsSystm2, item.getLclsSystm2Cd()))
+                        && (lclsSystm3 == null || java.util.Objects.equals(lclsSystm3, item.getLclsSystm3Cd())))
+                .findFirst()
+                .map(item -> java.util.stream.Stream.of(
+                                item.getLclsSystm1Nm(), item.getLclsSystm2Nm(), item.getLclsSystm3Nm())
+                        .filter(value -> value != null && !value.isBlank()).distinct().toList())
+                .filter(names -> !names.isEmpty())
+                .orElse(null);
+    }
+
     public PhotoGalleryResponse searchPhotos(String keyword) {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("keyword", keyword);

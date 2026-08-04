@@ -10,6 +10,7 @@ import org.junit.jupiter.api.Test;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.Map;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
@@ -28,8 +29,10 @@ class AiPlanRequestTest {
                         .mapy(BigDecimal.valueOf(36.4)).lDongSignguCd("380").build())
                 .intro(TourismIntroDetailDto.builder().checkInTime("15:00").build()).build();
 
-        var json = new ObjectMapper().readTree(new ObjectMapper().writeValueAsString(
-                AiPlanRequest.from(request, List.of(detail))));
+        var objectMapper = new ObjectMapper();
+        var aiRequest = AiPlanRequest.from(
+                request, List.of(detail), Map.of("CT001", List.of("숙박", "호텔")));
+        var json = objectMapper.readTree(objectMapper.writeValueAsString(aiRequest));
 
         assertThat(json.get("visit_month").asInt()).isEqualTo(9);
         assertThat(json.get("num_people").asInt()).isEqualTo(25);
@@ -37,6 +40,7 @@ class AiPlanRequestTest {
         assertThat(json.get("saved_content_ids").get(0).asText()).isEqualTo("CT001");
         assertThat(json.get("saved_contents").get(0).get("category").asText()).isEqualTo("accommodation");
         assertThat(json.get("saved_contents").get(0).get("latitude").decimalValue()).isEqualByComparingTo("36.4");
+        assertThat(json.get("saved_contents").get(0).get("tags").get(0).asText()).isEqualTo("숙박");
         assertThat(json.get("regional_contents").isArray()).isTrue();
     }
 }

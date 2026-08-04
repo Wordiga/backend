@@ -8,6 +8,7 @@ import com.wordiga.dto.tourismContent.detail.TourismIntroDetailDto;
 
 import java.time.temporal.ChronoUnit;
 import java.util.List;
+import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record AiPlanRequest(
@@ -22,12 +23,18 @@ public record AiPlanRequest(
         Object preferences) {
 
     public static AiPlanRequest from(PlanGenerateRequest request, List<TourismContentDetailResponse> details) {
+        return from(request, details, Map.of());
+    }
+
+    public static AiPlanRequest from(PlanGenerateRequest request, List<TourismContentDetailResponse> details,
+                                     Map<String, List<String>> tagsByContentId) {
         return new AiPlanRequest(
                 request.getStartDate().getMonthValue(),
                 request.getParticipantCount(),
                 (int) ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1,
                 request.getSelectedContentIds(),
-                details.stream().map(Content::from).toList(),
+                details.stream().map(detail -> Content.from(
+                        detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
                 List.of(),
                 request.getAgeGroups(),
                 null,
@@ -53,15 +60,13 @@ public record AiPlanRequest(
             String eventstartdate,
             String eventenddate) {
 
-        static Content from(TourismContentDetailResponse detail) {
+        static Content from(TourismContentDetailResponse detail, List<String> tags) {
             var common = detail.getCommon();
             var intro = detail.getIntro();
             return new Content(
                     common.getContentId(), common.getTitle(), category(common.getContentTypeId()),
                     join(common.getAddr1(), common.getAddr2()), common.getMapy(), common.getMapx(),
-                    common.getLDongSignguCd(), operatingHours(intro),
-                    java.util.stream.Stream.of(common.getLclsSystm1(), common.getLclsSystm2(), common.getLclsSystm3())
-                            .filter(value -> value != null && !value.isBlank()).toList(),
+                    common.getLDongSignguCd(), operatingHours(intro), tags,
                     common.getTel(), truncate(common.getOverview()), common.getFirstImage(), duration(intro), null,
                     intro == null ? null : intro.getEventStartDate(), intro == null ? null : intro.getEventEndDate());
         }
