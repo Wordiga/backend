@@ -14,6 +14,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+import java.time.format.DateTimeFormatter;
 
 @Service @RequiredArgsConstructor
 public class PlanWriter {
@@ -22,9 +23,11 @@ public class PlanWriter {
     private final ObjectMapper objectMapper;
 
     @Transactional(timeout = 5)
-    public PlanDetailResponse saveGenerated(Long memberId, PlanGenerateRequest request, AiPlanResponse ai) {
-        Plan plan = Plan.create(memberRepository.getReferenceById(memberId),
-                request.getTitle() == null || request.getTitle().isBlank() ? "충남 여행 일정" : request.getTitle().strip(),
+    public PlanDetailResponse saveGenerated(Long memberId, PlanGenerateRequest request, AiPlanResponse ai,
+                                            String sigunguName) {
+        var member = memberRepository.findByIdForUpdate(memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "회원을 찾을 수 없습니다."));
+        Plan plan = Plan.create(member, title(memberId, request, sigunguName),
                 request.getStartDate(), request.getEndDate(), request.getParticipantCount(), "AI");
         for (AiPlanResponse.Day day : ai.getDays()) for (AiPlanResponse.Content c : day.getContents())
             plan.addContent(PlanContent.createFromAi(plan, day.getDayNumber(), day.getDate(), c.getSequence(),
@@ -35,6 +38,15 @@ public class PlanWriter {
         plan.applyAiResult(ai.getScheduleId(), json(ai), budget == null ? null : budget.getTotalAmount(),
                 budget == null ? null : budget.getPerPersonAmount(), budget == null ? null : json(budget.getBreakdown()));
         return PlanDetailResponse.from(planRepository.save(plan));
+    }
+    private String title(Long memberId, PlanGenerateRequest request, String sigunguName) {
+        if (request.getTitle() != null && !request.getTitle().isBlank()) return request.getTitle().strip();
+        String base = (sigunguName == null ? "충남" : sigunguName) + " "
+                + request.getStartDate().format(DateTimeFormatter.ofPattern("MMdd"));
+        if (!planRepository.existsByMemberIdAndTitle(memberId, base)) return base;
+        int number = 1;
+        while (planRepository.existsByMemberIdAndTitle(memberId, base + " " + number)) number++;
+        return base + " " + number;
     }
     private String json(AiPlanResponse response) {
         try { return objectMapper.writeValueAsString(response); }

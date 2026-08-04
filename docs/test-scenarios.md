@@ -45,9 +45,10 @@
 | `WishServiceIntegrationTest` | 성공 | PostgreSQL CRUD | 위시·생성시각 저장과 폴더 집계·조회·삭제 |
 | `WishServiceIntegrationTest` | 성공 | 서로 다른 위시 동시 저장 | 두 행 저장과 10초 내 무교착 |
 | `WishServiceIntegrationExceptionTest` | 예외 | 동일 위시 동시 저장 | 한 행 유지, 한 요청 실패와 10초 내 종료 |
-| `PlanGenerationServiceUnitTest` | 성공·예외 | AI 일정 생성 | 동기 AI 호출, 선택 콘텐츠·날짜·순서 검증과 저장 위임 |
+| `PlanGenerationServiceUnitTest` | 성공·예외 | AI 일정 생성 | 동기 AI 호출, 선택·지역 콘텐츠와 날짜·순서 검증 및 저장 위임 |
+| `RegionalContentServiceUnitTest` | 성공 | 연관 관광지 후보 생성 | 연관 관광지명 KorService2 매칭·상세 보강과 선택 콘텐츠 중복 제외 |
 | `ProposalServiceUnitExceptionTest` | 성공·예외 | DOCX 검증 | DOCX 필수 ZIP 엔트리와 임의 파일 거부 |
-| `PlanServiceIntegrationTest` | 성공 | AI 일정 저장 | AI 원문·일정 식별자·이동시간·일자별 콘텐츠 저장 |
+| `PlanServiceIntegrationTest` | 성공 | AI 일정 저장 | AI 원문·일정 식별자·이동시간·일자별 콘텐츠 저장, 자동 제목 순번과 목록 scheduleId |
 | `PlanControllerExceptionTest` | 예외 | 일정·제안서 요청값 오류 | Body 누락, DTO validation, 페이지 범위와 잘못된 enum의 400 공통 오류 응답 |
 | `AiPlanRequestTest` | 성공 | AI 요청 계약 | visit_month·num_people·num_days와 saved/regional 콘텐츠의 snake_case 직렬화 및 한글 tags 전달 |
 | `PlanGenerationServiceUnitTest` | 성공/외부 오류 | 관광공사 분류명 변환 | 한글 분류명을 AI tags로 전달하고 변환 API 실패 시 tags를 null로 전달 |

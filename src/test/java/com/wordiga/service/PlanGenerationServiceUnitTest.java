@@ -18,11 +18,15 @@ import static org.mockito.Mockito.*;
 @ExtendWith(MockitoExtension.class)
 class PlanGenerationServiceUnitTest {
     @Mock TourismContentDetailService tourismContentDetailService;
+    @Mock RegionalContentService regionalContentService;
     @Mock TourismApiClient tourismApiClient;
     @Mock AiServerClient aiServerClient;
     @Mock PlanWriter planWriter;
     PlanGenerationService service;
-    @BeforeEach void setUp() { service = new PlanGenerationService(tourismContentDetailService, tourismApiClient, aiServerClient, planWriter); }
+    @BeforeEach void setUp() {
+        lenient().when(regionalContentService.find(any(), anyList())).thenReturn(List.of());
+        service = new PlanGenerationService(tourismContentDetailService, regionalContentService, tourismApiClient, aiServerClient, planWriter);
+    }
 
     @Test void callsAiOutsideWriterAndPersistsValidatedResponse() {
         PlanGenerateRequest request = request("126508"); AiPlanResponse response = response("126508");
@@ -30,13 +34,13 @@ class PlanGenerationServiceUnitTest {
         when(tourismApiClient.fetchClassificationNames("AC", "AC01", null))
                 .thenReturn(List.of("숙박", "호텔"));
         when(aiServerClient.generatePlan(any())).thenReturn(response);
-        when(planWriter.saveGenerated(1L, request, response)).thenReturn(PlanDetailResponse.builder().planId(9L).build());
+        when(planWriter.saveGenerated(1L, request, response, null)).thenReturn(PlanDetailResponse.builder().planId(9L).build());
 
         assertThat(service.generate(1L, request).getPlanId()).isEqualTo(9L);
         var captor = org.mockito.ArgumentCaptor.forClass(AiPlanRequest.class);
         verify(aiServerClient).generatePlan(captor.capture());
         assertThat(captor.getValue().savedContents().get(0).tags()).containsExactly("숙박", "호텔");
-        verify(planWriter).saveGenerated(1L, request, response);
+        verify(planWriter).saveGenerated(1L, request, response, null);
     }
 
     @Test void sendsKoreanClassificationNamesAndFallsBackToNullOnFailure() {
@@ -62,6 +66,23 @@ class PlanGenerationServiceUnitTest {
         verifyNoInteractions(planWriter);
     }
 
+    @Test void acceptsRegionalContentButStillRequiresEverySavedContent() {
+        PlanGenerateRequest request = request("126508");
+        TourismContentDetailResponse regional = detail("regional-1", "외암민속마을");
+        when(tourismContentDetailService.getDetail(eq("126508"), any(), any(), eq(2))).thenReturn(detail());
+        when(regionalContentService.find(eq(request), anyList())).thenReturn(List.of(regional));
+        when(aiServerClient.generatePlan(any())).thenReturn(response("126508", "regional-1"));
+
+        service.generate(1L, request);
+
+        var captor = org.mockito.ArgumentCaptor.forClass(AiPlanRequest.class);
+        verify(aiServerClient).generatePlan(captor.capture());
+        assertThat(captor.getValue().savedContents()).extracting(AiPlanRequest.Content::contentId)
+                .containsExactly("126508");
+        assertThat(captor.getValue().regionalContents()).extracting(AiPlanRequest.Content::contentId)
+                .containsExactly("regional-1");
+    }
+
     @Test void rejectsPlanLongerThanThreeDays() {
         PlanGenerateRequest request = request("A");
         request.setEndDate(request.getStartDate().plusDays(3));
@@ -75,14 +96,24 @@ class PlanGenerationServiceUnitTest {
         r.setEndDate(r.getStartDate()); r.setParticipantCount(2); r.setSelectedContentIds(List.of(ids)); return r;
     }
     private AiPlanResponse response(String id) {
-        AiPlanResponse.Content c = new AiPlanResponse.Content(); c.setSequence(1); c.setContentId(id); c.setTitle("현충사");
-        AiPlanResponse.Day d = new AiPlanResponse.Day(); d.setDayNumber(1); d.setDate(LocalDate.of(2026, 8, 20)); d.setContents(List.of(c));
+        return response(new String[]{id});
+    }
+    private AiPlanResponse response(String... ids) {
+        java.util.ArrayList<AiPlanResponse.Content> contents = new java.util.ArrayList<>();
+        for (int i = 0; i < ids.length; i++) {
+            AiPlanResponse.Content c = new AiPlanResponse.Content(); c.setSequence(i + 1); c.setContentId(ids[i]); c.setTitle(ids[i]);
+            contents.add(c);
+        }
+        AiPlanResponse.Day d = new AiPlanResponse.Day(); d.setDayNumber(1); d.setDate(LocalDate.of(2026, 8, 20)); d.setContents(contents);
         AiPlanResponse r = new AiPlanResponse(); r.setScheduleId("schedule-1"); r.setDays(List.of(d)); return r;
     }
     private TourismContentDetailResponse detail() {
+        return detail("126508", "현충사");
+    }
+    private TourismContentDetailResponse detail(String id, String title) {
         return TourismContentDetailResponse.builder().common(
                 com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto.builder()
-                        .contentId("126508").contentTypeId("12").title("현충사")
+                        .contentId(id).contentTypeId("12").title(title)
                         .lclsSystm1("AC").lclsSystm2("AC01").build()).build();
     }
 }

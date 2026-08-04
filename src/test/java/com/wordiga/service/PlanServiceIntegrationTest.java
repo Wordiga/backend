@@ -60,12 +60,28 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         budget.setTotalAmount(20_000L); budget.setPerPersonAmount(10_000L);
         budget.setBreakdown(java.util.Map.of("food", 20_000L)); ai.setEstimatedBudget(budget);
 
-        PlanDetailResponse saved = planWriter.saveGenerated(member.getId(), request, ai);
+        PlanDetailResponse saved = planWriter.saveGenerated(member.getId(), request, ai, "아산시");
 
         assertThat(saved.getScheduleId()).isEqualTo("ai-1");
         assertThat(saved.getDays().getFirst().getContents().getFirst().getTravelTimeMinutes()).isEqualTo(15);
         assertThat(saved.getEstimatedBudget().toString()).contains("food");
         assertThat(planRepository.findById(saved.getPlanId())).get().extracting(Plan::getAiResponseJson).asString().contains("ai-1");
+    }
+
+    @Test void assignsRegionalDateTitleAndSuffixAndIncludesScheduleIdInList() {
+        Member member = memberRepository.save(Member.create("title@test.com", "제목", OAuthProvider.GOOGLE, "title", null));
+        PlanGenerateRequest request = new PlanGenerateRequest();
+        request.setStartDate(LocalDate.of(2026, 8, 20)); request.setEndDate(request.getStartDate()); request.setParticipantCount(2);
+        AiPlanResponse ai = new AiPlanResponse(); ai.setScheduleId("ai-title-1"); ai.setDays(List.of());
+
+        PlanDetailResponse first = planWriter.saveGenerated(member.getId(), request, ai, "아산시");
+        ai.setScheduleId("ai-title-2");
+        PlanDetailResponse second = planWriter.saveGenerated(member.getId(), request, ai, "아산시");
+
+        assertThat(first.getTitle()).isEqualTo("아산시 0820");
+        assertThat(second.getTitle()).isEqualTo("아산시 0820 1");
+        assertThat(planService.getPlans(member.getId(), 0, 20, PlanSort.LATEST).getItems())
+                .extracting(PlanSummaryResponse::getScheduleId).containsExactly("ai-title-2", "ai-title-1");
     }
 
     private ContentDetailDto content() {

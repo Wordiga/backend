@@ -17,6 +17,7 @@ import java.util.*;
 @Service @RequiredArgsConstructor
 public class PlanGenerationService {
     private final TourismContentDetailService tourismContentDetailService;
+    private final RegionalContentService regionalContentService;
     private final TourismApiClient tourismApiClient;
     private final AiServerClient aiServerClient;
     private final PlanWriter planWriter;
@@ -26,9 +27,14 @@ public class PlanGenerationService {
         var details = request.getSelectedContentIds().stream()
                 .map(id -> tourismContentDetailService.getDetail(
                         id, request.getStartDate(), request.getAgeGroups(), request.getParticipantCount())).toList();
-        AiPlanResponse response = aiServerClient.generatePlan(AiPlanRequest.from(request, details, resolveTags(details)));
-        validateResponse(request, response);
-        return planWriter.saveGenerated(memberId, request, response);
+        var regional = regionalContentService.find(request, details);
+        List<TourismContentDetailResponse> all = new ArrayList<>(details); all.addAll(regional);
+        AiPlanResponse response = aiServerClient.generatePlan(
+                AiPlanRequest.from(request, details, regional, resolveTags(all)));
+        validateResponse(request, regional, response);
+        String sigunguCode = details.getFirst().getCommon().getLDongSignguCd();
+        String sigunguName = sigunguCode == null ? null : ChungnamSigungu.NAMES.get(sigunguCode);
+        return planWriter.saveGenerated(memberId, request, response, sigunguName);
     }
 
     private Map<String, List<String>> resolveTags(List<TourismContentDetailResponse> details) {
@@ -66,9 +72,12 @@ public class PlanGenerationService {
         if (new HashSet<>(r.getSelectedContentIds()).size() != r.getSelectedContentIds().size())
             invalid(HttpStatus.BAD_REQUEST, "콘텐츠 ID는 중복될 수 없습니다.");
     }
-    private void validateResponse(PlanGenerateRequest r, AiPlanResponse response) {
+    private void validateResponse(PlanGenerateRequest r, List<TourismContentDetailResponse> regional,
+                                  AiPlanResponse response) {
         if (response.getDays() == null || response.getDays().isEmpty()) invalid(HttpStatus.BAD_GATEWAY, "AI 일정이 비어 있습니다.");
         Set<String> selected = new HashSet<>(r.getSelectedContentIds());
+        Set<String> allowed = new HashSet<>(selected);
+        regional.forEach(detail -> allowed.add(detail.getCommon().getContentId()));
         Set<String> scheduled = new HashSet<>();
         int expectedDay = 1;
         for (AiPlanResponse.Day day : response.getDays()) {
@@ -78,10 +87,10 @@ public class PlanGenerationService {
             int sequence = 1;
             for (AiPlanResponse.Content c : day.getContents())
                 if (c.getSequence() == null || c.getSequence() != sequence++ || c.getContentId() == null
-                        || !selected.contains(c.getContentId()) || !scheduled.add(c.getContentId()))
+                        || !allowed.contains(c.getContentId()) || !scheduled.add(c.getContentId()))
                     invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 콘텐츠 순서가 올바르지 않습니다.");
         }
-        if (!scheduled.equals(selected)) invalid(HttpStatus.BAD_GATEWAY, "AI 일정에 선택 콘텐츠가 모두 포함되어야 합니다.");
+        if (!scheduled.containsAll(selected)) invalid(HttpStatus.BAD_GATEWAY, "AI 일정에 선택 콘텐츠가 모두 포함되어야 합니다.");
     }
     private void invalid(HttpStatus status, String message) { throw new ResponseStatusException(status, message); }
 }

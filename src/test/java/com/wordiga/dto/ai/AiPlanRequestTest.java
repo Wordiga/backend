@@ -31,7 +31,7 @@ class AiPlanRequestTest {
 
         var objectMapper = new ObjectMapper();
         var aiRequest = AiPlanRequest.from(
-                request, List.of(detail), Map.of("CT001", List.of("숙박", "호텔")));
+                request, List.of(detail), List.of(detail), Map.of("CT001", List.of("숙박", "호텔")));
         var json = objectMapper.readTree(objectMapper.writeValueAsString(aiRequest));
 
         assertThat(json.get("visit_month").asInt()).isEqualTo(9);
@@ -42,5 +42,6 @@ class AiPlanRequestTest {
         assertThat(json.get("saved_contents").get(0).get("latitude").decimalValue()).isEqualByComparingTo("36.4");
         assertThat(json.get("saved_contents").get(0).get("tags").get(0).asText()).isEqualTo("숙박");
         assertThat(json.get("regional_contents").isArray()).isTrue();
+        assertThat(json.get("regional_contents").get(0).get("content_id").asText()).isEqualTo("CT001");
     }
 }
