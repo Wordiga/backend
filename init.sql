@@ -69,7 +69,7 @@ CREATE TABLE plans
     ai_response_json  TEXT         NULL,
     estimated_total_amount BIGINT  NULL,
     estimated_per_person_amount BIGINT NULL,
-    ai_warnings       VARCHAR(2000) NULL,
+    estimated_budget_breakdown TEXT NULL,
     created_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at        TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );

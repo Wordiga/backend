@@ -33,11 +33,16 @@ public class PlanWriter {
                     c.getTravelDistanceMeters(), c.getEstimatedCost(), c.getMemo()));
         AiPlanResponse.EstimatedBudget budget = ai.getEstimatedBudget();
         plan.applyAiResult(ai.getScheduleId(), json(ai), budget == null ? null : budget.getTotalAmount(),
-                budget == null ? null : budget.getPerPersonAmount(), ai.getWarnings());
-        return PlanDetailResponse.from(planRepository.save(plan), ai.getWarnings() == null ? java.util.List.of() : ai.getWarnings());
+                budget == null ? null : budget.getPerPersonAmount(), budget == null ? null : json(budget.getBreakdown()));
+        return PlanDetailResponse.from(planRepository.save(plan));
     }
     private String json(AiPlanResponse response) {
         try { return objectMapper.writeValueAsString(response); }
         catch (JsonProcessingException e) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 응답을 저장할 수 없습니다.", e); }
+    }
+    private String json(Object value) {
+        if (value == null) return null;
+        try { return objectMapper.writeValueAsString(value); }
+        catch (JsonProcessingException e) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 예산 응답을 저장할 수 없습니다.", e); }
     }
 }

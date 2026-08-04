@@ -36,7 +36,7 @@ public class TourismContentDetailService {
     private final TourismSatisfactionService satisfactionService;
 
     public TourismContentDetailResponse getDetail(
-            String contentId, LocalDate visitDate, List<String> ageGroups) {
+            String contentId, LocalDate visitDate, List<String> ageGroups, Integer participantCount) {
         ContentDetailDto common = workshopDetailService.fetchCommonDetail(contentId);
         if (common == null || !CHUNGNAM_REGION_CODE.equals(common.getLDongRegnCd())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관광 콘텐츠를 찾을 수 없습니다.");
@@ -57,7 +57,23 @@ public class TourismContentDetailService {
                 .images(images.stream().map(this::toImage).toList())
                 .seasonalImages(seasonalImages)
                 .satisfaction(satisfactionService.calculate(common, visitDate, ageGroups))
+                .capacitySatisfied(capacitySatisfied(common.getContenttypeid(), intro, details, participantCount))
                 .build();
+    }
+
+    private Boolean capacitySatisfied(String contentTypeId, DetailIntroDto intro,
+                                      List<DetailInfoDto> details, Integer participantCount) {
+        if (!"32".equals(contentTypeId) || participantCount == null) return null;
+        int roomCapacity = details.stream().mapToInt(detail ->
+                number(detail.getRoommaxcount()) * Math.max(1, number(detail.getRoomcount()))).sum();
+        int capacity = roomCapacity > 0 ? roomCapacity : number(intro == null ? null : intro.getAccomcountlodging());
+        return capacity == 0 ? null : capacity >= participantCount;
+    }
+
+    private int number(String value) {
+        if (value == null) return 0;
+        var matcher = java.util.regex.Pattern.compile("\\d+").matcher(value.replace(",", ""));
+        return matcher.find() ? Integer.parseInt(matcher.group()) : 0;
     }
 
     public ContentDetailDto getCommonDetail(String contentId) {

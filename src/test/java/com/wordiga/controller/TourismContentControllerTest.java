@@ -79,7 +79,7 @@ class TourismContentControllerTest {
                 .contentId("126508")
                 .title("현충사")
                 .build();
-        when(tourismContentDetailService.getDetail(eq("126508"), any(), any()))
+        when(tourismContentDetailService.getDetail(eq("126508"), any(), any(), any()))
                 .thenReturn(TourismContentDetailResponse.builder()
                         .common(common)
                         .details(List.of())

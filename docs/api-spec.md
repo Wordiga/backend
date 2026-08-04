@@ -200,6 +200,7 @@ GET /api/v1/tourism/contents/{contentId}
 | `images` | DetailImage[] | Y | 상세 이미지와 저작권 정보 |
 | `seasonalImages` | SeasonalImage[] | Y | 촬영일을 기준으로 계절을 의미화한 사진 |
 | `satisfaction` | Satisfaction | N | 관광 수요 기반 예상 만족도 |
+| `capacitySatisfied` | Boolean | N | 숙박 콘텐츠가 참가 인원을 수용할 수 있는지 여부이며 원천 수용인원이 없으면 `null` |
 
 ### Response Body - CommonDetail
 
@@ -596,6 +597,7 @@ GET /api/v1/tourism/contents/{contentId}
 ### Validation
 
 - `participantCount`는 1~50이어야 합니다.
+- 숙박 콘텐츠는 객실별 최대 인원과 객실 수, 또는 전체 수용 인원으로 `capacitySatisfied`를 계산합니다.
 - 충청남도 콘텐츠가 아니면 404를 반환합니다.
 
 ### 산출식 및 구현 계획
@@ -924,7 +926,7 @@ POST /api/v1/plans/generate
 | `estimatedBudget.totalAmount` | Long | N | 전체 예상 금액 |
 | `estimatedBudget.perPersonAmount` | Long | N | 1인당 예상 금액 |
 | `estimatedBudget.currency` | String | N | 통화 코드 |
-| `estimatedBudget.breakdown` | BudgetBreakdown[] | N | 항목별 예상 금액 |
+| `estimatedBudget.breakdown` | Object | N | AI 서버가 제공한 항목별 예상 금액 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -943,7 +945,6 @@ POST /api/v1/plans/generate
 | `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m) |
 | `days[].contents[].estimatedCost` | Long | N | 예상 비용 |
 | `days[].contents[].memo` | String | N | 일정 메모 |
-| `warnings` | String[] | Y | 데이터 부족 또는 휴무 경고 |
 | `createdAt` | OffsetDateTime | Y | 저장 시각 |
 
 ### Response Example
@@ -986,7 +987,6 @@ POST /api/v1/plans/generate
       ]
     }
   ],
-  "warnings": [],
   "createdAt": "2026-07-28T15:40:00+09:00"
 }
 ```
@@ -1012,7 +1012,11 @@ POST /api/v1/plans/generate
 
 ### 구현 계획
 
-- 백엔드는 선택 콘텐츠의 타입별 상세정보, 좌표, 운영정보와 만족도를 AI 서버에 HTTP POST로 전달합니다.
+- AI 서버에는 `visit_month`, `num_people`, `num_days`, `saved_content_ids`, `saved_contents`,
+  `regional_contents`, `age_groups`, `gender_ratio`, `preferences` snake_case 필드로 전달합니다.
+- `saved_contents`는 콘텐츠 ID·제목·카테고리·주소·좌표·시군구·운영정보·분류 태그·연락처·개요·이미지·평균 체류시간·행사기간을 포함합니다.
+- 아직 지역 보충 후보 정책이 확정되지 않아 `regional_contents`는 빈 배열로 전달합니다.
+- 백엔드는 선택 콘텐츠의 타입별 상세정보, 좌표와 운영정보를 AI 서버에 HTTP POST로 전달합니다.
 - 사용자 입력 예산은 받지 않습니다.
 - 백엔드는 콘텐츠별 `useFee`, 축제 이용요금, 숙박 객실 최소요금, 입장료·관람료·이용료 반복정보를 비용 원문과 함께 AI 서버에 전달합니다.
 - 콘텐츠 비용은 `amount`, `unit`, `quantity`, `calculatedAmount`, 원천 필드·원문과 평균가격 대체 여부를 포함합니다.
@@ -1032,7 +1036,7 @@ POST /api/v1/plans/generate
 | `39` | 음식점 | 15,000원 | 1인 |
 - AI 서버 호출은 DB 트랜잭션 밖에서 수행하고 연결 2초·응답 45초 타임아웃을 적용합니다.
 - AI 응답의 날짜·순서·콘텐츠 ID를 검증한 뒤 원문 JSON과 조회용 데이터를 5초 제한의 단일 트랜잭션으로 저장합니다.
-- `memo`와 `warnings`는 AI 서버 생성값이며 운영 안내와 데이터 부족 정보를 그대로 저장합니다.
+- `memo`는 AI 서버 생성값이며 콘텐츠별 운영 안내를 저장합니다.
 
 ## 8. 내 일정 목록 조회
 
@@ -1175,7 +1179,6 @@ GET /api/v1/plans/{planId}
 | `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m) |
 | `days[].contents[].estimatedCost` | Long | N | 예상 비용 |
 | `days[].contents[].memo` | String | N | 일정 메모 |
-| `warnings` | String[] | Y | 경고 목록 |
 | `createdAt` | LocalDateTime | Y | 생성 시각 |
 | `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
@@ -1214,7 +1217,6 @@ GET /api/v1/plans/{planId}
       ]
     }
   ],
-  "warnings": [],
   "createdAt": "2026-07-28T15:40:00+09:00",
   "updatedAt": "2026-07-28T15:40:00+09:00"
 }
@@ -1326,7 +1328,7 @@ PUT /api/v1/plans/{planId}/contents
 | `startDate` | LocalDate | Y | 시작일 |
 | `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedBudget` | EstimatedBudget | N | AI 재계산 전 `null` |
+| `estimatedBudget` | EstimatedBudget | N | 마지막 AI 생성 시 저장된 예상 예산이며 재생성 전까지 유지 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1335,7 +1337,6 @@ PUT /api/v1/plans/{planId}/contents
 | `days[].contents[].contentId` | String | Y | 콘텐츠 ID |
 | `days[].contents[].title` | String | Y | 콘텐츠명 |
 | `days[].contents[].travelTimeMinutes` | Integer | N | AI 재계산 전 `null` |
-| `warnings` | String[] | Y | 이동시간 재계산 경고 |
 | `createdAt` | LocalDateTime | Y | 생성 시각 |
 | `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
@@ -1400,9 +1401,6 @@ PUT /api/v1/plans/{planId}/contents
         }
       ]
     }
-  ],
-  "warnings": [
-    "콘텐츠 배치가 변경되어 이동시간을 다시 계산해야 합니다."
   ],
   "updatedAt": "2026-07-28T16:10:00+09:00"
 }

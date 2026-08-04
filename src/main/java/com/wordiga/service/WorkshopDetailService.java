@@ -84,45 +84,6 @@ public class WorkshopDetailService {
         return callApi(uri, DetailImageDto.class);
     }
 
-    /**
-     * 행사정보 조회 (searchFestival2)
-     */
-    public List<FestivalListDto> fetchFestivals(int pageNo, int numOfRows,
-                                                String eventStartDate, String eventEndDate,
-                                                String lDongSignguCd,
-                                                String lclsSystm1, String lclsSystm2, String lclsSystm3) {
-        Map<String, String> params = putCommonParams(pageNo, numOfRows);
-        params.put("arrange", "C");
-        params.put("lDongRegnCd", "44"); // 충남 고정
-        params.put("eventStartDate", eventStartDate);
-        putIfPresent(params, "eventEndDate", eventEndDate);
-        putIfPresent(params, "lDongSignguCd", lDongSignguCd);
-        putIfPresent(params, "lclsSystm1", lclsSystm1);
-        putIfPresent(params, "lclsSystm2", lclsSystm2);
-        putIfPresent(params, "lclsSystm3", lclsSystm3);
-
-        URI uri = buildUri(baseUrl + "/searchFestival2", params);
-        return callApi(uri, FestivalListDto.class);
-    }
-
-    /**
-     * 숙박정보 조회 (searchStay2)
-     */
-    public List<StayListDto> fetchStays(int pageNo, int numOfRows,
-                                        String lDongSignguCd,
-                                        String lclsSystm1, String lclsSystm2, String lclsSystm3) {
-        Map<String, String> params = putCommonParams(pageNo, numOfRows);
-        params.put("arrange", "C");
-        params.put("lDongRegnCd", "44"); // 충남 고정
-        putIfPresent(params, "lDongSignguCd", lDongSignguCd);
-        putIfPresent(params, "lclsSystm1", lclsSystm1);
-        putIfPresent(params, "lclsSystm2", lclsSystm2);
-        putIfPresent(params, "lclsSystm3", lclsSystm3);
-
-        URI uri = buildUri(baseUrl + "/searchStay2", params);
-        return callApi(uri, StayListDto.class);
-    }
-
     private <T> List<T> callApi(URI uri, Class<T> itemType) {
         log.info("[TourAPI Detail] URI: {}", uri);
         try {
@@ -166,7 +127,8 @@ public class WorkshopDetailService {
             return Collections.emptyList();
         } catch (Exception e) {
             log.error("[TourAPI Detail 파싱] 실패: {}", e.getMessage());
-            return Collections.emptyList();
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "관광공사 API 응답을 처리할 수 없습니다.", e);
         }
     }
 

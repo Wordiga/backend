@@ -33,9 +33,9 @@ class WishAuthenticationControllerTest {
     @Test void returnsCommonUnauthorizedResponseWithoutJwt() throws Exception {
         mockMvc.perform(get("/api/v1/wishes/folders"))
                 .andExpect(status().isUnauthorized())
-                .andExpect(content().contentType("application/problem+json"))
+                .andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
-                .andExpect(jsonPath("$.title").value("인증 실패"))
-                .andExpect(jsonPath("$.detail").value("로그인해 주세요."));
+                .andExpect(jsonPath("$.message").value("로그인해 주세요."))
+                .andExpect(jsonPath("$.fieldErrors").isArray());
     }
 }

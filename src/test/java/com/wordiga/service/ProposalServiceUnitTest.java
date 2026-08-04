@@ -30,7 +30,7 @@ class ProposalServiceUnitTest {
     }
     @Test void createsStoresAndListsProposal() throws Exception {
         byte[] docx = docx(); ProposalCreateRequest request = new ProposalCreateRequest(); request.setProposalTitle("제안서");
-        when(planReader.read(1L, 9L)).thenReturn(new PlanReader.Snapshot(plan, com.wordiga.dto.plan.PlanDetailResponse.builder().build()));
+        when(planReader.read(1L, 9L)).thenReturn(new PlanReader.Snapshot(plan, com.wordiga.dto.plan.PlanDetailResponse.from(plan)));
         when(aiServerClient.generateProposal(any())).thenReturn(docx);
         when(writer.save(eq(plan), anyString(), eq("제안서.docx"), eq((long) docx.length), any()))
                 .thenAnswer(inv -> Proposal.create(plan, inv.getArgument(1), inv.getArgument(2), inv.getArgument(3), inv.getArgument(4)));
@@ -40,6 +40,10 @@ class ProposalServiceUnitTest {
 
         assertThat(response.getPreviewUrl()).isEqualTo("https://signed");
         verify(storage).put(anyString(), same(docx));
+        ArgumentCaptor<com.wordiga.dto.ai.AiProposalRequest> payload = ArgumentCaptor.forClass(com.wordiga.dto.ai.AiProposalRequest.class);
+        verify(aiServerClient).generateProposal(payload.capture());
+        assertThat(payload.getValue().getVisitMonth()).isEqualTo(LocalDate.now().getMonthValue());
+        assertThat(payload.getValue().getNumPeople()).isEqualTo(2);
     }
     private byte[] docx() throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();

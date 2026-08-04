@@ -66,7 +66,7 @@ if (token) {
 ```javascript
 const token = localStorage.getItem('token');
 
-const response = await fetch('/api/v1/wishlist', {
+const response = await fetch('/api/v1/wishes/folders', {
   headers: { 'Authorization': `Bearer ${token}` }
 });
 
@@ -152,9 +152,9 @@ Role 분리 없이 **로그인 여부(JWT 유효성)**로만 제어.
 
 | 엔드포인트 | 접근 권한 |
 |------------|-----------|
-| `/api/v1/products/**` | 비회원 가능 |
-| `/api/v1/wishlist/**` | 회원만 가능 |
-| `/api/v1/orders/**` | 회원만 가능 |
+| `/api/v1/tourism/contents/**` | 비회원 가능 |
+| `/api/v1/wishes/**` | 회원만 가능 |
+| `/api/v1/plans/**` | 회원만 가능 |
 
 ---
 
@@ -203,9 +203,9 @@ GET /oauth2/authorization/kakao
 GET /oauth2/authorization/google
 
 ### 인증 필요 API
-GET /api/v1/wishlist
+GET /api/v1/wishes/folders
 Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
 
 ### 인증 불필요 API
-GET /api/v1/products
+GET /api/v1/tourism/contents
 ```

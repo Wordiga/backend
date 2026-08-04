@@ -20,6 +20,7 @@
 
 ## Working Principles
 
+- Before modifying code, summarize the understood requirements and change scope, then wait for the user's explicit confirmation.
 - Follow Ponytail's ladder: avoid unnecessary work, reuse existing code, prefer Java/Spring/platform features, then installed dependencies, and add only the minimum implementation required.
 - Read and trace the affected flow before choosing the smallest solution.
 - Do not add abstractions, dependencies, configuration, or behavior outside the requested scope.

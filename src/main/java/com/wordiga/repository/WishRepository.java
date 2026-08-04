@@ -12,7 +12,7 @@ public interface WishRepository extends JpaRepository<Wish, Long> {
 
     boolean existsByMemberIdAndContentId(Long memberId, String contentId);
 
-    List<Wish> findByMemberIdAndFolderNameOrderByCreatedAtDesc(Long memberId, String folderName);
+    List<Wish> findByMemberIdAndFolderNameOrderByCreatedAtDescIdDesc(Long memberId, String folderName);
 
     List<Wish> findByMemberIdOrderByCreatedAtDescIdDesc(Long memberId);
 

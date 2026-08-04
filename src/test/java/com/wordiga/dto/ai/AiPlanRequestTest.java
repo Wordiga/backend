@@ -1,68 +1,42 @@
 package com.wordiga.dto.ai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.dto.plan.PlanGenerateRequest;
-import com.wordiga.dto.tourismContent.detail.*;
+import com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto;
+import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
+import com.wordiga.dto.tourismContent.detail.TourismIntroDetailDto;
 import org.junit.jupiter.api.Test;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AiPlanRequestTest {
     @Test
-    void calculatesActualMinimumAndFallbackMaximum() {
-        TourismContentDetailResponse museum = detail("museum", "14", "성인 3,000원", List.of());
-        TourismContentDetailResponse food = detail("food", "39", null, List.of());
-
-        AiPlanRequest result = AiPlanRequest.from("request", request(2), List.of(museum, food));
-
-        assertThat(result.getContents().getFirst().getCost()).satisfies(cost -> {
-            assertThat(cost.getUnit()).isEqualTo(AiPlanContent.Unit.PERSON);
-            assertThat(cost.getCalculatedAmount()).isEqualTo(6_000L);
-            assertThat(cost.isFallbackApplied()).isFalse();
-        });
-        assertThat(result.getContents().get(1).getCost()).satisfies(cost -> {
-            assertThat(cost.getCalculatedAmount()).isNull();
-            assertThat(cost.getFallbackAmount()).isEqualTo(15_000L);
-            assertThat(cost.getFallbackCalculatedAmount()).isEqualTo(30_000L);
-            assertThat(cost.isFallbackApplied()).isTrue();
-        });
-        assertThat(result.getTotalCostRange().minimumAmount()).isEqualTo(6_000L);
-        assertThat(result.getTotalCostRange().maximumAmount()).isEqualTo(36_000L);
-    }
-
-    @Test
-    void calculatesLodgingRoomsAndUsesCheapestCollectedRate() {
-        TourismDetailInfoDto room = TourismDetailInfoDto.builder().roomMaxCount("2명")
-                .roomOffSeasonWeekdayMinFee("80,000원").roomPeakSeasonWeekendMinFee("120,000원").build();
-
-        AiPlanContent result = AiPlanContent.from(detail("lodging", "32", null, List.of(room)), 3);
-
-        assertThat(result.getCost().getUnit()).isEqualTo(AiPlanContent.Unit.ROOM);
-        assertThat(result.getCost().getQuantity()).isEqualTo(2);
-        assertThat(result.getCost().getAmount()).isEqualTo(80_000L);
-        assertThat(result.getCost().getCalculatedAmount()).isEqualTo(160_000L);
-    }
-
-    @Test
-    void supportsFreeAndTypeDefaults() {
-        assertThat(AiPlanContent.from(detail("free", "28", "무료", List.of()), 4)
-                .getCost().getCalculatedAmount()).isZero();
-        assertThat(AiPlanContent.from(detail("course", "25", null, List.of()), 4)
-                .getCost().getFallbackCalculatedAmount()).isZero();
-    }
-
-    private PlanGenerateRequest request(int participants) {
+    void serializesConfirmedAiRequestSchema() throws Exception {
         PlanGenerateRequest request = new PlanGenerateRequest();
-        request.setParticipantCount(participants);
-        return request;
-    }
+        request.setStartDate(LocalDate.of(2026, 9, 1));
+        request.setEndDate(LocalDate.of(2026, 9, 2));
+        request.setParticipantCount(25);
+        request.setAgeGroups(List.of("30대", "40대"));
+        request.setSelectedContentIds(List.of("CT001"));
+        TourismContentDetailResponse detail = TourismContentDetailResponse.builder()
+                .common(TourismCommonDetailDto.builder().contentId("CT001").contentTypeId("32")
+                        .title("숙소").addr1("충남 태안군").mapx(BigDecimal.valueOf(126.3))
+                        .mapy(BigDecimal.valueOf(36.4)).lDongSignguCd("380").build())
+                .intro(TourismIntroDetailDto.builder().checkInTime("15:00").build()).build();
 
-    private TourismContentDetailResponse detail(String id, String type, String useFee,
-                                                List<TourismDetailInfoDto> details) {
-        return TourismContentDetailResponse.builder()
-                .common(TourismCommonDetailDto.builder().contentId(id).contentTypeId(type).build())
-                .intro(TourismIntroDetailDto.builder().useFee(useFee).build())
-                .details(details).build();
+        var json = new ObjectMapper().readTree(new ObjectMapper().writeValueAsString(
+                AiPlanRequest.from(request, List.of(detail))));
+
+        assertThat(json.get("visit_month").asInt()).isEqualTo(9);
+        assertThat(json.get("num_people").asInt()).isEqualTo(25);
+        assertThat(json.get("num_days").asInt()).isEqualTo(2);
+        assertThat(json.get("saved_content_ids").get(0).asText()).isEqualTo("CT001");
+        assertThat(json.get("saved_contents").get(0).get("category").asText()).isEqualTo("accommodation");
+        assertThat(json.get("saved_contents").get(0).get("latitude").decimalValue()).isEqualByComparingTo("36.4");
+        assertThat(json.get("regional_contents").isArray()).isTrue();
     }
 }

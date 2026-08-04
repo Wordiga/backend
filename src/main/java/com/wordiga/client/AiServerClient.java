@@ -22,7 +22,7 @@ public class AiServerClient {
     }
     public AiPlanResponse generatePlan(AiPlanRequest request) {
         try {
-            AiPlanResponse response = client.post().uri("/internal/v1/itineraries/generate")
+            AiPlanResponse response = client.post().uri("/api/v1/schedule/generate")
                     .contentType(MediaType.APPLICATION_JSON).body(request).retrieve().body(AiPlanResponse.class);
             if (response == null) throw invalid();
             return response;

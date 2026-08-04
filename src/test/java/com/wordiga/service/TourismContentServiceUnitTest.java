@@ -100,6 +100,7 @@ class TourismContentServiceUnitTest {
                 ListType.POPULAR, null, null, null, null, 0, 20);
 
         assertThat(result.getItems()).hasSize(10);
+        assertThat(result.getItems().getFirst().getRecommendationScore()).isEqualByComparingTo("86");
         assertThat(result.getItems()).extracting("categoryName")
                 .containsExactly("관광지", "문화시설", "행사/공연/축제", "여행코스", "레포츠",
                         "숙박", "쇼핑", "음식점", "기타", "기타");
