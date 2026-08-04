@@ -52,13 +52,21 @@ public class Wish {
     @Column(name = "folder_name", nullable = false, length = 50)
     private String folderName;
 
+    @Column(name = "lcls_system1_code", length = 20)
+    private String lclsSystem1Code;
+    @Column(name = "lcls_system2_code", length = 20)
+    private String lclsSystem2Code;
+    @Column(name = "lcls_system3_code", length = 20)
+    private String lclsSystem3Code;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
     public static Wish create(Long memberId, String contentId, String contentTypeId,
                               String title, String firstimage, String addr1,
                               BigDecimal mapx, BigDecimal mapy,
-                              String sigunguCode, String sigunguName, String folderName) {
+                              String sigunguCode, String sigunguName, String folderName,
+                              String lclsSystem1Code, String lclsSystem2Code, String lclsSystem3Code) {
         return Wish.builder()
                 .memberId(memberId)
                 .contentId(contentId)
@@ -71,7 +79,17 @@ public class Wish {
                 .sigunguCode(sigunguCode)
                 .sigunguName(sigunguName)
                 .folderName(folderName != null ? folderName : "기본 위시리스트")
+                .lclsSystem1Code(lclsSystem1Code).lclsSystem2Code(lclsSystem2Code)
+                .lclsSystem3Code(lclsSystem3Code)
                 .build();
+    }
+
+    public static Wish create(Long memberId, String contentId, String contentTypeId,
+                              String title, String firstimage, String addr1,
+                              BigDecimal mapx, BigDecimal mapy,
+                              String sigunguCode, String sigunguName, String folderName) {
+        return create(memberId, contentId, contentTypeId, title, firstimage, addr1, mapx, mapy,
+                sigunguCode, sigunguName, folderName, null, null, null);
     }
 
     @PrePersist

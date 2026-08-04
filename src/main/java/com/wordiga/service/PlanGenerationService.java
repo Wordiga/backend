@@ -71,6 +71,11 @@ public class PlanGenerationService {
             invalid(HttpStatus.BAD_REQUEST, "일정 기간은 1~3일이어야 합니다.");
         if (new HashSet<>(r.getSelectedContentIds()).size() != r.getSelectedContentIds().size())
             invalid(HttpStatus.BAD_REQUEST, "콘텐츠 ID는 중복될 수 없습니다.");
+        if (r.getVisitMonth() != null && r.getVisitMonth() != r.getStartDate().getMonthValue())
+            invalid(HttpStatus.BAD_REQUEST, "방문 월은 시작일의 월과 같아야 합니다.");
+        long maximumNights = ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate());
+        if (r.getStayNights() != null && r.getStayNights() > maximumNights)
+            invalid(HttpStatus.BAD_REQUEST, "숙박 수는 일정 기간보다 클 수 없습니다.");
     }
     private void validateResponse(PlanGenerateRequest r, List<TourismContentDetailResponse> regional,
                                   AiPlanResponse response) {

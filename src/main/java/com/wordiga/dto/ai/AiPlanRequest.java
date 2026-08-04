@@ -15,11 +15,13 @@ public record AiPlanRequest(
         @JsonProperty("visit_month") int visitMonth,
         @JsonProperty("num_people") int numPeople,
         @JsonProperty("num_days") int numDays,
+        @JsonProperty("num_nights") int numNights,
         @JsonProperty("saved_content_ids") List<String> savedContentIds,
         @JsonProperty("saved_contents") List<Content> savedContents,
         @JsonProperty("regional_contents") List<Content> regionalContents,
         @JsonProperty("age_groups") List<String> ageGroups,
         @JsonProperty("gender_ratio") Object genderRatio,
+        @JsonProperty("monthly_weather") MonthlyWeather monthlyWeather,
         Object preferences) {
 
     public static AiPlanRequest from(PlanGenerateRequest request, List<TourismContentDetailResponse> details) {
@@ -30,9 +32,12 @@ public record AiPlanRequest(
                                      List<TourismContentDetailResponse> regionalDetails,
                                      Map<String, List<String>> tagsByContentId) {
         return new AiPlanRequest(
-                request.getStartDate().getMonthValue(),
+                request.getVisitMonth() == null ? request.getStartDate().getMonthValue() : request.getVisitMonth(),
                 request.getParticipantCount(),
                 (int) ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1,
+                request.getStayNights() == null
+                        ? (int) ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate())
+                        : request.getStayNights(),
                 request.getSelectedContentIds(),
                 savedDetails.stream().map(detail -> Content.from(
                         detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
@@ -40,6 +45,7 @@ public record AiPlanRequest(
                         detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
                 request.getAgeGroups(),
                 null,
+                MonthlyWeather.from(savedDetails.getFirst().getMonthlyWeather()),
                 null);
     }
 
@@ -60,7 +66,8 @@ public record AiPlanRequest(
             @JsonProperty("avg_visit_duration_min") Integer averageVisitDurationMinutes,
             Double dist,
             String eventstartdate,
-            String eventenddate) {
+            String eventenddate,
+            @JsonProperty("is_outdoor") Boolean isOutdoor) {
 
         static Content from(TourismContentDetailResponse detail, List<String> tags) {
             var common = detail.getCommon();
@@ -70,7 +77,18 @@ public record AiPlanRequest(
                     join(common.getAddr1(), common.getAddr2()), common.getMapy(), common.getMapx(),
                     common.getLDongSignguCd(), operatingHours(intro), tags,
                     common.getTel(), truncate(common.getOverview()), common.getFirstImage(), duration(intro), null,
-                    intro == null ? null : intro.getEventStartDate(), intro == null ? null : intro.getEventEndDate());
+                    intro == null ? null : intro.getEventStartDate(), intro == null ? null : intro.getEventEndDate(),
+                    outdoor(tags));
+        }
+
+        private static Boolean outdoor(List<String> tags) {
+            if (tags == null || tags.isEmpty()) return null;
+            String joined = String.join(" ", tags);
+            if (java.util.stream.Stream.of("실내", "박물관", "미술관", "전시", "공연", "숙박", "음식점")
+                    .anyMatch(joined::contains)) return false;
+            if (java.util.stream.Stream.of("자연", "야외", "해수욕장", "산", "공원", "레포츠", "축제")
+                    .anyMatch(joined::contains)) return true;
+            return null;
         }
 
         private static String category(String type) {
@@ -114,4 +132,17 @@ public record AiPlanRequest(
 
     public record OperatingHours(String open, String close,
                                  @JsonProperty("closed_days") List<String> closedDays, String raw) { }
+
+    public record MonthlyWeather(
+            @JsonProperty("target_month") Integer targetMonth,
+            @JsonProperty("estimated_average_temperature_celsius") java.math.BigDecimal averageTemperature,
+            @JsonProperty("estimated_monthly_precipitation_millimeters") java.math.BigDecimal precipitation,
+            @JsonProperty("historical_years") Integer historicalYears,
+            String basis) {
+        static MonthlyWeather from(com.wordiga.dto.tourismContent.detail.MonthlyWeatherDto source) {
+            return source == null ? null : new MonthlyWeather(source.getTargetMonth(),
+                    source.getEstimatedAverageTemperatureCelsius(),
+                    source.getEstimatedMonthlyPrecipitationMillimeters(), source.getHistoricalYears(), source.getBasis());
+        }
+    }
 }

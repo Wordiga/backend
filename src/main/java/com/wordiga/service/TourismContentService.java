@@ -34,18 +34,39 @@ public class TourismContentService {
 
     private final TourismApiClient tourismApiClient;
     private final TourismProperties tourismProperties;
+    private final RelatedTourismContentService relatedTourismContentService;
+    private final PersonalizedTourismContentService personalizedTourismContentService;
+    private final TourismContentDetailService detailService;
 
     public TourismContentListResponse getContentList(
             ListType type, LocalDate visitDate, String keyword, String contentTypeId,
             String lDongSignguCd, int page, int size) {
+        return getContentList(null, type, visitDate, keyword, contentTypeId, lDongSignguCd,
+                null, null, null, null, page, size);
+    }
+
+    public TourismContentListResponse getContentList(
+            Long memberId, ListType type, LocalDate visitDate, String keyword, String contentTypeId,
+            String lDongSignguCd, String referenceContentId, Boolean capacitySatisfied,
+            Integer participantCount, List<String> ageGroups, int page, int size) {
+        if (type == ListType.RELATED) {
+            if (referenceContentId == null || referenceContentId.isBlank())
+                throw new org.springframework.web.server.ResponseStatusException(
+                        org.springframework.http.HttpStatus.BAD_REQUEST, "연관 추천 기준 콘텐츠 ID가 필요합니다.");
+            return relatedTourismContentService.get(referenceContentId, visitDate, ageGroups, page, size);
+        }
+        if (type == ListType.PERSONALIZED)
+            return personalizedTourismContentService.get(memberId, visitDate, page, size);
         if (keyword != null && !keyword.isBlank()) {
-            return search(keyword.trim(), contentTypeId, lDongSignguCd, page, size);
+            return filterCapacity(search(keyword.trim(), contentTypeId, lDongSignguCd, page, size),
+                    capacitySatisfied, participantCount);
         }
 
         LocalDate targetDate = visitDate == null ? LocalDate.now() : visitDate;
         List<ScoredCandidate> candidates = switch (type) {
             case POPULAR -> fetchPopularCandidates();
             case SEASONAL -> fetchSeasonalCandidates(targetDate);
+            default -> throw new IllegalStateException("지원하지 않는 추천 타입입니다.");
         };
 
         List<ScoredCandidate> filtered = candidates.stream()
@@ -60,7 +81,20 @@ public class TourismContentService {
                 )
                 .values().stream().toList();
 
-        return page(filtered, type, page, size);
+        return filterCapacity(page(filtered, type, page, size), capacitySatisfied, participantCount);
+    }
+
+    private TourismContentListResponse filterCapacity(TourismContentListResponse response,
+                                                       Boolean required, Integer participantCount) {
+        if (!Boolean.TRUE.equals(required)) return response;
+        if (participantCount == null) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "수용 가능 숙소 필터에는 참가 인원이 필요합니다.");
+        List<TourismContentDto> items = response.getItems().stream()
+                .filter(item -> "32".equals(item.getContentTypeId()))
+                .filter(item -> Boolean.TRUE.equals(detailService.capacitySatisfied(item.getContentId(), participantCount)))
+                .toList();
+        return TourismContentListResponse.builder().items(items).page(response.getPage()).size(response.getSize())
+                .hasNext(response.isHasNext()).build();
     }
 
     private TourismContentListResponse search(

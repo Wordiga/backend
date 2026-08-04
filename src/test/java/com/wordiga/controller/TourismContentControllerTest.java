@@ -46,7 +46,7 @@ class TourismContentControllerTest {
                 .title("현충사")
                 .build();
         when(tourismContentService.getContentList(
-                any(), any(), any(), any(), any(), eq(0), eq(10)))
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
                 .thenReturn(TourismContentListResponse.builder()
                         .items(List.of(item))
                         .page(0)

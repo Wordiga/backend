@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -37,16 +38,22 @@ public class TourismContentController implements TourismContentApi {
 
     @GetMapping
     public ResponseEntity<TourismContentListResponse> getTourismContentList(
+            @AuthenticationPrincipal Long memberId,
             @RequestParam(value = "type", defaultValue = "POPULAR") ListType type,
             @RequestParam(required = false) LocalDate visitDate,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String contentTypeId,
             @RequestParam(required = false) String lDongSignguCd,
+            @RequestParam(required = false) String referenceContentId,
+            @RequestParam(required = false) Boolean capacitySatisfied,
+            @RequestParam(required = false) Integer participantCount,
+            @RequestParam(required = false) List<String> ageGroups,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(tourismContentService.getContentList(
-                type, visitDate, keyword, contentTypeId, lDongSignguCd, page, size));
+                memberId, type, visitDate, keyword, contentTypeId, lDongSignguCd, referenceContentId,
+                capacitySatisfied, participantCount, ageGroups, page, size));
     }
 
     @GetMapping("/{contentId}")

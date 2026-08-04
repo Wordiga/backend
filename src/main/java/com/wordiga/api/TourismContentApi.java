@@ -23,11 +23,16 @@ public interface TourismContentApi {
     @Operation(summary = "관광 콘텐츠 조회",
             description = "방문일과 검색 조건에 따라 충청남도 관광 콘텐츠를 조회합니다.")
     ResponseEntity<TourismContentListResponse> getTourismContentList(
-            @Parameter(description = "추천 타입 (SEASONAL / POPULAR)") ListType type,
+            Long memberId,
+            @Parameter(description = "추천 타입 (SEASONAL / POPULAR / PERSONALIZED / RELATED)") ListType type,
             LocalDate visitDate,
             String keyword,
             String contentTypeId,
             String lDongSignguCd,
+            String referenceContentId,
+            Boolean capacitySatisfied,
+            Integer participantCount,
+            List<String> ageGroups,
             @Min(0) int page,
             @Min(1) @Max(50) int size
     );

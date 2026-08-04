@@ -55,7 +55,8 @@ public class WishService {
                 parseCoordinate(content.getMapy()),
                 content.getLDongSignguCd(),
                 sigunguName,
-                folderName
+                folderName,
+                content.getLclsSystm1(), content.getLclsSystm2(), content.getLclsSystm3()
         );
 
         Wish saved = wishRepository.save(wish);

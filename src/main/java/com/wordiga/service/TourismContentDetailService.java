@@ -34,6 +34,7 @@ public class TourismContentDetailService {
     private final TourismApiClient tourismApiClient;
     private final TourismDetailMapper detailMapper;
     private final TourismSatisfactionService satisfactionService;
+    private final MonthlyWeatherService monthlyWeatherService;
 
     public TourismContentDetailResponse getDetail(
             String contentId, LocalDate visitDate, List<String> ageGroups, Integer participantCount) {
@@ -58,6 +59,8 @@ public class TourismContentDetailService {
                 .seasonalImages(seasonalImages)
                 .satisfaction(satisfactionService.calculate(common, visitDate, ageGroups))
                 .capacitySatisfied(capacitySatisfied(common.getContenttypeid(), intro, details, participantCount))
+                .monthlyWeather(monthlyWeatherService.estimate(common.getLDongSignguCd(),
+                        visitDate == null ? LocalDate.now() : visitDate))
                 .build();
     }
 
@@ -82,6 +85,13 @@ public class TourismContentDetailService {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관광 콘텐츠를 찾을 수 없습니다.");
         }
         return common;
+    }
+
+    public Boolean capacitySatisfied(String contentId, Integer participantCount) {
+        ContentDetailDto common = getCommonDetail(contentId);
+        DetailIntroDto intro = workshopDetailService.fetchIntroDetail(contentId, common.getContenttypeid());
+        List<DetailInfoDto> details = workshopDetailService.fetchRepeatInfo(contentId, common.getContenttypeid(), 1, 100);
+        return capacitySatisfied(common.getContenttypeid(), intro, details, participantCount);
     }
 
     private List<SeasonalImageDto> seasonalImages(ContentDetailDto common, List<DetailImageDto> fallback) {
