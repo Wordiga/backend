@@ -27,7 +27,7 @@ public class PlanController implements PlanApi {
 
     @PostMapping("/generate")
     public ResponseEntity<PlanDetailResponse> generatePlan(@CurrentMemberId Long memberId,
-                                                            @RequestBody PlanGenerateRequest request) {
+                                                            @Valid @RequestBody PlanGenerateRequest request) {
         return ResponseEntity.ok(planGenerationService.generate(memberId, request));
     }
 
@@ -44,12 +44,12 @@ public class PlanController implements PlanApi {
     }
     @PatchMapping("/{planId}")
     public ResponseEntity<PlanDetailResponse> updatePlan(@CurrentMemberId Long memberId, @PathVariable Long planId,
-                                                         @RequestBody PlanUpdateRequest request) {
+                                                         @Valid @RequestBody PlanUpdateRequest request) {
         return ResponseEntity.ok(planService.updatePlan(memberId, planId, request));
     }
     @PutMapping("/{planId}/contents")
     public ResponseEntity<PlanDetailResponse> updateContents(@CurrentMemberId Long memberId, @PathVariable Long planId,
-                                                              @RequestBody PlanContentsUpdateRequest request) {
+                                                              @Valid @RequestBody PlanContentsUpdateRequest request) {
         return ResponseEntity.ok(planService.updateContents(memberId, planId, request));
     }
     @DeleteMapping("/{planId}")
@@ -60,7 +60,7 @@ public class PlanController implements PlanApi {
 
     @PostMapping("/{planId}/proposals")
     public ResponseEntity<ProposalResponse> createProposal(@CurrentMemberId Long memberId, @PathVariable Long planId,
-                                                            @RequestBody ProposalCreateRequest request) {
+                                                            @Valid @RequestBody ProposalCreateRequest request) {
         return ResponseEntity.ok(proposalService.create(memberId, planId, request));
     }
 

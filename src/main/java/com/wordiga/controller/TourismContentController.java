@@ -55,6 +55,6 @@ public class TourismContentController implements TourismContentApi {
             @RequestParam(required = false) LocalDate visitDate,
             @RequestParam(required = false) List<String> ageGroups,
             @RequestParam(required = false) Integer participantCount) {
-        return ResponseEntity.ok(tourismContentDetailService.getDetail(contentId, visitDate, ageGroups));
+        return ResponseEntity.ok(tourismContentDetailService.getDetail(contentId, visitDate, ageGroups, participantCount));
     }
 }

@@ -51,8 +51,9 @@ public class Plan extends BaseTimeEntity {
     @Column(name = "estimated_per_person_amount")
     private Long estimatedPerPersonAmount;
 
-    @Column(name = "ai_warnings", length = 2000)
-    private String aiWarnings;
+    @Lob
+    @Column(name = "estimated_budget_breakdown")
+    private String estimatedBudgetBreakdown;
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanContent> planContents = new ArrayList<>();
@@ -78,7 +79,10 @@ public class Plan extends BaseTimeEntity {
 
     public void update(String title, Integer participantCount) {
         if (title != null) this.title = title.strip();
-        if (participantCount != null) this.participantCount = participantCount;
+        if (participantCount != null) {
+            this.participantCount = participantCount;
+            if (estimatedPerPersonAmount != null) this.estimatedTotalAmount = estimatedPerPersonAmount * participantCount;
+        }
     }
 
     public void replaceContents(List<PlanContent> contents) {
@@ -86,11 +90,12 @@ public class Plan extends BaseTimeEntity {
         planContents.addAll(contents);
     }
 
-    public void applyAiResult(String scheduleId, String aiResponseJson, Long totalAmount, Long perPersonAmount, List<String> warnings) {
+    public void applyAiResult(String scheduleId, String aiResponseJson, Long totalAmount,
+                              Long perPersonAmount, String breakdown) {
         this.scheduleId = scheduleId;
         this.aiResponseJson = aiResponseJson;
         this.estimatedTotalAmount = totalAmount;
         this.estimatedPerPersonAmount = perPersonAmount;
-        this.aiWarnings = warnings == null ? null : String.join("\n", warnings);
+        this.estimatedBudgetBreakdown = breakdown;
     }
 }

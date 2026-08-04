@@ -55,12 +55,16 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         AiPlanResponse.Content content = new AiPlanResponse.Content(); content.setSequence(1); content.setContentId("126508");
         content.setTitle("현충사"); content.setTravelTimeMinutes(15);
         AiPlanResponse.Day day = new AiPlanResponse.Day(); day.setDayNumber(1); day.setDate(request.getStartDate()); day.setContents(List.of(content));
-        AiPlanResponse ai = new AiPlanResponse(); ai.setScheduleId("ai-1"); ai.setDays(List.of(day)); ai.setWarnings(List.of("경고"));
+        AiPlanResponse ai = new AiPlanResponse(); ai.setScheduleId("ai-1"); ai.setDays(List.of(day));
+        AiPlanResponse.EstimatedBudget budget = new AiPlanResponse.EstimatedBudget();
+        budget.setTotalAmount(20_000L); budget.setPerPersonAmount(10_000L);
+        budget.setBreakdown(java.util.Map.of("food", 20_000L)); ai.setEstimatedBudget(budget);
 
         PlanDetailResponse saved = planWriter.saveGenerated(member.getId(), request, ai);
 
         assertThat(saved.getScheduleId()).isEqualTo("ai-1");
         assertThat(saved.getDays().getFirst().getContents().getFirst().getTravelTimeMinutes()).isEqualTo(15);
+        assertThat(saved.getEstimatedBudget().toString()).contains("food");
         assertThat(planRepository.findById(saved.getPlanId())).get().extracting(Plan::getAiResponseJson).asString().contains("ai-1");
     }
 

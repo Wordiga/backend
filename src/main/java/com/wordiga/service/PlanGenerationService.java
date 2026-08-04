@@ -19,8 +19,9 @@ public class PlanGenerationService {
     public PlanDetailResponse generate(Long memberId, PlanGenerateRequest request) {
         validateRequest(request);
         var details = request.getSelectedContentIds().stream()
-                .map(id -> tourismContentDetailService.getDetail(id, request.getStartDate(), request.getAgeGroups())).toList();
-        AiPlanResponse response = aiServerClient.generatePlan(AiPlanRequest.from(UUID.randomUUID().toString(), request, details));
+                .map(id -> tourismContentDetailService.getDetail(
+                        id, request.getStartDate(), request.getAgeGroups(), request.getParticipantCount())).toList();
+        AiPlanResponse response = aiServerClient.generatePlan(AiPlanRequest.from(request, details));
         validateResponse(request, response);
         return planWriter.saveGenerated(memberId, request, response);
     }

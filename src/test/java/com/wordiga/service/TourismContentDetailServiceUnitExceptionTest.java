@@ -36,7 +36,7 @@ class TourismContentDetailServiceUnitExceptionTest {
     void rejectsMissingContent() {
         when(workshopDetailService.fetchCommonDetail("missing")).thenReturn(null);
 
-        assertThatThrownBy(() -> service.getDetail("missing", null, List.of()))
+        assertThatThrownBy(() -> service.getDetail("missing", null, List.of(), 1))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("404");
     }
@@ -47,7 +47,7 @@ class TourismContentDetailServiceUnitExceptionTest {
         content.setLDongRegnCd("11");
         when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(content);
 
-        assertThatThrownBy(() -> service.getDetail("126508", null, List.of()))
+        assertThatThrownBy(() -> service.getDetail("126508", null, List.of(), 1))
                 .isInstanceOf(ResponseStatusException.class)
                 .hasMessageContaining("404");
     }

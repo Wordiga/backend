@@ -43,19 +43,19 @@ public class TourismContentService {
         }
 
         LocalDate targetDate = visitDate == null ? LocalDate.now() : visitDate;
-        List<AreaBasedItem> candidates = switch (type) {
+        List<ScoredCandidate> candidates = switch (type) {
             case POPULAR -> fetchPopularCandidates();
             case SEASONAL -> fetchSeasonalCandidates(targetDate);
         };
 
-        List<AreaBasedItem> filtered = candidates.stream()
-                .filter(item -> contentTypeId == null || contentTypeId.isBlank()
-                        || contentTypeId.equals(item.getContenttypeid()))
-                .filter(item -> lDongSignguCd == null || lDongSignguCd.isBlank()
-                        || lDongSignguCd.equals(item.getLDongSignguCd()))
+        List<ScoredCandidate> filtered = candidates.stream()
+                .filter(candidate -> contentTypeId == null || contentTypeId.isBlank()
+                        || contentTypeId.equals(candidate.item().getContenttypeid()))
+                .filter(candidate -> lDongSignguCd == null || lDongSignguCd.isBlank()
+                        || lDongSignguCd.equals(candidate.item().getLDongSignguCd()))
                 .collect(
-                        LinkedHashMap<String, AreaBasedItem>::new,
-                        (items, item) -> items.putIfAbsent(item.getContentid(), item),
+                        LinkedHashMap<String, ScoredCandidate>::new,
+                        (items, candidate) -> items.putIfAbsent(candidate.item().getContentid(), candidate),
                         LinkedHashMap::putAll
                 )
                 .values().stream().toList();
@@ -95,12 +95,13 @@ public class TourismContentService {
     }
 
     private TourismContentListResponse page(
-            List<AreaBasedItem> candidates, ListType type, int page, int size) {
+            List<ScoredCandidate> candidates, ListType type, int page, int size) {
         int fromIndex = Math.min(page * size, candidates.size());
         int toIndex = Math.min(fromIndex + size, candidates.size());
         List<TourismContentDto> items = new ArrayList<>();
         for (int index = fromIndex; index < toIndex; index++) {
-            items.add(toDto(candidates.get(index), rankScore(index)));
+            ScoredCandidate candidate = candidates.get(index);
+            items.add(toDto(candidate.item(), candidate.score()));
         }
         return TourismContentListResponse.builder()
                 .items(items)
@@ -110,7 +111,7 @@ public class TourismContentService {
                 .build();
     }
 
-    private List<AreaBasedItem> fetchPopularCandidates() {
+    private List<ScoredCandidate> fetchPopularCandidates() {
         String chungnamCode = tourismProperties.getRegion().getChungnamCode();
         String currentYm = getCurrentYm();
         AreaTarExpDsResponse expenditure = tourismApiClient.fetchExpenditureIntensity(
@@ -118,38 +119,40 @@ public class TourismContentService {
         AreaTarSjrnDsResponse stay = tourismApiClient.fetchStayIntensity(
                 currentYm, chungnamCode, null, "2101");
 
-        List<String> signguCodes = calculatePopularityScore(expenditure, stay)
+        Map<String, Double> scores = calculatePopularityScore(expenditure, stay);
+        List<String> signguCodes = scores
                 .entrySet().stream()
                 .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
                 .limit(CHUNGNAM_SIGNGU_COUNT)
                 .map(Map.Entry::getKey)
                 .toList();
-        return fetchContentsBySignguCodes(signguCodes);
+        return fetchContentsBySignguCodes(signguCodes, scores);
     }
 
-    private List<AreaBasedItem> fetchSeasonalCandidates(LocalDate visitDate) {
+    private List<ScoredCandidate> fetchSeasonalCandidates(LocalDate visitDate) {
         String baseYm = visitDate.minusYears(1).format(DateTimeFormatter.ofPattern("yyyyMM"));
         AreaTarSvcDemResponse response = tourismApiClient.fetchServiceDemand(
                 baseYm, tourismProperties.getRegion().getChungnamCode(), null, "11");
 
-        List<String> signguCodes = extractItems(response).stream()
+        Map<String, Double> scores = extractItems(response).stream().collect(java.util.stream.Collectors.toMap(
+                AreaTarSvcDemItem::getSignguCd, item -> parseDouble(item.getTarSvcDemIxVal()), Math::max));
+        List<String> signguCodes = scores.entrySet().stream()
                 .sorted((a, b) -> Double.compare(
-                        parseDouble(b.getTarSvcDemIxVal()),
-                        parseDouble(a.getTarSvcDemIxVal())))
-                .map(AreaTarSvcDemItem::getSignguCd)
-                .distinct()
+                        b.getValue(), a.getValue()))
+                .map(Map.Entry::getKey)
                 .limit(CHUNGNAM_SIGNGU_COUNT)
                 .toList();
-        return fetchContentsBySignguCodes(signguCodes);
+        return fetchContentsBySignguCodes(signguCodes, scores);
     }
 
-    private List<AreaBasedItem> fetchContentsBySignguCodes(List<String> signguCodes) {
+    private List<ScoredCandidate> fetchContentsBySignguCodes(List<String> signguCodes, Map<String, Double> scores) {
         String regionCode = tourismProperties.getRegion().getChungnamCode();
         return signguCodes.stream()
                 .map(this::convertToLDongSignguCd)
-                .map(signguCode -> tourismApiClient.fetchAreaBasedContent(
-                        regionCode, signguCode, CONTENTS_PER_SIGNGU))
-                .flatMap(List::stream)
+                .flatMap(signguCode -> tourismApiClient.fetchAreaBasedContent(
+                                regionCode, signguCode, CONTENTS_PER_SIGNGU).stream()
+                        .map(item -> new ScoredCandidate(item,
+                                BigDecimal.valueOf(scores.getOrDefault(regionCode + signguCode, 0D)))))
                 .toList();
     }
 
@@ -233,4 +236,6 @@ public class TourismContentService {
             return 0;
         }
     }
+
+    private record ScoredCandidate(AreaBasedItem item, BigDecimal score) { }
 }

@@ -24,7 +24,7 @@ class PlanGenerationServiceUnitTest {
 
     @Test void callsAiOutsideWriterAndPersistsValidatedResponse() {
         PlanGenerateRequest request = request("126508"); AiPlanResponse response = response("126508");
-        when(tourismContentDetailService.getDetail(eq("126508"), any(), any())).thenReturn(TourismContentDetailResponse.builder().build());
+        when(tourismContentDetailService.getDetail(eq("126508"), any(), any(), eq(2))).thenReturn(detail());
         when(aiServerClient.generatePlan(any())).thenReturn(response);
         when(planWriter.saveGenerated(1L, request, response)).thenReturn(PlanDetailResponse.builder().planId(9L).build());
 
@@ -35,7 +35,7 @@ class PlanGenerationServiceUnitTest {
     @Test void rejectsDuplicateSelectionAndInvalidAiContent() {
         assertThatThrownBy(() -> service.generate(1L, request("A", "A"))).hasMessageContaining("400");
         PlanGenerateRequest request = request("A"); AiPlanResponse response = response("B");
-        when(tourismContentDetailService.getDetail(eq("A"), any(), any())).thenReturn(TourismContentDetailResponse.builder().build());
+        when(tourismContentDetailService.getDetail(eq("A"), any(), any(), eq(2))).thenReturn(detail());
         when(aiServerClient.generatePlan(any())).thenReturn(response);
         assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("502");
         verifyNoInteractions(planWriter);
@@ -56,6 +56,11 @@ class PlanGenerationServiceUnitTest {
     private AiPlanResponse response(String id) {
         AiPlanResponse.Content c = new AiPlanResponse.Content(); c.setSequence(1); c.setContentId(id); c.setTitle("현충사");
         AiPlanResponse.Day d = new AiPlanResponse.Day(); d.setDayNumber(1); d.setDate(LocalDate.of(2026, 8, 20)); d.setContents(List.of(c));
-        AiPlanResponse r = new AiPlanResponse(); r.setScheduleId("schedule-1"); r.setDays(List.of(d)); r.setWarnings(List.of()); return r;
+        AiPlanResponse r = new AiPlanResponse(); r.setScheduleId("schedule-1"); r.setDays(List.of(d)); return r;
+    }
+    private TourismContentDetailResponse detail() {
+        return TourismContentDetailResponse.builder().common(
+                com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto.builder()
+                        .contentId("126508").contentTypeId("12").title("현충사").build()).build();
     }
 }

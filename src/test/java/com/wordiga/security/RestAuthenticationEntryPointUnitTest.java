@@ -16,7 +16,7 @@ class RestAuthenticationEntryPointUnitTest {
                 new BadCredentialsException("invalid token"));
 
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentType()).isEqualTo("application/problem+json");
-        assertThat(response.getContentAsString()).contains("UNAUTHORIZED", "인증 실패", "로그인해 주세요.");
+        assertThat(response.getContentType()).isEqualTo("application/json");
+        assertThat(response.getContentAsString()).contains("UNAUTHORIZED", "message", "로그인해 주세요.");
     }
 }

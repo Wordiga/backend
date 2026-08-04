@@ -87,7 +87,7 @@ public class WishService {
      * 특정 폴더(지역) 내 위시 목록 조회
      */
     public List<WishResponse> getWishesByFolder(Long memberId, String folderName) {
-        List<Wish> wishes = wishRepository.findByMemberIdAndFolderNameOrderByCreatedAtDesc(memberId, folderName);
+        List<Wish> wishes = wishRepository.findByMemberIdAndFolderNameOrderByCreatedAtDescIdDesc(memberId, folderName);
         return wishes.stream()
                 .map(WishResponse::from)
                 .collect(Collectors.toList());

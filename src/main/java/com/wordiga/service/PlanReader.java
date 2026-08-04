@@ -17,7 +17,7 @@ public class PlanReader {
     public Snapshot read(Long memberId, Long planId) {
         Plan plan = planRepository.findByIdAndMemberId(planId, memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다."));
-        return new Snapshot(plan, PlanDetailResponse.from(plan, List.of()));
+        return new Snapshot(plan, PlanDetailResponse.from(plan));
     }
     public record Snapshot(Plan plan, PlanDetailResponse response) { }
 }

@@ -125,7 +125,7 @@ class WishServiceUnitTest {
                 1L, "126508", "12", "현충사", "https://example.com/latest.jpg", null,
                 null, null, "200", "아산시", "아산시");
         when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of(wish));
-        when(wishRepository.findByMemberIdAndFolderNameOrderByCreatedAtDesc(1L, "아산시"))
+        when(wishRepository.findByMemberIdAndFolderNameOrderByCreatedAtDescIdDesc(1L, "아산시"))
                 .thenReturn(List.of(wish));
 
         assertThat(wishService.getWishFolders(1L)).singleElement()

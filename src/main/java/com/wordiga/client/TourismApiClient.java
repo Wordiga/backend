@@ -6,6 +6,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
@@ -174,13 +176,19 @@ public class TourismApiClient {
     private <T> T callApi(URI uri, Class<T> responseType) {
         log.info("[TourismAPI] 호출: {}", uri);
         try {
-            return restClient.get()
+            T response = restClient.get()
                     .uri(uri)       // ← URI 객체로 넘기면 재인코딩 안 함
                     .retrieve()
                     .body(responseType);
+            if (response == null) throw new ResponseStatusException(
+                    HttpStatus.SERVICE_UNAVAILABLE, "관광공사 API 응답이 비어 있습니다.");
+            return response;
+        } catch (ResponseStatusException e) {
+            throw e;
         } catch (Exception e) {
             log.error("[TourismAPI] 실패: {} - {}", uri, e.getMessage());
-            return null;
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "관광공사 API를 사용할 수 없습니다.", e);
         }
     }
 

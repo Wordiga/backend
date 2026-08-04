@@ -29,7 +29,7 @@ public class PlanService {
                 .page(page).size(size).hasNext(result.hasNext()).build();
     }
 
-    public PlanDetailResponse getPlan(Long memberId, Long planId) { return detail(owned(memberId, planId), List.of()); }
+    public PlanDetailResponse getPlan(Long memberId, Long planId) { return detail(owned(memberId, planId)); }
 
     @Transactional
     public PlanDetailResponse updatePlan(Long memberId, Long planId, PlanUpdateRequest request) {
@@ -37,7 +37,7 @@ public class PlanService {
                 || (request.getTitle() != null && request.getTitle().isBlank())) invalid("수정할 값을 확인해 주세요.");
         Plan plan = owned(memberId, planId);
         plan.update(request.getTitle(), request.getParticipantCount());
-        return detail(plan, List.of());
+        return detail(plan);
     }
 
     @Transactional
@@ -58,14 +58,14 @@ public class PlanService {
         }
         if (ids.size() > 10) invalid("콘텐츠는 최대 10개까지 저장할 수 있습니다.");
         plan.replaceContents(contents);
-        return detail(plan, List.of("콘텐츠 배치가 변경되어 이동시간을 다시 계산해야 합니다."));
+        return detail(plan);
     }
 
     @Transactional public void deletePlan(Long memberId, Long planId) { planRepository.delete(owned(memberId, planId)); }
 
     private Plan owned(Long memberId, Long planId) { return planRepository.findByIdAndMemberId(planId, memberId)
             .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다.")); }
-    private PlanDetailResponse detail(Plan p, List<String> warnings) { return PlanDetailResponse.from(p, warnings); }
+    private PlanDetailResponse detail(Plan p) { return PlanDetailResponse.from(p); }
     private void validateDays(Plan p, List<PlanContentsUpdateRequest.Day> days) {
         int number = 1;
         for (PlanContentsUpdateRequest.Day day : days) {

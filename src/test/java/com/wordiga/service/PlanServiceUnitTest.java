@@ -39,6 +39,17 @@ class PlanServiceUnitTest {
         assertThat(service.updatePlan(1L, 9L, request).getTitle()).isEqualTo("수정 일정");
     }
 
+    @Test void recalculatesTotalBudgetAndKeepsScheduleWhenParticipantCountChanges() {
+        plan.applyAiResult("schedule-1", "{}", 20_000L, 10_000L, "{\"food\":20000}");
+        when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
+        PlanUpdateRequest request = new PlanUpdateRequest(); request.setParticipantCount(4);
+
+        PlanDetailResponse result = service.updatePlan(1L, 9L, request);
+
+        assertThat(result.getScheduleId()).isEqualTo("schedule-1");
+        assertThat(((java.util.Map<?, ?>) result.getEstimatedBudget()).get("totalAmount")).isEqualTo(40_000L);
+    }
+
     @Test void replacesContentsInDayAndRequestOrder() {
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         ContentDetailDto content = new ContentDetailDto(); content.setTitle("현충사"); content.setContenttypeid("12");
@@ -51,7 +62,7 @@ class PlanServiceUnitTest {
         assertThat(result.getDays()).hasSize(2);
         assertThat(result.getDays().getFirst().getContents()).extracting(PlanDetailResponse.Content::getContentId)
                 .containsExactly("A", "B");
-        assertThat(result.getWarnings()).isNotEmpty();
+        assertThat(result.getDays()).hasSize(2);
     }
 
     @Test void rejectsOtherMembersPlanAndInvalidDaySequence() {

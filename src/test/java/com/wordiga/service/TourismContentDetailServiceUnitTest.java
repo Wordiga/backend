@@ -72,7 +72,7 @@ class TourismContentDetailServiceUnitTest {
                 .thenReturn(List.of(image));
         when(tourismApiClient.searchPhotos("현충사")).thenReturn(photoResponse("202606"));
 
-        TourismContentDetailResponse result = service.getDetail("126508", null, List.of("20S"));
+        TourismContentDetailResponse result = service.getDetail("126508", null, List.of("20S"), 8);
 
         assertThat(result.getCommon().getTitle()).isEqualTo("현충사");
         assertThat(result.getIntro().getUseTime()).isEqualTo("09:00~18:00");
@@ -123,10 +123,23 @@ class TourismContentDetailServiceUnitTest {
         when(workshopDetailService.fetchImages("126508", "Y", 1, 100))
                 .thenReturn(List.of());
 
-        TourismContentDetailResponse result = service.getDetail("126508", null, List.of());
+        TourismContentDetailResponse result = service.getDetail("126508", null, List.of(), 8);
 
         assertThat(result.getCommon().getMapx()).isNull();
         assertThat(result.getCommon().getMapy()).isNull();
+    }
+
+    @Test
+    void reportsWhetherLodgingCanAccommodateParticipants() {
+        ContentDetailDto common = common("44"); common.setContenttypeid("32");
+        DetailIntroDto intro = new DetailIntroDto(); intro.setContenttypeid("32"); intro.setAccomcountlodging("10명");
+        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
+        when(workshopDetailService.fetchIntroDetail("126508", "32")).thenReturn(intro);
+        when(workshopDetailService.fetchRepeatInfo("126508", "32", 1, 100)).thenReturn(List.of());
+        when(workshopDetailService.fetchImages("126508", "Y", 1, 100)).thenReturn(List.of());
+
+        assertThat(service.getDetail("126508", null, List.of(), 8).getCapacitySatisfied()).isTrue();
+        assertThat(service.getDetail("126508", null, List.of(), 11).getCapacitySatisfied()).isFalse();
     }
 
     private ContentDetailDto common(String regionCode) {

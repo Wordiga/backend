@@ -67,5 +67,5 @@ class PlanControllerTest {
     }
 
     private PlanDetailResponse detail() { return PlanDetailResponse.builder().planId(9L).title("일정")
-            .days(List.of()).warnings(List.of()).build(); }
+            .days(List.of()).build(); }
 }
