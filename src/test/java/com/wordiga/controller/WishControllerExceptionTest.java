@@ -1,6 +1,7 @@
 package com.wordiga.controller;
 
 import com.wordiga.security.JwtTokenProvider;
+import com.wordiga.repository.MemberRepository;
 import com.wordiga.service.WishService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -30,6 +31,9 @@ class WishControllerExceptionTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private MemberRepository memberRepository;
 
     @BeforeEach
     void authenticateMember() {

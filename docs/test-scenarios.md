@@ -7,7 +7,7 @@
 | 통합 테스트 | `@SpringBootTest`, Testcontainers `postgres:17-alpine` |
 | 커버리지 | JaCoCo 0.8.15 |
 | 품질 기준 | 핵심 서비스·Controller 라인·브랜치 커버리지 각각 80% 이상 |
-| 현재 결과 | 85 tests, 604/628 lines(96.2%), 197/245 branches(80.4%) |
+| 현재 결과 | 92 tests, 604/628 lines(96.2%), 197/245 branches(80.4%) |
 
 ## 테스트 클래스 분리 기준
 
@@ -56,6 +56,10 @@
 | `ProposalServiceUnitTest` | 성공·예외 | 제안서 삭제 | 소유 제안서 S3 영구삭제 후 DB 삭제와 미존재 404 |
 | `PlanControllerTest` | 성공 | 제안서 삭제 HTTP | DELETE 요청의 204 응답과 사용자·일정·제안서 ID 전달 |
 | `AiPlanRequestTest` | 성공 | Plan B 입력 계약 | num_nights·monthly_weather·is_outdoor 직렬화 |
+| `MemberControllerTest` | 성공 | 프로필 조회·회원탈퇴 HTTP | 소셜 프로필 JSON과 DELETE 204 응답 |
+| `MemberServiceUnitTest` | 성공·예외 | 회원탈퇴 | Kakao 연결 해제, S3 파일·회원 삭제, Google 프론트 해제 분기와 미존재 404 |
+| `JwtAuthenticationFilterUnitTest` | 성공·예외 | 탈퇴 회원 JWT 차단 | 유효한 JWT도 회원 행이 없으면 인증 객체를 만들지 않음 |
+| `KakaoUnlinkClientUnitExceptionTest` | 예외 | Kakao 설정 누락 | Admin Key가 없으면 503 응답 |
 
 ## JaCoCo 관리 범위
 

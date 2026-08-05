@@ -1,6 +1,7 @@
 package com.wordiga.controller;
 
 import com.wordiga.security.JwtTokenProvider;
+import com.wordiga.repository.MemberRepository;
 import com.wordiga.service.PlanGenerationService;
 import com.wordiga.service.PlanService;
 import com.wordiga.service.ProposalService;
@@ -28,6 +29,7 @@ class PlanControllerExceptionTest {
     @MockitoBean PlanGenerationService planGenerationService;
     @MockitoBean ProposalService proposalService;
     @MockitoBean JwtTokenProvider jwtTokenProvider;
+    @MockitoBean MemberRepository memberRepository;
 
     @BeforeEach void login() { SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken("1", null, List.of())); }

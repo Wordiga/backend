@@ -1,6 +1,7 @@
 package com.wordiga.controller;
 
 import com.wordiga.dto.plan.*;
+import com.wordiga.repository.MemberRepository;
 import com.wordiga.security.JwtTokenProvider;
 import com.wordiga.service.PlanService;
 import com.wordiga.service.PlanGenerationService;
@@ -29,6 +30,7 @@ class PlanControllerTest {
     @MockitoBean PlanGenerationService planGenerationService;
     @MockitoBean ProposalService proposalService;
     @MockitoBean JwtTokenProvider jwtTokenProvider;
+    @MockitoBean MemberRepository memberRepository;
     @BeforeEach void login() { SecurityContextHolder.getContext().setAuthentication(
             new UsernamePasswordAuthenticationToken("1", null, List.of())); }
     @AfterEach void clear() { SecurityContextHolder.clearContext(); }

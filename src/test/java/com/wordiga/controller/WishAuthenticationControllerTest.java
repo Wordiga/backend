@@ -7,6 +7,7 @@ import com.wordiga.config.SecurityConfig;
 import com.wordiga.security.OidcLoginSuccessHandler;
 import com.wordiga.service.CustomOidcUserService;
 import com.wordiga.service.WishService;
+import com.wordiga.repository.MemberRepository;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
@@ -29,6 +30,7 @@ class WishAuthenticationControllerTest {
     @MockitoBean JwtTokenProvider jwtTokenProvider;
     @MockitoBean CustomOidcUserService customOidcUserService;
     @MockitoBean OidcLoginSuccessHandler oidcLoginSuccessHandler;
+    @MockitoBean MemberRepository memberRepository;
 
     @Test void returnsCommonUnauthorizedResponseWithoutJwt() throws Exception {
         mockMvc.perform(get("/api/v1/wishes/folders"))

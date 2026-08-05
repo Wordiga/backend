@@ -5,6 +5,7 @@ import com.wordiga.dto.tourismContent.TourismContentListResponse;
 import com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import com.wordiga.security.JwtTokenProvider;
+import com.wordiga.repository.MemberRepository;
 import com.wordiga.service.TourismContentDetailService;
 import com.wordiga.service.TourismContentService;
 import org.junit.jupiter.api.Test;
@@ -38,6 +39,9 @@ class TourismContentControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private MemberRepository memberRepository;
 
     @Test
     void returnsTourismContentList() throws Exception {
