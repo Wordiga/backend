@@ -27,12 +27,12 @@ spring:
             client-secret: ${KAKAO_CLIENT_SECRET}
             redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
             authorization-grant-type: authorization_code
-            scope: [ profile_nickname, account_email ]
+            scope: [ openid, profile_nickname, account_email ]
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
             redirect-uri: "{baseUrl}/login/oauth2/code/google"
-            scope: [ profile, email ]
+            scope: [ openid, profile, email ]
 
 logging:
   level:
