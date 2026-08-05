@@ -9,8 +9,8 @@
 | GET | `/api/v1/tourism/contents/{contentId}` | X | 관광 콘텐츠 통합 상세 조회 |
 | POST | `/api/v1/wishes` | O | 위시 등록 및 지역 자동 분류 |
 | DELETE | `/api/v1/wishes` | O | 위시 삭제 |
-| GET | `/api/v1/wishes/folders` | O | 위시 지역 폴더 조회 |
-| GET | `/api/v1/wishes/folders/{folderName}` | O | 폴더별 위시 목록 조회 |
+| GET | `/api/v1/wishes` | O | 위시 지역 폴더 조회 |
+| GET | `/api/v1/wishes/{folderName}` | O | 폴더별 위시 목록 조회 |
 | POST | `/api/v1/plans/generate` | O | AI 일정 생성 및 저장 |
 | GET | `/api/v1/plans` | O | 내 일정 목록 조회 |
 | GET | `/api/v1/plans/{planId}` | O | 내 일정 상세 조회 |
@@ -93,6 +93,7 @@ GET /api/v1/tourism/contents
 | `items[].mapy` | BigDecimal | N | 위도 |
 | `items[].firstImage` | String | N | 대표 이미지 URL |
 | `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수 |
+| `items[].isWished` | Boolean | Y | 현재 로그인 회원의 위시 등록 여부이며 비회원은 `false` |
 | `page` | Integer | Y | 현재 페이지 |
 | `size` | Integer | Y | 페이지 크기 |
 | `hasNext` | Boolean | Y | 다음 페이지 존재 여부 |
@@ -111,7 +112,8 @@ GET /api/v1/tourism/contents
       "mapx": 126.9891281,
       "mapy": 36.8051452,
       "firstImage": "https://example.com/main.jpg",
-      "recommendationScore": 88.3
+      "recommendationScore": 88.3,
+      "isWished": true
     }
   ],
   "page": 0,
@@ -146,6 +148,7 @@ GET /api/v1/tourism/contents
 - 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
 - 최종 정렬은 `recommendationScore DESC, contentId ASC`입니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.
+- 로그인 회원은 각 콘텐츠의 위시 등록 여부를 `isWished`로 반환하며 비회원은 `false`로 반환합니다.
 
 ### 충청남도 시군구 목록 조회
 
@@ -768,7 +771,7 @@ HTTP/1.1 200 OK
 ## 5. 위시 폴더 목록 조회
 
 ```http
-GET /api/v1/wishes/folders
+GET /api/v1/wishes
 ```
 
 관련 기능:
@@ -826,7 +829,7 @@ GET /api/v1/wishes/folders
 ## 6. 폴더별 위시 목록 조회
 
 ```http
-GET /api/v1/wishes/folders/{folderName}
+GET /api/v1/wishes/{folderName}
 ```
 
 관련 기능:

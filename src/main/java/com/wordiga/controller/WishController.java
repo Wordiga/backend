@@ -39,7 +39,7 @@ public class WishController implements WishApi {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/folders")
+    @GetMapping
     public ResponseEntity<List<WishFolderResponse>> getWishFolders(
             @CurrentMemberId Long memberId) {
 
@@ -47,7 +47,7 @@ public class WishController implements WishApi {
         return ResponseEntity.ok(folders);
     }
 
-    @GetMapping("/folders/{folderName}")
+    @GetMapping("/{folderName}")
     public ResponseEntity<List<WishResponse>> getWishesByFolder(
             @CurrentMemberId Long memberId,
             @PathVariable String folderName) {

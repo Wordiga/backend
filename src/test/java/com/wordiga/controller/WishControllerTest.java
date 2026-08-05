@@ -81,10 +81,10 @@ class WishControllerTest {
         when(wishService.getWishesByFolder(1L, "아산시")).thenReturn(List.of(
                 WishResponse.builder().contentId("126508").build()));
 
-        mockMvc.perform(get("/api/v1/wishes/folders"))
+        mockMvc.perform(get("/api/v1/wishes"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].folderName").value("아산시"));
-        mockMvc.perform(get("/api/v1/wishes/folders/아산시"))
+        mockMvc.perform(get("/api/v1/wishes/아산시"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].contentId").value("126508"));
     }

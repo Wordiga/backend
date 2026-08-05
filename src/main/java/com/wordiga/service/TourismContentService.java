@@ -12,6 +12,7 @@ import com.wordiga.config.TourismProperties;
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentDto;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -24,6 +25,8 @@ import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -37,6 +40,7 @@ public class TourismContentService {
     private final RelatedTourismContentService relatedTourismContentService;
     private final PersonalizedTourismContentService personalizedTourismContentService;
     private final TourismContentDetailService detailService;
+    private final WishRepository wishRepository;
 
     public TourismContentListResponse getContentList(
             ListType type, LocalDate visitDate, String keyword, String contentTypeId,
@@ -53,13 +57,15 @@ public class TourismContentService {
             if (referenceContentId == null || referenceContentId.isBlank())
                 throw new org.springframework.web.server.ResponseStatusException(
                         org.springframework.http.HttpStatus.BAD_REQUEST, "연관 추천 기준 콘텐츠 ID가 필요합니다.");
-            return relatedTourismContentService.get(referenceContentId, visitDate, ageGroups, page, size);
+            return markWished(memberId,
+                    relatedTourismContentService.get(referenceContentId, visitDate, ageGroups, page, size));
         }
         if (type == ListType.PERSONALIZED)
-            return personalizedTourismContentService.get(memberId, visitDate, page, size);
+            return markWished(memberId, personalizedTourismContentService.get(memberId, visitDate, page, size));
         if (keyword != null && !keyword.isBlank()) {
-            return filterCapacity(search(keyword.trim(), contentTypeId, lDongSignguCd, page, size),
-                    capacitySatisfied, participantCount);
+            return markWished(memberId,
+                    filterCapacity(search(keyword.trim(), contentTypeId, lDongSignguCd, page, size),
+                            capacitySatisfied, participantCount));
         }
 
         LocalDate targetDate = visitDate == null ? LocalDate.now() : visitDate;
@@ -81,7 +87,17 @@ public class TourismContentService {
                 )
                 .values().stream().toList();
 
-        return filterCapacity(page(filtered, type, page, size), capacitySatisfied, participantCount);
+        return markWished(memberId,
+                filterCapacity(page(filtered, type, page, size), capacitySatisfied, participantCount));
+    }
+
+    private TourismContentListResponse markWished(Long memberId, TourismContentListResponse response) {
+        Set<String> wishedContentIds = memberId == null ? Set.of()
+                : wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(memberId).stream()
+                .map(com.wordiga.domain.Wish::getContentId)
+                .collect(Collectors.toSet());
+        response.getItems().forEach(item -> item.setWished(wishedContentIds.contains(item.getContentId())));
+        return response;
     }
 
     private TourismContentListResponse filterCapacity(TourismContentListResponse response,

@@ -1,6 +1,7 @@
 package com.wordiga.dto.tourismContent;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
@@ -43,5 +44,9 @@ public class TourismContentDto {
 
     @Schema(description = "추천 점수")
     private BigDecimal recommendationScore;
+
+    @Schema(description = "현재 로그인 회원의 위시 등록 여부")
+    @JsonProperty("isWished")
+    private boolean isWished;
 
 }

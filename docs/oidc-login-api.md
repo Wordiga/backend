@@ -66,7 +66,7 @@ if (token) {
 ```javascript
 const token = localStorage.getItem('token');
 
-const response = await fetch('/api/v1/wishes/folders', {
+const response = await fetch('/api/v1/wishes', {
   headers: { 'Authorization': `Bearer ${token}` }
 });
 
@@ -203,7 +203,7 @@ GET /oauth2/authorization/kakao
 GET /oauth2/authorization/google
 
 ### 인증 필요 API
-GET /api/v1/wishes/folders
+GET /api/v1/wishes
 Authorization: Bearer eyJhbGciOiJIUzI1NiJ9...
 
 ### 인증 불필요 API

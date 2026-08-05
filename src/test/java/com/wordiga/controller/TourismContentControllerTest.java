@@ -48,6 +48,7 @@ class TourismContentControllerTest {
         TourismContentDto item = TourismContentDto.builder()
                 .contentId("126508")
                 .title("현충사")
+                .isWished(true)
                 .build();
         when(tourismContentService.getContentList(
                 any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
@@ -65,6 +66,7 @@ class TourismContentControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].contentId").value("126508"))
                 .andExpect(jsonPath("$.items[0].title").value("현충사"))
+                .andExpect(jsonPath("$.items[0].isWished").value(true))
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
