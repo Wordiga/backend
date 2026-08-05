@@ -30,6 +30,7 @@
 | `TourismContentServiceUnitExceptionTest` | 예외 | 공공 API 응답 누락 | 목록·검색 응답 누락 시 빈 페이지 처리 |
 | `TourismContentDetailServiceUnitTest` | 성공 | 통합 상세 조회 | 공통·소개·반복·이미지·소비지수·계절 이미지 조립 |
 | `TourismContentDetailServiceUnitExceptionTest` | 예외 | 콘텐츠 누락·지역 불일치 | 미존재·충남 외 콘텐츠의 404 응답 |
+| `TourismResponseMappingUnitTest` | 성공 | 지역코드·사진 0건 JSON | lowerCamelCase 지역코드와 빈 문자열 `items`의 안전한 변환 |
 | `TourismDetailMapperUnitTest` | 성공 | 타입별 DTO 변환 | 8개 관광타입 소개정보와 숙박 객실 이미지 변환 |
 | `TourismDetailMapperUnitTest` | 예외 | null·잘못된 숫자 | 누락 목록과 잘못된 일련번호의 안전한 변환 |
 | `TourismSatisfactionServiceUnitTest` | 성공 | 만족도 산출 | 인기도 30%, 연령 35%, 체류 20%, 쾌적도 15% 가중합 |
