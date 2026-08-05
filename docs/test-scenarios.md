@@ -37,7 +37,7 @@
 | `TourismSatisfactionServiceUnitExceptionTest` | 예외 | 전체 원천 데이터 누락 | 전체 산출 데이터 누락 시 만족도 `null` |
 | `WishServiceUnitTest` | 성공 | 위시 등록·중복·폴더 조회 | 시군구 자동 폴더링, 좌표, 중복 반환, 조회·삭제 위임 |
 | `WishServiceUnitExceptionTest` | 예외 | 콘텐츠 누락·충남 외 콘텐츠 | 콘텐츠 누락 404와 충남 외 콘텐츠 422 |
-| `TourismContentControllerTest` | 성공 | 목록·상세 HTTP 조회 | Query Parameter 바인딩과 JSON 응답 구조 |
+| `TourismContentControllerTest` | 성공 | 목록·상세 HTTP 조회 | Query Parameter 바인딩, `isWished`와 JSON 응답 구조 |
 | `TourismContentControllerExceptionTest` | 예외 | 잘못된 페이지·성별·날짜 | Validation과 도메인 입력 오류가 400 여부 |
 | `WishControllerTest` | 성공 | 위시 HTTP CRUD | 등록·삭제·폴더·폴더별 목록 요청|
 | `WishControllerExceptionTest` | 예외 | 빈 콘텐츠 ID·Body 누락 | 잘못된 Request Body가 400 여부 |

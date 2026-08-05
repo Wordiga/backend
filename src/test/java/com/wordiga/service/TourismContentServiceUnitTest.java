@@ -13,6 +13,8 @@ import com.wordiga.client.dto.KtoApiResponse;
 import com.wordiga.config.TourismProperties;
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.domain.Wish;
+import com.wordiga.repository.WishRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -36,6 +38,7 @@ class TourismContentServiceUnitTest {
     @Mock private RelatedTourismContentService relatedTourismContentService;
     @Mock private PersonalizedTourismContentService personalizedTourismContentService;
     @Mock private TourismContentDetailService detailService;
+    @Mock private WishRepository wishRepository;
 
     private TourismContentService tourismContentService;
 
@@ -44,7 +47,7 @@ class TourismContentServiceUnitTest {
         TourismProperties properties = new TourismProperties();
         properties.getRegion().setChungnamCode("44");
         tourismContentService = new TourismContentService(tourismApiClient, properties,
-                relatedTourismContentService, personalizedTourismContentService, detailService);
+                relatedTourismContentService, personalizedTourismContentService, detailService, wishRepository);
     }
 
     @Test
@@ -69,6 +72,22 @@ class TourismContentServiceUnitTest {
         assertThat(result.getItems().getFirst().getContentId()).isEqualTo("126508");
         assertThat(result.getItems().getFirst().getFirstImage()).isNull();
         assertThat(result.isHasNext()).isTrue();
+    }
+
+    @Test
+    void marksContentsWishedForAuthenticatedMember() {
+        AreaBasedItem wished = item("12"); wished.setContentid("wished");
+        AreaBasedItem unwished = item("14"); unwished.setContentid("unwished");
+        when(tourismApiClient.searchContent("충남", null, "44", null, 1, 20))
+                .thenReturn(response(List.of(wished, unwished), 2));
+        when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of(
+                Wish.create(1L, "wished", "12", "위시", null, null, null, null,
+                        "200", "아산시", "아산시")));
+
+        TourismContentListResponse result = tourismContentService.getContentList(1L, ListType.POPULAR, null,
+                "충남", null, null, null, null, null, null, 0, 20);
+
+        assertThat(result.getItems()).extracting("wished").containsExactly(true, false);
     }
 
     @Test

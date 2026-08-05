@@ -33,7 +33,7 @@ class WishAuthenticationControllerTest {
     @MockitoBean MemberRepository memberRepository;
 
     @Test void returnsCommonUnauthorizedResponseWithoutJwt() throws Exception {
-        mockMvc.perform(get("/api/v1/wishes/folders"))
+        mockMvc.perform(get("/api/v1/wishes"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentType("application/json"))
                 .andExpect(jsonPath("$.code").value("UNAUTHORIZED"))
