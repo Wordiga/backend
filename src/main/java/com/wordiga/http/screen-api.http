@@ -11,16 +11,16 @@
 #
 # 실행 전 준비
 # - 애플리케이션과 PostgreSQL, 연동할 AI 서버를 실행한다.
-# - 로그인 후 발급받은 JWT를 accessToken에 입력한다.
+# - 로그인 콜백 URL의 token 값을 아래 accessToken에 입력한다. (Bearer 제외)
 # - contentId와 folderName은 실제 조회 결과에 맞게 바꾼다.
 # - AI 일정 생성 성공 시 planId, 제안서 생성 성공 시 proposalId가 자동 저장된다.
 # - 회원탈퇴는 복구할 수 없으므로 맨 아래 요청을 꼭 확인한 뒤 별도로 실행한다.
 
 @baseUrl = http://localhost:8080
-@accessToken = replace-with-access-token
-@contentId = 126128
-@secondContentId = 126508
-@folderName = 천안시
+@accessToken = paste-login-callback-token-here
+@contentId = 4064297
+@secondContentId = 3038456
+@folderName = %EA%B3%B5%EC%A3%BC%EC%8B%9C
 @visitDate = 2026-08-20
 
 ### 1. [v1·v2 메인 홈] 인기 관광 콘텐츠 카드와 isWished 조회
@@ -108,11 +108,19 @@ Content-Type: application/json
   "participantCount": 8,
   "visitMonth": 8,
   "stayNights": 1,
-  "ageGroups": ["20S", "30S"],
-  "selectedContentIds": ["{{contentId}}", "{{secondContentId}}"]
+  "ageGroups": [
+    "20S",
+    "30S"
+  ],
+  "selectedContentIds": [
+    "{{contentId}}",
+    "{{secondContentId}}"
+  ]
 }
 
-> {% client.global.set("planId", response.body.planId); %}
+> {%
+    client.global.set("planId", response.body.planId);
+%}
 
 ###
 
@@ -149,7 +157,10 @@ Content-Type: application/json
   "days": [
     {
       "dayNumber": 1,
-      "contentIds": ["{{secondContentId}}", "{{contentId}}"]
+      "contentIds": [
+        "{{secondContentId}}",
+        "{{contentId}}"
+      ]
     }
   ]
 }
@@ -168,7 +179,9 @@ Content-Type: application/json
   "additionalRequest": "일정과 예상 비용을 표로 정리해 주세요."
 }
 
-> {% client.global.set("proposalId", response.body.proposalId); %}
+> {%
+    client.global.set("proposalId", response.body.proposalId);
+%}
 
 ###
 

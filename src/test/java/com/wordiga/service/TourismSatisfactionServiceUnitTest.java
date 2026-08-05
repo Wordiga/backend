@@ -36,6 +36,7 @@ import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.lenient;
 
 @ExtendWith(MockitoExtension.class)
 class TourismSatisfactionServiceUnitTest {
@@ -55,7 +56,7 @@ class TourismSatisfactionServiceUnitTest {
         mockComfort(LocalDate.of(2026, 8, 20));
 
         SatisfactionDto result = service.calculate(
-                content, LocalDate.of(2026, 8, 20), List.of("20S"));
+                content, LocalDate.of(2026, 8, 20), List.of("20S", "30S"));
 
         assertThat(result.getPopularityScore().getScore()).isEqualByComparingTo("90.0");
         assertThat(result.getAgeFitScore().getScore()).isEqualByComparingTo("80.0");
@@ -85,15 +86,18 @@ class TourismSatisfactionServiceUnitTest {
         mockComfort(LocalDate.of(2026, 8, 20));
         when(tourismApiClient.fetchConcentrationRate("44", "44200", "외암민속마을"))
                 .thenReturn(wrap(new TatsCnctrRateResponse(), List.of()));
+        when(tourismApiClient.fetchConcentrationRate("44", "44200", null))
+                .thenReturn(wrap(new TatsCnctrRateResponse(), List.of()));
         var context = new TourismSatisfactionService.Context();
 
         service.calculate(context, "44", "200", "현충사", LocalDate.of(2026, 8, 20), List.of());
         service.calculate(context, "44", "200", "외암민속마을", LocalDate.of(2026, 8, 20), List.of());
 
-        verify(tourismApiClient, times(1)).fetchCulturalResourceDemand(anyString(), eq("44"), eq("44200"), eq(null));
-        verify(tourismApiClient, times(1)).fetchServiceDemand(anyString(), eq("44"), eq("44200"), eq(null));
+        verify(tourismApiClient, times(1)).fetchCulturalResourceDemand(anyString(), eq("44"), eq("44200"), eq("12"));
+        verify(tourismApiClient, times(1)).fetchServiceDemand(anyString(), eq("44"), eq("44200"), eq("11"));
         verify(tourismApiClient, times(1)).fetchStayIntensity(anyString(), eq("44"), eq("44200"), eq("2101"));
         verify(tourismApiClient, times(1)).fetchExpenditureIntensity(anyString(), eq("44"), eq("44200"), eq("2201"));
+        verify(tourismApiClient, times(1)).fetchConcentrationRate("44", "44200", null);
     }
 
     @Test
@@ -110,9 +114,9 @@ class TourismSatisfactionServiceUnitTest {
 
         assertThat(nullAges.getAgeFitScore().isImputed()).isTrue();
         assertThat(agesContainingNull.getAgeFitScore().isImputed()).isTrue();
-        verify(tourismApiClient, never()).fetchTouristDiversity(anyString(), anyString(), anyString(), eq(null));
-        verify(tourismApiClient, never()).fetchExpenditureDiversity(anyString(), anyString(), anyString(), eq(null));
-        verify(tourismApiClient, times(1)).fetchCulturalResourceDemand(anyString(), eq("44"), eq("44200"), eq(null));
+        verify(tourismApiClient, never()).fetchTouristDiversity(anyString(), anyString(), anyString(), anyString());
+        verify(tourismApiClient, never()).fetchExpenditureDiversity(anyString(), anyString(), anyString(), anyString());
+        verify(tourismApiClient, times(1)).fetchCulturalResourceDemand(anyString(), eq("44"), eq("44200"), eq("12"));
     }
 
     @Test
@@ -126,9 +130,32 @@ class TourismSatisfactionServiceUnitTest {
         service.calculate(context, "44", "200", "현충사", LocalDate.of(2026, 8, 20), List.of("20S"));
         service.calculate(context, "44", "200", "현충사", LocalDate.of(2026, 8, 20), List.of("30S"));
 
-        verify(tourismApiClient, times(2)).fetchTouristDiversity(anyString(), eq("44"), eq("44200"), eq(null));
-        verify(tourismApiClient, times(2)).fetchExpenditureDiversity(anyString(), eq("44"), eq("44200"), eq(null));
-        verify(tourismApiClient, times(1)).fetchCulturalResourceDemand(anyString(), eq("44"), eq("44200"), eq(null));
+        verify(tourismApiClient).fetchTouristDiversity(anyString(), eq("44"), eq("44200"), eq("3102"));
+        verify(tourismApiClient).fetchTouristDiversity(anyString(), eq("44"), eq("44200"), eq("3103"));
+        verify(tourismApiClient).fetchExpenditureDiversity(anyString(), eq("44"), eq("44200"), eq("3202"));
+        verify(tourismApiClient).fetchExpenditureDiversity(anyString(), eq("44"), eq("44200"), eq("3203"));
+        verify(tourismApiClient, times(1)).fetchCulturalResourceDemand(anyString(), eq("44"), eq("44200"), eq("12"));
+    }
+
+    @Test
+    void averagesRegionalConcentrationWhenContentNameHasNoExactMatch() {
+        ContentDetailDto content = content();
+        mockPopularity();
+        mockAgeFit();
+        mockStayFit();
+        LocalDate visitDate = LocalDate.of(2026, 8, 20);
+        when(tourismApiClient.fetchConcentrationRate("44", "44200", "현충사"))
+                .thenReturn(wrap(new TatsCnctrRateResponse(), List.of()));
+        when(tourismApiClient.fetchConcentrationRate("44", "44200", null))
+                .thenReturn(wrap(new TatsCnctrRateResponse(), List.of(
+                        concentration(visitDate, "20"),
+                        concentration(visitDate, "40"),
+                        concentration(visitDate.plusDays(1), "90"))));
+
+        SatisfactionDto result = service.calculate(content, visitDate, List.of("20S"));
+
+        assertThat(result.getComfortScore().getScore()).isEqualByComparingTo("70.0");
+        assertThat(result.getComfortScore().isImputed()).isFalse();
     }
 
     private void mockPopularity() {
@@ -137,7 +164,7 @@ class TourismSatisfactionServiceUnitTest {
         AreaCulResDemResponse resourceResponse = wrap(
                 new AreaCulResDemResponse(), List.of(resource));
         when(tourismApiClient.fetchCulturalResourceDemand(
-                anyString(), eq("44"), eq("44200"), eq(null)))
+                anyString(), eq("44"), eq("44200"), eq("12")))
                 .thenReturn(resourceResponse);
 
         AreaTarSvcDemItem serviceDemand = new AreaTarSvcDemItem();
@@ -145,7 +172,7 @@ class TourismSatisfactionServiceUnitTest {
         AreaTarSvcDemResponse serviceResponse = wrap(
                 new AreaTarSvcDemResponse(), List.of(serviceDemand));
         when(tourismApiClient.fetchServiceDemand(
-                anyString(), eq("44"), eq("44200"), eq(null)))
+                anyString(), eq("44"), eq("44200"), eq("11")))
                 .thenReturn(serviceResponse);
     }
 
@@ -154,14 +181,20 @@ class TourismSatisfactionServiceUnitTest {
         tourist.setTouDivIxCd("3102");
         tourist.setTouDivIxVal("70");
         when(tourismApiClient.fetchTouristDiversity(
-                anyString(), eq("44"), eq("44200"), eq(null)))
+                anyString(), eq("44"), eq("44200"), eq("3102")))
+                .thenReturn(wrap(new AreaTouDivResponse(), List.of(tourist)));
+        lenient().when(tourismApiClient.fetchTouristDiversity(
+                anyString(), eq("44"), eq("44200"), eq("3103")))
                 .thenReturn(wrap(new AreaTouDivResponse(), List.of(tourist)));
 
         AreaExpDivItem expenditure = new AreaExpDivItem();
         expenditure.setExpDivIxCd("3202");
         expenditure.setExpDivIxVal("90");
         when(tourismApiClient.fetchExpenditureDiversity(
-                anyString(), eq("44"), eq("44200"), eq(null)))
+                anyString(), eq("44"), eq("44200"), eq("3202")))
+                .thenReturn(wrap(new AreaExpDivResponse(), List.of(expenditure)));
+        lenient().when(tourismApiClient.fetchExpenditureDiversity(
+                anyString(), eq("44"), eq("44200"), eq("3203")))
                 .thenReturn(wrap(new AreaExpDivResponse(), List.of(expenditure)));
     }
 
@@ -180,11 +213,15 @@ class TourismSatisfactionServiceUnitTest {
     }
 
     private void mockComfort(LocalDate visitDate) {
-        TatsCnctrRateItem concentration = new TatsCnctrRateItem();
-        concentration.setBaseYmd(visitDate.format(DateTimeFormatter.BASIC_ISO_DATE));
-        concentration.setCnctrRate("20");
         when(tourismApiClient.fetchConcentrationRate("44", "44200", "현충사"))
-                .thenReturn(wrap(new TatsCnctrRateResponse(), List.of(concentration)));
+                .thenReturn(wrap(new TatsCnctrRateResponse(), List.of(concentration(visitDate, "20"))));
+    }
+
+    private TatsCnctrRateItem concentration(LocalDate date, String rate) {
+        TatsCnctrRateItem item = new TatsCnctrRateItem();
+        item.setBaseYmd(date.format(DateTimeFormatter.BASIC_ISO_DATE));
+        item.setCnctrRate(rate);
+        return item;
     }
 
     private ContentDetailDto content() {

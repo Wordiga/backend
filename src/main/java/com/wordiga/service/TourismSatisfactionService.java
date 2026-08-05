@@ -2,13 +2,9 @@ package com.wordiga.service;
 
 import com.wordiga.client.TourismApiClient;
 import com.wordiga.client.dto.AreaCulResDemItem;
-import com.wordiga.client.dto.AreaExpDivItem;
-import com.wordiga.client.dto.AreaExpDivResponse;
 import com.wordiga.client.dto.AreaTarExpDsItem;
 import com.wordiga.client.dto.AreaTarSjrnDsItem;
 import com.wordiga.client.dto.AreaTarSvcDemItem;
-import com.wordiga.client.dto.AreaTouDivItem;
-import com.wordiga.client.dto.AreaTouDivResponse;
 import com.wordiga.client.dto.KtoApiResponse;
 import com.wordiga.client.dto.TatsCnctrRateItem;
 import com.wordiga.dto.ContentDetailDto;
@@ -23,11 +19,11 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.OptionalDouble;
 import java.util.Set;
-import java.util.HashMap;
-import java.util.Map;
 import java.util.stream.DoubleStream;
 
 @Service
@@ -51,7 +47,8 @@ public class TourismSatisfactionService {
     public SatisfactionDto calculate(Context context, String areaCode, String localSignguCode,
                                      String title, LocalDate visitDate, List<String> ageGroups) {
         String baseYm = latestBaseYm();
-        String signguCode = areaCode + localSignguCode;
+        String signguCode = ChungnamSigungu.DATA_LAB_CODES.get(localSignguCode);
+        if (signguCode == null) return null;
         RegionKey region = new RegionKey(baseYm, areaCode, signguCode);
 
         OptionalDouble popularity = context.popularity.computeIfAbsent(region,
@@ -63,7 +60,7 @@ public class TourismSatisfactionService {
                 ignored -> ageFit(baseYm, areaCode, signguCode, normalizedAges));
         OptionalDouble stayFit = context.stayFit.computeIfAbsent(region,
                 ignored -> stayFit(baseYm, areaCode, signguCode));
-        OptionalDouble comfort = comfort(areaCode, signguCode, title, visitDate);
+        OptionalDouble comfort = comfort(context, areaCode, signguCode, title, visitDate);
         if (popularity.isEmpty() && ageFit.isEmpty() && stayFit.isEmpty() && comfort.isEmpty()) {
             return null;
         }
@@ -75,7 +72,7 @@ public class TourismSatisfactionService {
         ScoreComponentDto stayFitComponent = component(
                 stayFit, STAY_FIT_WEIGHT, "areaTarSjrnDsList, areaTarExpDsList");
         ScoreComponentDto comfortComponent = component(
-                comfort, COMFORT_WEIGHT, "tatsCnctrRateList");
+                comfort, COMFORT_WEIGHT, "tatsCnctrRatedList");
 
         BigDecimal total = weighted(popularityComponent)
                 .add(weighted(ageFitComponent))
@@ -94,9 +91,9 @@ public class TourismSatisfactionService {
 
     private OptionalDouble popularity(String baseYm, String areaCode, String signguCode) {
         List<AreaCulResDemItem> resources = extractItems(tourismApiClient.fetchCulturalResourceDemand(
-                baseYm, areaCode, signguCode, null));
+                baseYm, areaCode, signguCode, "12"));
         List<AreaTarSvcDemItem> services = extractItems(tourismApiClient.fetchServiceDemand(
-                baseYm, areaCode, signguCode, null));
+                baseYm, areaCode, signguCode, "11"));
         return average(
                 resources.stream().mapToDouble(item -> parse(item.getCulResDemIxVal())),
                 services.stream().mapToDouble(item -> parse(item.getTarSvcDemIxVal()))
@@ -119,15 +116,13 @@ public class TourismSatisfactionService {
                 .map(age -> "320" + age / 10)
                 .collect(java.util.stream.Collectors.toSet());
 
-        AreaTouDivResponse touristResponse = tourismApiClient.fetchTouristDiversity(
-                baseYm, areaCode, signguCode, null);
-        AreaExpDivResponse expenditureResponse = tourismApiClient.fetchExpenditureDiversity(
-                baseYm, areaCode, signguCode, null);
-        DoubleStream tourists = extractItems(touristResponse).stream()
-                .filter(item -> touristCodes.contains(item.getTouDivIxCd()))
+        DoubleStream tourists = touristCodes.stream()
+                .flatMap(code -> extractItems(tourismApiClient.fetchTouristDiversity(
+                        baseYm, areaCode, signguCode, code)).stream())
                 .mapToDouble(item -> parse(item.getTouDivIxVal()));
-        DoubleStream expenditures = extractItems(expenditureResponse).stream()
-                .filter(item -> expenditureCodes.contains(item.getExpDivIxCd()))
+        DoubleStream expenditures = expenditureCodes.stream()
+                .flatMap(code -> extractItems(tourismApiClient.fetchExpenditureDiversity(
+                        baseYm, areaCode, signguCode, code)).stream())
                 .mapToDouble(item -> parse(item.getExpDivIxVal()));
         return average(tourists, expenditures);
     }
@@ -143,22 +138,32 @@ public class TourismSatisfactionService {
         );
     }
 
-    private OptionalDouble comfort(
+    private OptionalDouble comfort(Context context,
             String areaCode, String signguCode, String title, LocalDate visitDate) {
-        List<TatsCnctrRateItem> items = extractItems(tourismApiClient.fetchConcentrationRate(
-                areaCode, signguCode, title));
-        if (items.isEmpty()) {
-            return OptionalDouble.empty();
-        }
         String targetDate = (visitDate == null ? LocalDate.now() : visitDate)
                 .format(DateTimeFormatter.BASIC_ISO_DATE);
-        TatsCnctrRateItem selected = items.stream()
+        List<TatsCnctrRateItem> items = extractItems(tourismApiClient.fetchConcentrationRate(
+                areaCode, signguCode, title));
+        OptionalDouble exact = items.stream()
                 .filter(item -> targetDate.equals(item.getBaseYmd()))
-                .findFirst()
-                .orElse(items.getFirst());
-        return numeric(selected.getCnctrRate()).stream()
+                .map(TatsCnctrRateItem::getCnctrRate)
+                .map(this::numeric)
+                .flatMapToDouble(OptionalDouble::stream)
                 .map(value -> clamp(100 - value))
                 .findFirst();
+        if (exact.isPresent()) return exact;
+
+        ComfortKey key = new ComfortKey(areaCode, signguCode, targetDate);
+        return context.regionalComfort.computeIfAbsent(key, ignored -> {
+            DoubleStream scores = extractItems(tourismApiClient.fetchConcentrationRate(
+                    areaCode, signguCode, null)).stream()
+                    .filter(item -> targetDate.equals(item.getBaseYmd()))
+                    .map(TatsCnctrRateItem::getCnctrRate)
+                    .map(this::numeric)
+                    .flatMapToDouble(OptionalDouble::stream)
+                    .map(value -> clamp(100 - value));
+            return scores.average();
+        });
     }
 
     private ScoreComponentDto component(
@@ -238,8 +243,15 @@ public class TourismSatisfactionService {
         private final Map<RegionKey, OptionalDouble> popularity = new HashMap<>();
         private final Map<AgeKey, OptionalDouble> ageFit = new HashMap<>();
         private final Map<RegionKey, OptionalDouble> stayFit = new HashMap<>();
+        private final Map<ComfortKey, OptionalDouble> regionalComfort = new HashMap<>();
     }
 
-    private record RegionKey(String baseYm, String areaCode, String signguCode) { }
-    private record AgeKey(RegionKey region, List<String> ageGroups) { }
+    private record RegionKey(String baseYm, String areaCode, String signguCode) {
+    }
+
+    private record AgeKey(RegionKey region, List<String> ageGroups) {
+    }
+
+    private record ComfortKey(String areaCode, String signguCode, String targetDate) {
+    }
 }

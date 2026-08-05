@@ -91,10 +91,10 @@ public class TourismApiClient {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("areaCd", areaCd);
         params.put("signguCd", signguCd);
-        params.put("numOfRows", "30");
+        params.put("numOfRows", tAtsNm == null ? "2000" : "30");
         putIfPresent(params, "tAtsNm", tAtsNm);
 
-        URI uri = buildUri("TatsCnctrRateService/tatsCnctrRateList", params);
+        URI uri = buildUri("TatsCnctrRateService/tatsCnctrRatedList", params);
         return callApi(uri, TatsCnctrRateResponse.class);
     }
 

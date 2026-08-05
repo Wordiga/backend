@@ -21,4 +21,14 @@ public final class ChungnamSigungu {
     );
     public static final Map<String, String> NAMES = ALL.stream()
             .collect(Collectors.toUnmodifiableMap(SigunguResponse::code, SigunguResponse::name));
+
+    public static final Map<String, String> DATA_LAB_CODES = Map.ofEntries(
+            Map.entry("110", "44131"), Map.entry("120", "44133"),
+            Map.entry("150", "44150"), Map.entry("180", "44180"),
+            Map.entry("200", "44200"), Map.entry("210", "44210"),
+            Map.entry("230", "44230"), Map.entry("250", "44250"),
+            Map.entry("270", "44270"), Map.entry("310", "44710"),
+            Map.entry("330", "44760"), Map.entry("340", "44770"),
+            Map.entry("350", "44790"), Map.entry("360", "44800"),
+            Map.entry("370", "44810"), Map.entry("380", "44825"));
 }
