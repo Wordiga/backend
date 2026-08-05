@@ -20,6 +20,7 @@ spring:
             authorization-grant-type: authorization_code
             redirect-uri: ${KAKAO_REDIRECT_URI}
             scope:
+              - openid
               - profile_nickname
               - profile_image
               - account_email

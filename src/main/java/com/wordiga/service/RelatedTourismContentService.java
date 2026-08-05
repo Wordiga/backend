@@ -28,13 +28,14 @@ public class RelatedTourismContentService {
         List<RelatedTourismItem> related = tourismApiClient.fetchRelatedTourism(baseYm(), CHUNGNAM,
                 CHUNGNAM + reference.getLDongSignguCd(), reference.getTitle(), 30);
         Map<String, TourismContentDto> candidates = new LinkedHashMap<>();
+        var satisfactionContext = new TourismSatisfactionService.Context();
         for (RelatedTourismItem item : related.stream().sorted(Comparator.comparing(
                 RelatedTourismItem::getRlteRank, Comparator.nullsLast(Integer::compareTo))).toList()) {
             AreaBasedItem match = exactMatch(item);
             if (match == null || referenceContentId.equals(match.getContentid())
                     || candidates.containsKey(match.getContentid())) continue;
-            ContentDetailDto common = detailService.getCommonDetail(match.getContentid());
-            var satisfaction = satisfactionService.calculate(common, visitDate, ageGroups);
+            var satisfaction = satisfactionService.calculate(satisfactionContext, CHUNGNAM,
+                    match.getLDongSignguCd(), match.getTitle(), visitDate, ageGroups);
             BigDecimal score = satisfaction == null ? BigDecimal.ZERO : satisfaction.getTotalScore();
             candidates.put(match.getContentid(), dto(match, score));
             if (candidates.size() == 30) break;

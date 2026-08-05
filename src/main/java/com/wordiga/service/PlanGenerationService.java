@@ -24,9 +24,10 @@ public class PlanGenerationService {
 
     public PlanDetailResponse generate(Long memberId, PlanGenerateRequest request) {
         validateRequest(request);
-        var details = request.getSelectedContentIds().stream()
-                .map(id -> tourismContentDetailService.getDetail(
-                        id, request.getStartDate(), request.getAgeGroups(), request.getParticipantCount())).toList();
+        List<TourismContentDetailResponse> details = new ArrayList<>();
+        for (int index = 0; index < request.getSelectedContentIds().size(); index++)
+            details.add(tourismContentDetailService.getAiDetail(
+                    request.getSelectedContentIds().get(index), request.getStartDate(), index == 0));
         var regional = regionalContentService.find(request, details);
         List<TourismContentDetailResponse> all = new ArrayList<>(details); all.addAll(regional);
         AiPlanResponse response = aiServerClient.generatePlan(

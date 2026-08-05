@@ -47,8 +47,7 @@ public class RegionalContentService {
             if (regional.size() == REGIONAL_LIMIT) break;
             AreaBasedItem match = exactMatch(candidate);
             if (match == null || savedIds.contains(match.getContentid()) || !added.add(match.getContentid())) continue;
-            regional.add(detailService.getDetail(match.getContentid(), request.getStartDate(),
-                    request.getAgeGroups(), request.getParticipantCount()));
+            regional.add(detailService.getAiDetail(match.getContentid(), request.getStartDate(), false));
         }
         return regional;
     }

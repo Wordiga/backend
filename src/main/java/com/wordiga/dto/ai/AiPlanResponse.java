@@ -7,13 +7,14 @@ import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
+import java.util.Map;
 
 @Data
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
 public class AiPlanResponse {
     private String scheduleId; private EstimatedBudget estimatedBudget; private List<Day> days;
     @Data @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class) public static class EstimatedBudget {
-        private Long totalAmount; private Long perPersonAmount; private String currency; private Object breakdown;
+        private Long totalAmount; private Long perPersonAmount; private String currency; private Map<String, Long> breakdown;
     }
     @Data @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class) public static class Day { private Integer dayNumber; private LocalDate date; private List<Content> contents; }
     @Data @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class) public static class Content {

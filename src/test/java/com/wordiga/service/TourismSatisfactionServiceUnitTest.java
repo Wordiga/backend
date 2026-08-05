@@ -32,6 +32,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 @ExtendWith(MockitoExtension.class)
 class TourismSatisfactionServiceUnitTest {
@@ -72,6 +74,24 @@ class TourismSatisfactionServiceUnitTest {
 
         assertThat(result.getAgeFitScore().isImputed()).isTrue();
         assertThat(result.getAgeFitScore().getScore()).isEqualByComparingTo("50");
+    }
+
+    @Test
+    void reusesRegionalSourcesWithinOneRecommendationRequest() {
+        mockPopularity();
+        mockStayFit();
+        mockComfort(LocalDate.of(2026, 8, 20));
+        when(tourismApiClient.fetchConcentrationRate("44", "44200", "외암민속마을"))
+                .thenReturn(wrap(new TatsCnctrRateResponse(), List.of()));
+        var context = new TourismSatisfactionService.Context();
+
+        service.calculate(context, "44", "200", "현충사", LocalDate.of(2026, 8, 20), List.of());
+        service.calculate(context, "44", "200", "외암민속마을", LocalDate.of(2026, 8, 20), List.of());
+
+        verify(tourismApiClient, times(1)).fetchCulturalResourceDemand(anyString(), eq("44"), eq("44200"), eq(null));
+        verify(tourismApiClient, times(1)).fetchServiceDemand(anyString(), eq("44"), eq("44200"), eq(null));
+        verify(tourismApiClient, times(1)).fetchStayIntensity(anyString(), eq("44"), eq("44200"), eq("2101"));
+        verify(tourismApiClient, times(1)).fetchExpenditureIntensity(anyString(), eq("44"), eq("44200"), eq("2201"));
     }
 
     private void mockPopularity() {

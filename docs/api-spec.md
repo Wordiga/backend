@@ -951,7 +951,7 @@ POST /api/v1/plans/generate
 | `estimatedBudget.totalAmount` | Long | N | 전체 예상 금액 |
 | `estimatedBudget.perPersonAmount` | Long | N | 1인당 예상 금액 |
 | `estimatedBudget.currency` | String | N | 통화 코드 |
-| `estimatedBudget.breakdown` | Object | N | AI 서버가 제공한 항목별 예상 금액 |
+| `estimatedBudget.breakdown` | Map<String, Long> | N | AI 서버가 제공한 항목별 예상 금액. 항목명과 금액을 구조화해 저장 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -986,7 +986,11 @@ POST /api/v1/plans/generate
     "totalAmount": 640000,
     "perPersonAmount": 80000,
     "currency": "KRW",
-    "breakdown": []
+    "breakdown": {
+      "accommodation": 300000,
+      "food": 240000,
+      "activity": 100000
+    }
   },
   "days": [
     {
@@ -1067,7 +1071,7 @@ POST /api/v1/plans/generate
 | `38` | 쇼핑 | 0원 | 전체 |
 | `39` | 음식점 | 15,000원 | 1인 |
 - AI 서버 호출은 DB 트랜잭션 밖에서 수행하고 연결 2초·응답 45초 타임아웃을 적용합니다.
-- AI 응답의 날짜·순서·콘텐츠 ID를 검증한 뒤 원문 JSON과 조회용 데이터를 5초 제한의 단일 트랜잭션으로 저장합니다.
+- AI 응답의 날짜·순서·콘텐츠 ID를 검증한 뒤 일정과 예산 항목을 구조화된 테이블에 5초 제한의 단일 트랜잭션으로 저장합니다. AI 원문 JSON은 중복 저장하지 않습니다.
 - `memo`는 AI 서버 생성값이며 콘텐츠별 운영 안내를 저장합니다.
 
 ## 8. 내 일정 목록 조회
@@ -1311,7 +1315,11 @@ PATCH /api/v1/plans/{planId}
     "totalAmount": 800000,
     "perPersonAmount": 80000,
     "currency": "KRW",
-    "breakdown": []
+    "breakdown": {
+      "accommodation": 300000,
+      "food": 240000,
+      "activity": 100000
+    }
   },
   "updatedAt": "2026-07-28T16:00:00+09:00"
 }

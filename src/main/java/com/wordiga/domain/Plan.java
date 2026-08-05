@@ -4,12 +4,10 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
-
 import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 
 @Entity
 @Table(name = "plans")
@@ -43,22 +41,20 @@ public class Plan extends BaseTimeEntity {
     @Column(name = "schedule_id", length = 100)
     private String scheduleId;
 
-    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
-    @Column(name = "ai_response_json")
-    private String aiResponseJson;
-
     @Column(name = "estimated_total_amount")
     private Long estimatedTotalAmount;
 
     @Column(name = "estimated_per_person_amount")
     private Long estimatedPerPersonAmount;
 
-    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
-    @Column(name = "estimated_budget_breakdown")
-    private String estimatedBudgetBreakdown;
+    @Column(name = "estimated_budget_currency", length = 3)
+    private String estimatedBudgetCurrency;
 
     @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<PlanContent> planContents = new ArrayList<>();
+
+    @OneToMany(mappedBy = "plan", cascade = CascadeType.ALL, orphanRemoval = true)
+    private List<PlanBudgetItem> budgetItems = new ArrayList<>();
 
     private Plan(Member member, String title, LocalDate startDate, LocalDate endDate,
                  Integer participantCount, String planType) {
@@ -92,12 +88,16 @@ public class Plan extends BaseTimeEntity {
         planContents.addAll(contents);
     }
 
-    public void applyAiResult(String scheduleId, String aiResponseJson, Long totalAmount,
-                              Long perPersonAmount, String breakdown) {
+    public void applyAiResult(String scheduleId, Long totalAmount, Long perPersonAmount,
+                              String currency, Map<String, Long> breakdown) {
         this.scheduleId = scheduleId;
-        this.aiResponseJson = aiResponseJson;
         this.estimatedTotalAmount = totalAmount;
         this.estimatedPerPersonAmount = perPersonAmount;
-        this.estimatedBudgetBreakdown = breakdown;
+        this.estimatedBudgetCurrency = currency;
+        budgetItems.clear();
+        if (breakdown != null) breakdown.forEach((category, amount) -> {
+            if (category != null && !category.isBlank() && amount != null)
+                budgetItems.add(PlanBudgetItem.create(this, category, amount));
+        });
     }
 }

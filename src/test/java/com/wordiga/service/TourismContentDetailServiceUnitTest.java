@@ -22,12 +22,13 @@ import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.util.List;
+import java.time.LocalDate;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TourismContentDetailServiceUnitTest {
@@ -54,6 +55,7 @@ class TourismContentDetailServiceUnitTest {
     void combinesDetailResponses() {
         ContentDetailDto common = common("44");
         DetailIntroDto intro = new DetailIntroDto();
+        intro.setContenttypeid("12");
         intro.setContentid("126508");
         intro.setContenttypeid("12");
         intro.setUsetime("09:00~18:00");
@@ -143,6 +145,36 @@ class TourismContentDetailServiceUnitTest {
 
         assertThat(service.getDetail("126508", null, List.of(), 8).getCapacitySatisfied()).isTrue();
         assertThat(service.getDetail("126508", null, List.of(), 11).getCapacitySatisfied()).isFalse();
+    }
+
+    @Test
+    void aiDetailFetchesOnlyCommonIntroAndOptionalWeather() {
+        ContentDetailDto common = common("44");
+        DetailIntroDto intro = new DetailIntroDto();
+        intro.setContenttypeid("12");
+        LocalDate visitDate = LocalDate.of(2026, 8, 20);
+        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
+        when(workshopDetailService.fetchIntroDetail("126508", "12")).thenReturn(intro);
+
+        TourismContentDetailResponse result = service.getAiDetail("126508", visitDate, false);
+
+        assertThat(result.getDetails()).isEmpty();
+        assertThat(result.getImages()).isEmpty();
+        assertThat(result.getMonthlyWeather()).isNull();
+        verify(workshopDetailService, never()).fetchRepeatInfo(anyString(), anyString(), anyInt(), anyInt());
+        verify(workshopDetailService, never()).fetchImages(anyString(), anyString(), anyInt(), anyInt());
+        verifyNoInteractions(tourismApiClient, satisfactionService, monthlyWeatherService);
+    }
+
+    @Test
+    void aiDetailFetchesWeatherOnlyWhenRequested() {
+        ContentDetailDto common = common("44");
+        LocalDate visitDate = LocalDate.of(2026, 8, 20);
+        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
+
+        service.getAiDetail("126508", visitDate, true);
+
+        verify(monthlyWeatherService).estimate("200", visitDate);
     }
 
     private ContentDetailDto common(String regionCode) {
