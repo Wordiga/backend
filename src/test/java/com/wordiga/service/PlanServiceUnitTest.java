@@ -50,6 +50,19 @@ class PlanServiceUnitTest {
         assertThat(result.getEstimatedBudget().totalAmount()).isEqualTo(40_000L);
     }
 
+    @Test void storesOnlyCompleteStructuredBudgetItems() {
+        java.util.Map<String, Long> breakdown = new java.util.LinkedHashMap<>();
+        breakdown.put("food", 20_000L);
+        breakdown.put("", 5_000L);
+        breakdown.put("activity", null);
+
+        plan.applyAiResult("schedule-1", 20_000L, 10_000L, "KRW", breakdown);
+        PlanDetailResponse result = PlanDetailResponse.from(plan);
+
+        assertThat(result.getEstimatedBudget().currency()).isEqualTo("KRW");
+        assertThat(result.getEstimatedBudget().breakdown()).containsExactly(entry("food", 20_000L));
+    }
+
     @Test void replacesContentsInDayAndRequestOrder() {
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         ContentDetailDto content = new ContentDetailDto(); content.setTitle("현충사"); content.setContenttypeid("12");
