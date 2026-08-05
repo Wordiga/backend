@@ -1,6 +1,7 @@
 package com.wordiga.controller;
 
 import com.wordiga.security.JwtTokenProvider;
+import com.wordiga.repository.MemberRepository;
 import com.wordiga.service.TourismContentDetailService;
 import com.wordiga.service.TourismContentService;
 import org.junit.jupiter.api.Test;
@@ -28,6 +29,9 @@ class TourismContentControllerExceptionTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private MemberRepository memberRepository;
 
     @Test
     void rejectsPageSizeOverLimit() throws Exception {

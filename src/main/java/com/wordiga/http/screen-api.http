@@ -83,3 +83,15 @@ Authorization: Bearer {{accessToken}}
 ### v1·v2 화면 7. 내 일정 목록
 GET {{baseUrl}}/api/v1/plans?page=0&size=20&sort=LATEST
 Authorization: Bearer {{accessToken}}
+
+###
+
+### v1 화면 9. 계정 관리 - 소셜 프로필 조회
+GET {{baseUrl}}/api/v1/me
+Authorization: Bearer {{accessToken}}
+
+###
+
+### v1 화면 9. 계정 관리 - 회원탈퇴
+DELETE {{baseUrl}}/api/v1/me
+Authorization: Bearer {{accessToken}}

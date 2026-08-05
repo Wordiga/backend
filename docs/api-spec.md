@@ -20,6 +20,8 @@
 | POST | `/api/v1/plans/{planId}/proposals` | O | AI 제안서 DOCX 생성 |
 | GET | `/api/v1/plans/{planId}/proposals` | O | 일정별 제안서 목록 조회 |
 | DELETE | `/api/v1/plans/{planId}/proposals/{proposalId}` | O | 제안서 영구 삭제 |
+| GET | `/api/v1/me` | O | 내 소셜 프로필 조회 |
+| DELETE | `/api/v1/me` | O | 소셜 연결 해제 및 회원탈퇴 |
 
 ### 공통 인증
 
@@ -1659,3 +1661,76 @@ DELETE /api/v1/plans/{planId}/proposals/{proposalId}
 | `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
 | `PROPOSAL_NOT_FOUND` | 제안서 없음 | 404 | 제안서를 찾을 수 없습니다. |
 | `PROPOSAL_STORAGE_UNAVAILABLE` | 저장소 장애 | 503 | 제안서를 삭제할 수 없습니다. |
+
+## 16. 내 소셜 프로필 조회
+
+```http
+GET /api/v1/me
+```
+
+관련 기능: 계정 관리 화면에서 로그인한 소셜 프로필을 조회합니다.
+
+인증: 필수
+
+### Response Body
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `memberId` | Long | Y | Wordiga 내부 회원 식별자 |
+| `email` | String | Y | 소셜 공급자가 제공한 이메일 |
+| `nickname` | String | N | 소셜 공급자가 제공한 프로필명 |
+| `profileImage` | String | N | 소셜 공급자가 제공한 프로필 이미지 URL |
+| `provider` | Enum | Y | `GOOGLE` 또는 `KAKAO` |
+
+### Response Example
+
+```json
+{
+  "memberId": 1,
+  "email": "user@example.com",
+  "nickname": "사용자",
+  "profileImage": "https://example.com/profile.png",
+  "provider": "GOOGLE"
+}
+```
+
+### Error Code
+
+| code | name | http code | description |
+|---|---|---:|---|
+| `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
+| `MEMBER_NOT_FOUND` | 회원 없음 | 404 | 회원을 찾을 수 없습니다. |
+
+## 17. 회원탈퇴
+
+```http
+DELETE /api/v1/me
+```
+
+관련 기능: 계정 관리 화면에서 소셜 연결과 Wordiga 저장 데이터를 삭제합니다.
+
+인증: 필수
+
+### 처리 순서
+
+1. Kakao 회원은 Kakao Unlink API로 앱 연결을 해제합니다.
+2. Google 회원은 프론트에서 Google ID 공유 동의를 해제한 뒤 이 API를 호출합니다. 백엔드는 Google access/refresh token을 저장하지 않습니다.
+3. S3에 저장된 회원 제안서 파일을 영구 삭제합니다.
+4. `members` 행을 삭제하고 FK cascade로 위시·일정·제안서 메타데이터를 삭제합니다.
+5. 삭제된 회원 ID로 발급한 기존 Wordiga JWT는 인증되지 않습니다.
+
+정상 응답은 `204 No Content`입니다. 외부 연결 해제 또는 S3 삭제가 실패하면 회원 DB 행을 유지하고 `503 Service Unavailable`을 반환합니다.
+
+### Error Code
+
+| code | name | http code | description |
+|---|---|---:|---|
+| `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
+| `MEMBER_NOT_FOUND` | 회원 없음 | 404 | 회원을 찾을 수 없습니다. |
+| `SOCIAL_UNLINK_UNAVAILABLE` | 소셜 연결 해제 실패 | 503 | 소셜 연결을 해제할 수 없습니다. |
+| `PROPOSAL_STORAGE_UNAVAILABLE` | 저장소 장애 | 503 | 제안서 파일을 삭제할 수 없습니다. |
+
+### 외부 API
+
+- Kakao `POST https://kapi.kakao.com/v1/user/unlink`를 사용합니다.
+- 인증은 `KAKAO_ADMIN_KEY`와 회원의 Kakao `providerId`를 사용합니다.

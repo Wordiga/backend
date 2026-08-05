@@ -3,6 +3,7 @@ package com.wordiga.controller;
 import com.wordiga.dto.wish.WishFolderResponse;
 import com.wordiga.dto.wish.WishResponse;
 import com.wordiga.security.JwtTokenProvider;
+import com.wordiga.repository.MemberRepository;
 import com.wordiga.service.WishService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +36,9 @@ class WishControllerTest {
 
     @MockitoBean
     private JwtTokenProvider jwtTokenProvider;
+
+    @MockitoBean
+    private MemberRepository memberRepository;
 
     @BeforeEach
     void authenticateMember() {
