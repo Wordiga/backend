@@ -68,4 +68,11 @@ public class PlanController implements PlanApi {
     public ResponseEntity<List<ProposalResponse>> getProposals(@CurrentMemberId Long memberId, @PathVariable Long planId) {
         return ResponseEntity.ok(proposalService.list(memberId, planId));
     }
+
+    @DeleteMapping("/{planId}/proposals/{proposalId}")
+    public ResponseEntity<Void> deleteProposal(@CurrentMemberId Long memberId, @PathVariable Long planId,
+                                                @PathVariable Long proposalId) {
+        proposalService.delete(memberId, planId, proposalId);
+        return ResponseEntity.noContent().build();
+    }
 }

@@ -2,6 +2,7 @@ package com.wordiga.service;
 
 import com.wordiga.config.ProposalS3Properties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ResponseStatusException;
@@ -13,6 +14,7 @@ import software.amazon.awssdk.services.s3.presigner.model.GetObjectPresignReques
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 
+@Slf4j
 @Component @RequiredArgsConstructor
 public class ProposalStorage {
     private static final String DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
@@ -31,8 +33,15 @@ public class ProposalStorage {
                 .getObjectRequest(get).build()).url().toString();
     }
     public void delete(String key) {
+        configured();
         try { s3Client.deleteObject(DeleteObjectRequest.builder().bucket(properties.bucket()).key(key).build()); }
-        catch (RuntimeException ignored) { }
+        catch (RuntimeException exception) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "제안서를 삭제할 수 없습니다.", exception);
+        }
+    }
+    public void deleteQuietly(String key) {
+        try { delete(key); }
+        catch (RuntimeException exception) { log.warn("제안서 보상 삭제에 실패했습니다. key={}", key, exception); }
     }
     private void configured() {
         if (properties.bucket() == null || properties.bucket().isBlank())

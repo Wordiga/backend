@@ -42,7 +42,7 @@ public class ProposalService {
             String downloadUrl = storage.url(key, fileName, true);
             Proposal saved = writer.save(plan, key, fileName, bytes.length, LocalDateTime.now().plus(properties.retention()));
             return ProposalResponse.from(saved, previewUrl, downloadUrl);
-        } catch (RuntimeException e) { storage.delete(key); throw e; }
+        } catch (RuntimeException e) { storage.deleteQuietly(key); throw e; }
     }
     @Transactional(readOnly = true, timeout = 5)
     public List<ProposalResponse> list(Long memberId, Long planId) {
@@ -51,6 +51,14 @@ public class ProposalService {
                 planId, memberId, LocalDateTime.now()).stream()
                 .map(p -> ProposalResponse.from(p, storage.url(p.getS3Key(), p.getFileName(), false),
                         storage.url(p.getS3Key(), p.getFileName(), true))).toList();
+    }
+
+    @Transactional(timeout = 5)
+    public void delete(Long memberId, Long planId, Long proposalId) {
+        Proposal proposal = proposalRepository.findByIdAndPlanIdAndPlanMemberId(proposalId, planId, memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "제안서를 찾을 수 없습니다."));
+        storage.delete(proposal.getS3Key());
+        proposalRepository.delete(proposal);
     }
     private String fileName(String requested, String planTitle) {
         String title = requested == null || requested.isBlank() ? planTitle + " 제안서" : requested.strip();

@@ -44,6 +44,9 @@ class TourismContentDetailServiceUnitTest {
     @Mock
     private TourismSatisfactionService satisfactionService;
 
+    @Mock
+    private MonthlyWeatherService monthlyWeatherService;
+
     @InjectMocks
     private TourismContentDetailService service;
 

@@ -18,6 +18,8 @@
 | PUT | `/api/v1/plans/{planId}/contents` | O | 내 일정 콘텐츠 수정 |
 | DELETE | `/api/v1/plans/{planId}` | O | 내 일정 삭제 |
 | POST | `/api/v1/plans/{planId}/proposals` | O | AI 제안서 DOCX 생성 |
+| GET | `/api/v1/plans/{planId}/proposals` | O | 일정별 제안서 목록 조회 |
+| DELETE | `/api/v1/plans/{planId}/proposals/{proposalId}` | O | 제안서 영구 삭제 |
 
 ### 공통 인증
 
@@ -48,7 +50,7 @@ GET /api/v1/tourism/contents
 
 관련 기능:
 
-* 메인 화면의 인기 콘텐츠와 계절 콘텐츠를 조회합니다.
+* 인기·계절·위시 기반 개인화·연관 콘텐츠를 조회합니다.
 * 검색어와 지역·관광타입 필터를 적용합니다.
 
 인증: 불필요
@@ -57,11 +59,15 @@ GET /api/v1/tourism/contents
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `type` | Enum | N | 메인 화면 구역 `POPULAR`, `SEASONAL`을 사용하며 기본값은 `POPULAR` | `POPULAR` |
+| `type` | Enum | N | `POPULAR`, `SEASONAL`, `PERSONALIZED`, `RELATED`; 기본값은 `POPULAR` | `POPULAR` |
 | `visitDate` | LocalDate | N | 계절 정렬 기준일, 미입력 시 오늘 | `2026-08-20` |
 | `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
 | `contentTypeId` | Integer | N | 관광타입 ID | `12` |
 | `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드 | `200` |
+| `referenceContentId` | String | 조건부 | `RELATED`의 기준 콘텐츠 ID | `126508` |
+| `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
+| `participantCount` | Integer | 조건부 | `capacitySatisfied=true`일 때 필수 | `25` |
+| `ageGroups` | String[] | N | `RELATED` 만족도 산출에 사용할 연령대 | `30S,40S` |
 | `page` | Integer | N | 0부터 시작하는 페이지 기본값은 `0` | `0` |
 | `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
 
@@ -117,6 +123,7 @@ GET /api/v1/tourism/contents
 | code | name | http code | description |
 |---|---|---:|---|
 | `INVALID_REQUEST` | 요청값 오류 | 400 | 검색 조건을 확인해 주세요. |
+| `UNAUTHORIZED` | 인증 실패 | 401 | `PERSONALIZED` 조회는 로그인이 필요합니다. |
 | `TOURISM_API_UNAVAILABLE` | 관광 API 장애 | 503 | 잠시 후 다시 조회해 주세요. |
 
 ### Validation
@@ -124,12 +131,17 @@ GET /api/v1/tourism/contents
 - `keyword`는 공백 제거 후 1~100자여야 합니다.
 - `size`는 1~50이어야 합니다.
 - `lDongSignguCd`는 충청남도 시군구 코드여야 합니다.
+- `RELATED`는 `referenceContentId`가 필요합니다.
+- `capacitySatisfied=true`는 `participantCount`가 필요합니다.
 
 ### 정렬 및 구현 계획
 
 - 검색어가 있으면 한국관광공사 `searchKeyword2`, 없으면 `areaBasedList2`로 후보를 조회합니다.
 - `POPULAR` 기본 점수는 소비 강도 60%, 체류 강도 40%로 계산합니다.
 - `SEASONAL` 기본 점수는 방문 예정 월의 관광 서비스 수요를 사용합니다.
+- `PERSONALIZED`는 위시에 저장된 상위 3개 시군구와 관광 분류 테마를 후보 조건으로 사용하고, 활동로그는 수집하지 않습니다. 만족도는 조회 시 계산하며 저장하지 않습니다.
+- `RELATED`는 한국관광공사 연관 관광지 후보를 실제 콘텐츠 ID로 매칭한 후 조회 시 만족도를 계산하며 저장하지 않습니다.
+- 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
 - 최종 정렬은 `recommendationScore DESC, contentId ASC`입니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.
 
@@ -201,6 +213,13 @@ GET /api/v1/tourism/contents/{contentId}
 | `seasonalImages` | SeasonalImage[] | Y | 촬영일을 기준으로 계절을 의미화한 사진 |
 | `satisfaction` | Satisfaction | N | 관광 수요 기반 예상 만족도 |
 | `capacitySatisfied` | Boolean | N | 숙박 콘텐츠가 참가 인원을 수용할 수 있는지 여부이며 원천 수용인원이 없으면 `null` |
+| `monthlyWeather` | MonthlyWeather | N | 방문 월의 최근 5개년 ASOS 동일 월 관측값으로 계산한 기후 예상치 |
+| `monthlyWeather.targetMonth` | Integer | Y | 대상 월 1~12 |
+| `monthlyWeather.estimatedAverageTemperatureCelsius` | BigDecimal | N | ASOS 일평균기온의 5개년 동일 월 평균 |
+| `monthlyWeather.estimatedMonthlyPrecipitationMillimeters` | BigDecimal | N | 연도별 동일 월 누적강수량의 5개년 평균 |
+| `monthlyWeather.historicalYears` | Integer | Y | 산출에 사용한 연도 수, 기본 5 |
+| `monthlyWeather.stationName` | String | N | 시군구에 매핑한 인근 ASOS 관측소명 |
+| `monthlyWeather.basis` | String | Y | `ASOS_HISTORICAL_MONTHLY_AVERAGE` |
 
 ### Response Body - CommonDetail
 
@@ -911,6 +930,8 @@ POST /api/v1/plans/generate
 | `startDate` | LocalDate | Y | 시작일 |
 | `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
+| `visitMonth` | Integer | N | 방문 월(1~12), 미입력 시 `startDate`의 월 사용 |
+| `stayNights` | Integer | N | 숙박 수(0~2), 미입력 시 시작일·종료일의 날짜 차이 사용 |
 | `ageGroups` | String[] | N | 참가자 연령대 |
 | `selectedContentIds` | String[] | Y | 선택 콘텐츠 ID, 배열 순서가 사용자 우선순위 |
 
@@ -1008,6 +1029,11 @@ POST /api/v1/plans/generate
 - 시작일은 종료일보다 늦을 수 없습니다.
 - 일정 기간은 최대 3일입니다.
 - 참가 인원은 1~50명입니다.
+- `visitMonth`는 `startDate`의 월과 같아야 합니다.
+- `stayNights`는 전체 일정의 날짜 차이보다 클 수 없습니다.
+- AI 요청 JSON만 snake_case를 사용합니다. 애플리케이션 요청·응답 DTO는 lowerCamelCase를 유지합니다.
+- AI 요청에는 `num_nights`, 월 기후 예상치 `monthly_weather`, 콘텐츠별 `is_outdoor`, 보충 후보 `regional_contents`를 전달합니다.
+- 분류 코드는 관광공사 `lclsSystmCode2` 변환 API의 한글 분류명으로 바꿔 `tags`에 전달합니다. 변환 실패 시 로그를 기록하고 `tags: null`로 전달합니다.
 - `selectedContentIds`는 중복 없이 1~10개입니다.
 - AI 응답의 날짜는 요청 기간 안에 있어야 합니다.
 - 일자별 `sequence`는 1부터 중복 없이 이어져야 합니다.
@@ -1617,3 +1643,19 @@ GET /api/v1/plans/{planId}/proposals
 ### 정렬 기준
 
 - `createdAt DESC, proposalId DESC`로 정렬합니다.
+
+## 15. 제안서 영구 삭제
+
+```http
+DELETE /api/v1/plans/{planId}/proposals/{proposalId}
+```
+
+인증: 필수
+
+본인 소유 일정의 제안서만 삭제할 수 있습니다. S3 객체 삭제에 성공한 뒤 DB 메타데이터를 삭제하며 정상 응답은 `204 No Content`입니다. S3 삭제 실패 시 DB 행을 유지하고 `503 Service Unavailable`을 반환합니다.
+
+| code | name | http code | description |
+|---|---|---:|---|
+| `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
+| `PROPOSAL_NOT_FOUND` | 제안서 없음 | 404 | 제안서를 찾을 수 없습니다. |
+| `PROPOSAL_STORAGE_UNAVAILABLE` | 저장소 장애 | 503 | 제안서를 삭제할 수 없습니다. |

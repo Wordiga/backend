@@ -18,4 +18,5 @@ public interface PlanApi {
     ResponseEntity<Void> deletePlan(Long memberId, Long planId);
     ResponseEntity<ProposalResponse> createProposal(Long memberId, Long planId, @Valid ProposalCreateRequest request);
     ResponseEntity<List<ProposalResponse>> getProposals(Long memberId, Long planId);
+    ResponseEntity<Void> deleteProposal(Long memberId, Long planId, Long proposalId);
 }

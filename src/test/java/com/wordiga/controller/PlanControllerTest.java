@@ -64,6 +64,8 @@ class PlanControllerTest {
         mockMvc.perform(post("/api/v1/plans/9/proposals").contentType("application/json").content("{}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.fileName").value("proposal.docx"));
         mockMvc.perform(get("/api/v1/plans/9/proposals")).andExpect(status().isOk());
+        mockMvc.perform(delete("/api/v1/plans/9/proposals/3")).andExpect(status().isNoContent());
+        verify(proposalService).delete(1L, 9L, 3L);
     }
 
     private PlanDetailResponse detail() { return PlanDetailResponse.builder().planId(9L).title("일정")

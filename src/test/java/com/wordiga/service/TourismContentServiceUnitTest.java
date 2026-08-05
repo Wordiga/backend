@@ -23,6 +23,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +33,9 @@ class TourismContentServiceUnitTest {
 
     @Mock
     private TourismApiClient tourismApiClient;
+    @Mock private RelatedTourismContentService relatedTourismContentService;
+    @Mock private PersonalizedTourismContentService personalizedTourismContentService;
+    @Mock private TourismContentDetailService detailService;
 
     private TourismContentService tourismContentService;
 
@@ -38,7 +43,8 @@ class TourismContentServiceUnitTest {
     void setUp() {
         TourismProperties properties = new TourismProperties();
         properties.getRegion().setChungnamCode("44");
-        tourismContentService = new TourismContentService(tourismApiClient, properties);
+        tourismContentService = new TourismContentService(tourismApiClient, properties,
+                relatedTourismContentService, personalizedTourismContentService, detailService);
     }
 
     @Test
@@ -153,6 +159,36 @@ class TourismContentServiceUnitTest {
                     assertThat(item.getMapx()).isNull();
                     assertThat(item.getMapy()).isNull();
                 });
+    }
+
+    @Test void delegatesRelatedAndPersonalizedRecommendations() {
+        TourismContentListResponse empty = TourismContentListResponse.builder()
+                .items(List.of()).page(0).size(20).hasNext(false).build();
+        when(relatedTourismContentService.get("126508", LocalDate.of(2026, 8, 20), List.of("30S"), 0, 20))
+                .thenReturn(empty);
+        when(personalizedTourismContentService.get(1L, LocalDate.of(2026, 8, 20), 0, 20)).thenReturn(empty);
+
+        assertThat(tourismContentService.getContentList(1L, ListType.RELATED, LocalDate.of(2026, 8, 20),
+                null, null, null, "126508", null, null, List.of("30S"), 0, 20)).isSameAs(empty);
+        assertThat(tourismContentService.getContentList(1L, ListType.PERSONALIZED, LocalDate.of(2026, 8, 20),
+                null, null, null, null, null, null, null, 0, 20)).isSameAs(empty);
+        assertThatThrownBy(() -> tourismContentService.getContentList(1L, ListType.RELATED, null,
+                null, null, null, " ", null, null, null, 0, 20)).hasMessageContaining("400");
+    }
+
+    @Test void filtersSearchResultsToLodgingThatCanAccommodateParticipants() {
+        AreaBasedItem lodging = item("32"); lodging.setContentid("lodging");
+        AreaBasedItem tourist = item("12"); tourist.setContentid("tourist");
+        when(tourismApiClient.searchContent("숙소", null, "44", null, 1, 20))
+                .thenReturn(response(List.of(lodging, tourist), 2));
+        when(detailService.capacitySatisfied("lodging", 25)).thenReturn(true);
+
+        TourismContentListResponse result = tourismContentService.getContentList(1L, ListType.POPULAR, null,
+                "숙소", null, null, null, true, 25, null, 0, 20);
+
+        assertThat(result.getItems()).extracting("contentId").containsExactly("lodging");
+        assertThatThrownBy(() -> tourismContentService.getContentList(1L, ListType.POPULAR, null,
+                "숙소", null, null, null, true, null, null, 0, 20)).hasMessageContaining("400");
     }
 
     private AreaBasedItem item(String contentTypeId) {

@@ -185,6 +185,9 @@ CREATE TABLE wishes
     sigungu_code    VARCHAR(10)  NULL,
     sigungu_name    VARCHAR(50)  NULL,
     folder_name     VARCHAR(50)  NOT NULL DEFAULT '기본 위시리스트',
+    lcls_system1_code VARCHAR(20) NULL,
+    lcls_system2_code VARCHAR(20) NULL,
+    lcls_system3_code VARCHAR(20) NULL,
     created_at      TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 

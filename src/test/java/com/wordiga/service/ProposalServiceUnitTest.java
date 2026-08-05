@@ -14,6 +14,7 @@ import java.time.*;
 import java.util.*;
 import java.util.zip.*;
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -44,6 +45,25 @@ class ProposalServiceUnitTest {
         verify(aiServerClient).generateProposal(payload.capture());
         assertThat(payload.getValue().getVisitMonth()).isEqualTo(LocalDate.now().getMonthValue());
         assertThat(payload.getValue().getNumPeople()).isEqualTo(2);
+    }
+    @Test void deletesOwnedProposalFromS3AndDatabase() {
+        Proposal proposal = Proposal.create(plan, "proposals/1/9/file.docx", "제안서.docx", 10L,
+                LocalDateTime.now().plusDays(30));
+        when(proposalRepository.findByIdAndPlanIdAndPlanMemberId(3L, 9L, 1L)).thenReturn(Optional.of(proposal));
+
+        service.delete(1L, 9L, 3L);
+
+        verify(storage).delete("proposals/1/9/file.docx");
+        verify(proposalRepository).delete(proposal);
+    }
+
+    @Test void rejectsDeletingUnknownProposal() {
+        when(proposalRepository.findByIdAndPlanIdAndPlanMemberId(3L, 9L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.delete(1L, 9L, 3L))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("404");
+        verifyNoInteractions(storage);
     }
     private byte[] docx() throws Exception {
         ByteArrayOutputStream out = new ByteArrayOutputStream();
