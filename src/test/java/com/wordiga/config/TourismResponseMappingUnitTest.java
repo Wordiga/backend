@@ -1,0 +1,31 @@
+package com.wordiga.config;
+
+import com.wordiga.client.dto.PhotoGalleryResponse;
+import com.wordiga.dto.ContentDetailDto;
+import org.junit.jupiter.api.Test;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+class TourismResponseMappingUnitTest {
+
+    private final AppConfig config = new AppConfig();
+
+    @Test
+    void mapsLowerCamelCaseLegalDistrictCodes() throws Exception {
+        ContentDetailDto result = config.objectMapper().readValue(
+                "{\"lDongRegnCd\":\"44\",\"lDongSignguCd\":\"150\"}", ContentDetailDto.class);
+
+        assertThat(result.getLDongRegnCd()).isEqualTo("44");
+        assertThat(result.getLDongSignguCd()).isEqualTo("150");
+    }
+
+    @Test
+    void mapsEmptyItemsStringToNull() throws Exception {
+        PhotoGalleryResponse result = RestClientConfig.jsonMapper().readValue("""
+                {"response":{"header":{"resultCode":"0000"},
+                "body":{"items":"","numOfRows":0,"pageNo":1,"totalCount":0}}}
+                """, PhotoGalleryResponse.class);
+
+        assertThat(result.getResponse().getBody().getItems()).isNull();
+    }
+}
