@@ -91,7 +91,8 @@ public class TourismContentService {
                 org.springframework.http.HttpStatus.BAD_REQUEST, "수용 가능 숙소 필터에는 참가 인원이 필요합니다.");
         List<TourismContentDto> items = response.getItems().stream()
                 .filter(item -> "32".equals(item.getContentTypeId()))
-                .filter(item -> Boolean.TRUE.equals(detailService.capacitySatisfied(item.getContentId(), participantCount)))
+                .filter(item -> Boolean.TRUE.equals(detailService.capacitySatisfied(
+                        item.getContentId(), item.getContentTypeId(), participantCount)))
                 .toList();
         return TourismContentListResponse.builder().items(items).page(response.getPage()).size(response.getSize())
                 .hasNext(response.isHasNext()).build();

@@ -181,7 +181,7 @@ class TourismContentServiceUnitTest {
         AreaBasedItem tourist = item("12"); tourist.setContentid("tourist");
         when(tourismApiClient.searchContent("숙소", null, "44", null, 1, 20))
                 .thenReturn(response(List.of(lodging, tourist), 2));
-        when(detailService.capacitySatisfied("lodging", 25)).thenReturn(true);
+        when(detailService.capacitySatisfied("lodging", "32", 25)).thenReturn(true);
 
         TourismContentListResponse result = tourismContentService.getContentList(1L, ListType.POPULAR, null,
                 "숙소", null, null, null, true, 25, null, 0, 20);

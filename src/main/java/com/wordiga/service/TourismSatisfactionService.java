@@ -26,6 +26,8 @@ import java.util.Collections;
 import java.util.List;
 import java.util.OptionalDouble;
 import java.util.Set;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.stream.DoubleStream;
 
 @Service
@@ -42,14 +44,26 @@ public class TourismSatisfactionService {
 
     public SatisfactionDto calculate(
             ContentDetailDto content, LocalDate visitDate, List<String> ageGroups) {
-        String baseYm = latestBaseYm();
-        String areaCode = content.getLDongRegnCd();
-        String signguCode = areaCode + content.getLDongSignguCd();
+        return calculate(new Context(), content.getLDongRegnCd(), content.getLDongSignguCd(),
+                content.getTitle(), visitDate, ageGroups);
+    }
 
-        OptionalDouble popularity = popularity(baseYm, areaCode, signguCode);
-        OptionalDouble ageFit = ageFit(baseYm, areaCode, signguCode, ageGroups);
-        OptionalDouble stayFit = stayFit(baseYm, areaCode, signguCode);
-        OptionalDouble comfort = comfort(areaCode, signguCode, content.getTitle(), visitDate);
+    public SatisfactionDto calculate(Context context, String areaCode, String localSignguCode,
+                                     String title, LocalDate visitDate, List<String> ageGroups) {
+        String baseYm = latestBaseYm();
+        String signguCode = areaCode + localSignguCode;
+        RegionKey region = new RegionKey(baseYm, areaCode, signguCode);
+
+        OptionalDouble popularity = context.popularity.computeIfAbsent(region,
+                ignored -> popularity(baseYm, areaCode, signguCode));
+        List<String> normalizedAges = ageGroups == null ? List.of()
+                : ageGroups.stream().filter(java.util.Objects::nonNull).toList();
+        AgeKey ageKey = new AgeKey(region, normalizedAges);
+        OptionalDouble ageFit = context.ageFit.computeIfAbsent(ageKey,
+                ignored -> ageFit(baseYm, areaCode, signguCode, normalizedAges));
+        OptionalDouble stayFit = context.stayFit.computeIfAbsent(region,
+                ignored -> stayFit(baseYm, areaCode, signguCode));
+        OptionalDouble comfort = comfort(areaCode, signguCode, title, visitDate);
         if (popularity.isEmpty() && ageFit.isEmpty() && stayFit.isEmpty() && comfort.isEmpty()) {
             return null;
         }
@@ -219,4 +233,13 @@ public class TourismSatisfactionService {
         }
         return response.getResponse().getBody().getItems().getItem();
     }
+
+    public static final class Context {
+        private final Map<RegionKey, OptionalDouble> popularity = new HashMap<>();
+        private final Map<AgeKey, OptionalDouble> ageFit = new HashMap<>();
+        private final Map<RegionKey, OptionalDouble> stayFit = new HashMap<>();
+    }
+
+    private record RegionKey(String baseYm, String areaCode, String signguCode) { }
+    private record AgeKey(RegionKey region, List<String> ageGroups) { }
 }

@@ -1,7 +1,5 @@
 package com.wordiga.service;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.domain.Plan;
 import com.wordiga.domain.PlanContent;
 import com.wordiga.dto.ai.AiPlanResponse;
@@ -20,7 +18,6 @@ import java.time.format.DateTimeFormatter;
 public class PlanWriter {
     private final PlanRepository planRepository;
     private final MemberRepository memberRepository;
-    private final ObjectMapper objectMapper;
 
     @Transactional(timeout = 5)
     public PlanDetailResponse saveGenerated(Long memberId, PlanGenerateRequest request, AiPlanResponse ai,
@@ -35,8 +32,9 @@ public class PlanWriter {
                     c.getStartTime(), c.getEndTime(), c.getDurationMinutes(), c.getTravelTimeMinutes(),
                     c.getTravelDistanceMeters(), c.getEstimatedCost(), c.getMemo()));
         AiPlanResponse.EstimatedBudget budget = ai.getEstimatedBudget();
-        plan.applyAiResult(ai.getScheduleId(), json(ai), budget == null ? null : budget.getTotalAmount(),
-                budget == null ? null : budget.getPerPersonAmount(), budget == null ? null : json(budget.getBreakdown()));
+        plan.applyAiResult(ai.getScheduleId(), budget == null ? null : budget.getTotalAmount(),
+                budget == null ? null : budget.getPerPersonAmount(), budget == null ? null : budget.getCurrency(),
+                budget == null ? null : budget.getBreakdown());
         return PlanDetailResponse.from(planRepository.save(plan));
     }
     private String title(Long memberId, PlanGenerateRequest request, String sigunguName) {
@@ -47,14 +45,5 @@ public class PlanWriter {
         int number = 1;
         while (planRepository.existsByMemberIdAndTitle(memberId, base + " " + number)) number++;
         return base + " " + number;
-    }
-    private String json(AiPlanResponse response) {
-        try { return objectMapper.writeValueAsString(response); }
-        catch (JsonProcessingException e) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 응답을 저장할 수 없습니다.", e); }
-    }
-    private String json(Object value) {
-        if (value == null) return null;
-        try { return objectMapper.writeValueAsString(value); }
-        catch (JsonProcessingException e) { throw new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 예산 응답을 저장할 수 없습니다.", e); }
     }
 }

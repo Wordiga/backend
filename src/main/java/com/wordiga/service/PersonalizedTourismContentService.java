@@ -22,7 +22,6 @@ public class PersonalizedTourismContentService {
     private static final String CHUNGNAM = "44";
     private final WishRepository wishRepository;
     private final TourismApiClient tourismApiClient;
-    private final TourismContentDetailService detailService;
     private final TourismSatisfactionService satisfactionService;
 
     public TourismContentListResponse get(Long memberId, LocalDate visitDate, int page, int size) {
@@ -36,12 +35,13 @@ public class PersonalizedTourismContentService {
                 .collect(Collectors.groupingBy(Function.identity(), Collectors.counting())).entrySet().stream()
                 .sorted(Map.Entry.<String, Long>comparingByValue().reversed()).limit(3).map(Map.Entry::getKey).toList();
         Map<String, TourismContentDto> candidates = new LinkedHashMap<>();
+        var satisfactionContext = new TourismSatisfactionService.Context();
         for (String signgu : signgus) {
             for (AreaBasedItem item : tourismApiClient.fetchAreaBasedContent(CHUNGNAM, signgu, 50)) {
                 if (wishIds.contains(item.getContentid()) || !matchesTheme(item, themes)
                         || candidates.containsKey(item.getContentid())) continue;
-                var common = detailService.getCommonDetail(item.getContentid());
-                var satisfaction = satisfactionService.calculate(common, visitDate, List.of());
+                var satisfaction = satisfactionService.calculate(satisfactionContext, CHUNGNAM,
+                        item.getLDongSignguCd(), item.getTitle(), visitDate, List.of());
                 BigDecimal score = satisfaction == null ? BigDecimal.ZERO : satisfaction.getTotalScore();
                 candidates.put(item.getContentid(), dto(item, score));
                 if (candidates.size() == 30) break;

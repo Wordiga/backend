@@ -87,11 +87,28 @@ public class TourismContentDetailService {
         return common;
     }
 
-    public Boolean capacitySatisfied(String contentId, Integer participantCount) {
+    public TourismContentDetailResponse getAiDetail(String contentId, LocalDate visitDate, boolean includeWeather) {
         ContentDetailDto common = getCommonDetail(contentId);
         DetailIntroDto intro = workshopDetailService.fetchIntroDetail(contentId, common.getContenttypeid());
-        List<DetailInfoDto> details = workshopDetailService.fetchRepeatInfo(contentId, common.getContenttypeid(), 1, 100);
-        return capacitySatisfied(common.getContenttypeid(), intro, details, participantCount);
+        return TourismContentDetailResponse.builder()
+                .common(toCommon(common))
+                .intro(detailMapper.toIntro(intro))
+                .details(List.of())
+                .images(List.of())
+                .seasonalImages(List.of())
+                .monthlyWeather(includeWeather ? monthlyWeatherService.estimate(common.getLDongSignguCd(), visitDate) : null)
+                .build();
+    }
+
+    public Boolean capacitySatisfied(String contentId, Integer participantCount) {
+        ContentDetailDto common = getCommonDetail(contentId);
+        return capacitySatisfied(contentId, common.getContenttypeid(), participantCount);
+    }
+
+    public Boolean capacitySatisfied(String contentId, String contentTypeId, Integer participantCount) {
+        DetailIntroDto intro = workshopDetailService.fetchIntroDetail(contentId, contentTypeId);
+        List<DetailInfoDto> details = workshopDetailService.fetchRepeatInfo(contentId, contentTypeId, 1, 100);
+        return capacitySatisfied(contentTypeId, intro, details, participantCount);
     }
 
     private List<SeasonalImageDto> seasonalImages(ContentDetailDto common, List<DetailImageDto> fallback) {

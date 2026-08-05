@@ -40,14 +40,27 @@ class PlanServiceUnitTest {
     }
 
     @Test void recalculatesTotalBudgetAndKeepsScheduleWhenParticipantCountChanges() {
-        plan.applyAiResult("schedule-1", "{}", 20_000L, 10_000L, "{\"food\":20000}");
+        plan.applyAiResult("schedule-1", 20_000L, 10_000L, "KRW", java.util.Map.of("food", 20_000L));
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         PlanUpdateRequest request = new PlanUpdateRequest(); request.setParticipantCount(4);
 
         PlanDetailResponse result = service.updatePlan(1L, 9L, request);
 
         assertThat(result.getScheduleId()).isEqualTo("schedule-1");
-        assertThat(((java.util.Map<?, ?>) result.getEstimatedBudget()).get("totalAmount")).isEqualTo(40_000L);
+        assertThat(result.getEstimatedBudget().totalAmount()).isEqualTo(40_000L);
+    }
+
+    @Test void storesOnlyCompleteStructuredBudgetItems() {
+        java.util.Map<String, Long> breakdown = new java.util.LinkedHashMap<>();
+        breakdown.put("food", 20_000L);
+        breakdown.put("", 5_000L);
+        breakdown.put("activity", null);
+
+        plan.applyAiResult("schedule-1", 20_000L, 10_000L, "KRW", breakdown);
+        PlanDetailResponse result = PlanDetailResponse.from(plan);
+
+        assertThat(result.getEstimatedBudget().currency()).isEqualTo("KRW");
+        assertThat(result.getEstimatedBudget().breakdown()).containsExactly(entry("food", 20_000L));
     }
 
     @Test void replacesContentsInDayAndRequestOrder() {

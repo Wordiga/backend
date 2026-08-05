@@ -40,12 +40,12 @@ class RegionalContentServiceUnitTest {
         when(tourismApiClient.searchContent(eq("외암민속마을"), isNull(), eq("44"), eq("460"), eq(1), eq(10)))
                 .thenReturn(searchResult("regional-1", "외암민속마을"));
         TourismContentDetailResponse enriched = detail("regional-1", "외암민속마을");
-        when(detailService.getDetail("regional-1", request.getStartDate(), request.getAgeGroups(), 20))
+        when(detailService.getAiDetail("regional-1", request.getStartDate(), false))
                 .thenReturn(enriched);
 
         assertThat(service.find(request, List.of(detail("126508", "현충사"))))
                 .extracting(item -> item.getCommon().getContentId()).containsExactly("regional-1");
-        verify(detailService, never()).getDetail(eq("126508"), any(), any(), anyInt());
+        verify(detailService, never()).getAiDetail(eq("126508"), any(), anyBoolean());
     }
 
     private PlanGenerateRequest request() {

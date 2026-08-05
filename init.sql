@@ -7,9 +7,9 @@ CREATE TABLE members
     id          BIGSERIAL    NOT NULL,
     email       VARCHAR(100) NOT NULL,
     nickname    VARCHAR(50)  NULL,
-    password    VARCHAR(255) NULL,
     provider    VARCHAR(20)  NOT NULL,
     provider_id VARCHAR(100) NULL,
+    profile_image VARCHAR(500) NULL,
     created_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -34,10 +34,9 @@ CREATE TABLE plans
     participant_count           INT          NOT NULL DEFAULT 1,
     plan_type                   VARCHAR(50)  NULL,
     schedule_id                 VARCHAR(100) NULL,
-    ai_response_json            TEXT         NULL,
     estimated_total_amount      BIGINT       NULL,
     estimated_per_person_amount BIGINT       NULL,
-    estimated_budget_breakdown  TEXT         NULL,
+    estimated_budget_currency   VARCHAR(3)   NULL,
     created_at                  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at                  TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -94,6 +93,23 @@ ALTER TABLE plan_contents
 CREATE INDEX idx_plan_contents_plan ON plan_contents (plan_id);
 CREATE INDEX idx_plan_contents_sequence ON plan_contents (plan_id, sequence);
 CREATE INDEX idx_plan_contents_day_sequence ON plan_contents (plan_id, plan_date, sequence);
+
+-- ========================
+-- plan_budget_items
+-- ========================
+
+CREATE TABLE plan_budget_items
+(
+    id       BIGSERIAL   NOT NULL,
+    plan_id  BIGINT      NOT NULL,
+    category VARCHAR(50) NOT NULL,
+    amount   BIGINT      NOT NULL,
+    CONSTRAINT pk_plan_budget_items PRIMARY KEY (id),
+    CONSTRAINT uk_plan_budget_items_plan_category UNIQUE (plan_id, category),
+    CONSTRAINT fk_plan_budget_items_plan FOREIGN KEY (plan_id) REFERENCES plans (id) ON DELETE CASCADE
+);
+
+CREATE INDEX idx_plan_budget_items_plan ON plan_budget_items (plan_id);
 
 -- ========================
 -- proposals
