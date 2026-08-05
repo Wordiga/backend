@@ -4,6 +4,8 @@ import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
@@ -41,7 +43,7 @@ public class Plan extends BaseTimeEntity {
     @Column(name = "schedule_id", length = 100)
     private String scheduleId;
 
-    @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(name = "ai_response_json")
     private String aiResponseJson;
 
@@ -51,7 +53,7 @@ public class Plan extends BaseTimeEntity {
     @Column(name = "estimated_per_person_amount")
     private Long estimatedPerPersonAmount;
 
-    @Lob
+    @JdbcTypeCode(SqlTypes.LONGVARCHAR)
     @Column(name = "estimated_budget_breakdown")
     private String estimatedBudgetBreakdown;
 
