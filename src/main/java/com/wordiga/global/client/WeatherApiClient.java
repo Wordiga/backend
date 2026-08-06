@@ -20,7 +20,7 @@ public class WeatherApiClient {
     private final WeatherProperties properties;
 
     public List<AsosDailyResponse.Item> daily(String stationId, LocalDate start, LocalDate end) {
-        configured();
+        validateConfig();
         URI uri = URI.create(properties.baseUrl() + "/getWthrDataList?serviceKey=" + properties.serviceKey()
                 + "&pageNo=1&numOfRows=100&dataType=JSON&dataCd=ASOS&dateCd=DAY&stnIds=" + stationId
                 + "&startDt=" + start.format(DateTimeFormatter.BASIC_ISO_DATE)
@@ -41,7 +41,7 @@ public class WeatherApiClient {
         }
     }
 
-    private void configured() {
+    private void validateConfig() {
         if (properties.serviceKey() == null || properties.serviceKey().isBlank()) unavailable();
     }
 

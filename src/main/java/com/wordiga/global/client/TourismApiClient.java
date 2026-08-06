@@ -25,7 +25,7 @@ public class TourismApiClient {
     private final RestClient restClient;
     private final TourismProperties properties;
 
-    // ─── 관광 소비 강도 ───
+    // ─── 지역별 관광 수요 강도 ───
 
     public AreaTarExpDsResponse fetchExpenditureIntensity(String baseYm, String areaCd,
                                                           String signguCd, String tarExpDsIxCd) {
@@ -40,8 +40,6 @@ public class TourismApiClient {
         return callApi(uri, AreaTarExpDsResponse.class);
     }
 
-    // ─── 관광 체류 강도 ───
-
     public AreaTarSjrnDsResponse fetchStayIntensity(String baseYm, String areaCd,
                                                     String signguCd, String tarSjrnDsIxCd) {
         Map<String, String> params = new LinkedHashMap<>();
@@ -55,7 +53,7 @@ public class TourismApiClient {
         return callApi(uri, AreaTarSjrnDsResponse.class);
     }
 
-    // ─── 관광 서비스 수요 ───
+    // ─── 지역별 관광 자원 수요 ───
 
     public AreaTarSvcDemResponse fetchServiceDemand(String baseYm, String areaCd,
                                                     String signguCd, String tarSvcDemIxCd) {
@@ -70,8 +68,6 @@ public class TourismApiClient {
         return callApi(uri, AreaTarSvcDemResponse.class);
     }
 
-    // ─── 문화 자원 수요 ───
-
     public AreaCulResDemResponse fetchCulturalResourceDemand(String baseYm, String areaCd,
                                                              String signguCd, String culResDemIxCd) {
         Map<String, String> params = new LinkedHashMap<>();
@@ -85,18 +81,7 @@ public class TourismApiClient {
         return callApi(uri, AreaCulResDemResponse.class);
     }
 
-    // ─── 관광지 집중률 ───
-
-    public TatsCnctrRateResponse fetchConcentrationRate(String areaCd, String signguCd, String tAtsNm) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("areaCd", areaCd);
-        params.put("signguCd", signguCd);
-        params.put("numOfRows", "30");
-        putIfPresent(params, "tAtsNm", tAtsNm);
-
-        URI uri = buildUri("TatsCnctrRateService/tatsCnctrRateList", params);
-        return callApi(uri, TatsCnctrRateResponse.class);
-    }
+    // ─── 지역별 관광 다양성 ───
 
     public AreaTouDivResponse fetchTouristDiversity(
             String baseYm, String areaCd, String signguCd, String touDivIxCd) {
@@ -124,7 +109,7 @@ public class TourismApiClient {
         return callApi(uri, AreaExpDivResponse.class);
     }
 
-    // ─── 지역기반 관광 콘텐츠 조회 (KorService2) ───
+    // ─── 국문 관광정보 서비스 ───
 
     public List<AreaBasedItem> fetchAreaBasedContent(String lDongRegnCd, String lDongSignguCd, int numOfRows) {
         Map<String, String> params = new LinkedHashMap<>();
@@ -162,29 +147,6 @@ public class TourismApiClient {
         return callApi(uri, AreaBasedResponse.class);
     }
 
-    public List<RelatedTourismItem> fetchRelatedTourism(String baseYm, String areaCd, String signguCd,
-                                                        String keyword, int numOfRows) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("baseYm", baseYm);
-        params.put("areaCd", areaCd);
-        params.put("signguCd", signguCd);
-        params.put("keyword", keyword);
-        params.put("pageNo", "1");
-        params.put("numOfRows", String.valueOf(numOfRows));
-        RelatedTourismResponse response = callApi(
-                buildUri("TarRlteTarService1/searchKeyword1", params), RelatedTourismResponse.class);
-        if (response.getResponse() != null && response.getResponse().getHeader() != null
-                && response.getResponse().getHeader().getResultCode() != null
-                && !"0000".equals(response.getResponse().getHeader().getResultCode())) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "관광공사 연관 관광지 API를 사용할 수 없습니다.");
-        }
-        if (response.getResponse() == null || response.getResponse().getBody() == null
-                || response.getResponse().getBody().getItems() == null
-                || response.getResponse().getBody().getItems().getItem() == null) return List.of();
-        return response.getResponse().getBody().getItems().getItem();
-    }
-
     public List<String> fetchClassificationNames(String lclsSystm1, String lclsSystm2, String lclsSystm3) {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("pageNo", "1");
@@ -218,6 +180,8 @@ public class TourismApiClient {
                 .orElse(null);
     }
 
+    // ─── 관광 사진 갤러리 서비스 ───
+
     public PhotoGalleryResponse searchPhotos(String keyword) {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("keyword", keyword);
@@ -233,7 +197,7 @@ public class TourismApiClient {
         log.info("[TourismAPI] 호출: {}", uri);
         try {
             T response = restClient.get()
-                    .uri(uri)       // ← URI 객체로 넘기면 재인코딩 안 함
+                    .uri(uri)
                     .retrieve()
                     .body(responseType);
             if (response == null) throw new ResponseStatusException(

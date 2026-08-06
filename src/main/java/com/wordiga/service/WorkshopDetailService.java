@@ -2,7 +2,10 @@ package com.wordiga.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wordiga.dto.*;
+import com.wordiga.dto.ContentDetailDto;
+import com.wordiga.dto.DetailImageDto;
+import com.wordiga.dto.DetailInfoDto;
+import com.wordiga.dto.DetailIntroDto;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -12,8 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestTemplate;
-import org.springframework.web.util.UriUtils;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.util.UriUtils;
 
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
@@ -27,10 +30,10 @@ public class WorkshopDetailService {
     private final RestTemplate restTemplate;
     private final ObjectMapper objectMapper;
 
-    @Value("${tour-api.base-url}")
+    @Value("${tourism.api.base-url}")
     private String baseUrl;
 
-    @Value("${tour-api.service-key}")
+    @Value("${tourism.api.service-key}")
     private String serviceKey;
 
     /**
