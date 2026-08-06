@@ -1,4 +1,4 @@
-package com.wordiga.client;
+package com.wordiga.global.client;
 
 import com.wordiga.dto.ai.AiPlanRequest;
 import com.wordiga.dto.ai.AiPlanResponse;

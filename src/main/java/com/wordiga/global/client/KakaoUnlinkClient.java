@@ -1,4 +1,4 @@
-package com.wordiga.client;
+package com.wordiga.global.client;
 
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;

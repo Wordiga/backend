@@ -1,23 +1,9 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaCulResDemItem;
-import com.wordiga.client.dto.AreaCulResDemResponse;
-import com.wordiga.client.dto.AreaExpDivItem;
-import com.wordiga.client.dto.AreaExpDivResponse;
-import com.wordiga.client.dto.AreaTarExpDsItem;
-import com.wordiga.client.dto.AreaTarExpDsResponse;
-import com.wordiga.client.dto.AreaTarSjrnDsItem;
-import com.wordiga.client.dto.AreaTarSjrnDsResponse;
-import com.wordiga.client.dto.AreaTarSvcDemItem;
-import com.wordiga.client.dto.AreaTarSvcDemResponse;
-import com.wordiga.client.dto.AreaTouDivItem;
-import com.wordiga.client.dto.AreaTouDivResponse;
-import com.wordiga.client.dto.KtoApiResponse;
-import com.wordiga.client.dto.TatsCnctrRateItem;
-import com.wordiga.client.dto.TatsCnctrRateResponse;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.tourismContent.detail.SatisfactionDto;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.*;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -26,16 +12,13 @@ import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.List;
 import java.util.Arrays;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
-import static org.mockito.Mockito.times;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class TourismSatisfactionServiceUnitTest {

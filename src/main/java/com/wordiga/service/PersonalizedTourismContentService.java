@@ -1,9 +1,9 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaBasedItem;
 import com.wordiga.dto.tourismContent.TourismContentDto;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.AreaBasedItem;
 import com.wordiga.repository.WishRepository;
 import com.wordiga.wish.Wish;
 import lombok.RequiredArgsConstructor;

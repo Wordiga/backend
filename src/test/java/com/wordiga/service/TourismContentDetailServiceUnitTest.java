@@ -1,33 +1,28 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaTarExpDsItem;
-import com.wordiga.client.dto.AreaTarExpDsResponse;
-import com.wordiga.client.dto.KtoApiResponse;
-import com.wordiga.client.dto.PhotoGalleryItem;
-import com.wordiga.client.dto.PhotoGalleryResponse;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.DetailImageDto;
 import com.wordiga.dto.DetailInfoDto;
 import com.wordiga.dto.DetailIntroDto;
 import com.wordiga.dto.tourismContent.detail.SeasonalImageDto;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.KtoApiResponse;
+import com.wordiga.global.client.dto.PhotoGalleryItem;
+import com.wordiga.global.client.dto.PhotoGalleryResponse;
 import org.junit.jupiter.api.Test;
-import org.junit.jupiter.params.ParameterizedTest;
-import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.util.List;
 import java.time.LocalDate;
+import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
@@ -94,10 +89,14 @@ class TourismContentDetailServiceUnitTest {
 
     @Test
     void mapsExactShootingDateAndUnknownInvalidDate() {
-        PhotoGalleryItem exact = new PhotoGalleryItem(); exact.setGalPhotographyMonth("20260315");
-        PhotoGalleryItem invalid = new PhotoGalleryItem(); invalid.setGalPhotographyMonth("unknown");
-        PhotoGalleryItem malformed = new PhotoGalleryItem(); malformed.setGalPhotographyMonth("20261340");
-        PhotoGalleryItem malformedMonth = new PhotoGalleryItem(); malformedMonth.setGalPhotographyMonth("202613");
+        PhotoGalleryItem exact = new PhotoGalleryItem();
+        exact.setGalPhotographyMonth("20260315");
+        PhotoGalleryItem invalid = new PhotoGalleryItem();
+        invalid.setGalPhotographyMonth("unknown");
+        PhotoGalleryItem malformed = new PhotoGalleryItem();
+        malformed.setGalPhotographyMonth("20261340");
+        PhotoGalleryItem malformedMonth = new PhotoGalleryItem();
+        malformedMonth.setGalPhotographyMonth("202613");
 
         assertThat(service.toSeasonalImage(exact)).satisfies(image -> {
             assertThat(image.getShootingDate()).isEqualTo("2026-03-15");
@@ -136,8 +135,11 @@ class TourismContentDetailServiceUnitTest {
 
     @Test
     void reportsWhetherLodgingCanAccommodateParticipants() {
-        ContentDetailDto common = common("44"); common.setContenttypeid("32");
-        DetailIntroDto intro = new DetailIntroDto(); intro.setContenttypeid("32"); intro.setAccomcountlodging("10명");
+        ContentDetailDto common = common("44");
+        common.setContenttypeid("32");
+        DetailIntroDto intro = new DetailIntroDto();
+        intro.setContenttypeid("32");
+        intro.setAccomcountlodging("10명");
         when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
         when(workshopDetailService.fetchIntroDetail("126508", "32")).thenReturn(intro);
         when(workshopDetailService.fetchRepeatInfo("126508", "32", 1, 100)).thenReturn(List.of());
@@ -197,7 +199,10 @@ class TourismContentDetailServiceUnitTest {
         KtoApiResponse.Response<PhotoGalleryItem> response = new KtoApiResponse.Response<>();
         KtoApiResponse.Body<PhotoGalleryItem> body = new KtoApiResponse.Body<>();
         KtoApiResponse.Items<PhotoGalleryItem> items = new KtoApiResponse.Items<>();
-        items.setItem(List.of(item)); body.setItems(items); response.setBody(body); result.setResponse(response);
+        items.setItem(List.of(item));
+        body.setItems(items);
+        response.setBody(body);
+        result.setResponse(response);
         return result;
     }
 

@@ -1,4 +1,4 @@
-package com.wordiga.client.dto;
+package com.wordiga.global.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.Getter;

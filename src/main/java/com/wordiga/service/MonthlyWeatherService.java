@@ -1,8 +1,8 @@
 package com.wordiga.service;
 
-import com.wordiga.client.WeatherApiClient;
-import com.wordiga.client.dto.AsosDailyResponse;
 import com.wordiga.dto.tourismContent.detail.MonthlyWeatherDto;
+import com.wordiga.global.client.WeatherApiClient;
+import com.wordiga.global.client.dto.AsosDailyResponse;
 import com.wordiga.global.config.WeatherProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

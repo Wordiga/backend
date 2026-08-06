@@ -1,6 +1,6 @@
-package com.wordiga.client;
+package com.wordiga.global.client;
 
-import com.wordiga.client.dto.AsosDailyResponse;
+import com.wordiga.global.client.dto.AsosDailyResponse;
 import com.wordiga.global.config.WeatherProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;

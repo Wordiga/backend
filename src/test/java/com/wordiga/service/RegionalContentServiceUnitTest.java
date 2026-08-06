@@ -1,13 +1,13 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaBasedItem;
-import com.wordiga.client.dto.AreaBasedResponse;
-import com.wordiga.client.dto.KtoApiResponse;
-import com.wordiga.client.dto.RelatedTourismItem;
 import com.wordiga.dto.plan.PlanGenerateRequest;
 import com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.AreaBasedItem;
+import com.wordiga.global.client.dto.AreaBasedResponse;
+import com.wordiga.global.client.dto.KtoApiResponse;
+import com.wordiga.global.client.dto.RelatedTourismItem;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -23,13 +23,19 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class RegionalContentServiceUnitTest {
-    @Mock TourismApiClient tourismApiClient;
-    @Mock TourismContentDetailService detailService;
+    @Mock
+    TourismApiClient tourismApiClient;
+    @Mock
+    TourismContentDetailService detailService;
     RegionalContentService service;
 
-    @BeforeEach void setUp() { service = new RegionalContentService(tourismApiClient, detailService); }
+    @BeforeEach
+    void setUp() {
+        service = new RegionalContentService(tourismApiClient, detailService);
+    }
 
-    @Test void resolvesRelatedNamesThroughKorServiceAndExcludesSavedContent() {
+    @Test
+    void resolvesRelatedNamesThroughKorServiceAndExcludesSavedContent() {
         PlanGenerateRequest request = request();
         RelatedTourismItem duplicate = related("현충사", "44460", 1);
         RelatedTourismItem candidate = related("외암민속마을", "44460", 2);
@@ -50,8 +56,10 @@ class RegionalContentServiceUnitTest {
 
     private PlanGenerateRequest request() {
         PlanGenerateRequest request = new PlanGenerateRequest();
-        request.setStartDate(LocalDate.of(2026, 8, 20)); request.setEndDate(request.getStartDate());
-        request.setParticipantCount(20); request.setSelectedContentIds(List.of("126508"));
+        request.setStartDate(LocalDate.of(2026, 8, 20));
+        request.setEndDate(request.getStartDate());
+        request.setParticipantCount(20);
+        request.setSelectedContentIds(List.of("126508"));
         return request;
     }
 
@@ -61,15 +69,26 @@ class RegionalContentServiceUnitTest {
     }
 
     private RelatedTourismItem related(String title, String signgu, int rank) {
-        RelatedTourismItem item = new RelatedTourismItem(); item.setRlteTatsNm(title);
-        item.setRlteRegnCd("44"); item.setRlteSignguCd(signgu); item.setRlteRank(rank); return item;
+        RelatedTourismItem item = new RelatedTourismItem();
+        item.setRlteTatsNm(title);
+        item.setRlteRegnCd("44");
+        item.setRlteSignguCd(signgu);
+        item.setRlteRank(rank);
+        return item;
     }
 
     private AreaBasedResponse searchResult(String id, String title) {
-        AreaBasedItem item = new AreaBasedItem(); item.setContentid(id); item.setTitle(title);
-        KtoApiResponse.Items<AreaBasedItem> items = new KtoApiResponse.Items<>(); items.setItem(List.of(item));
-        KtoApiResponse.Body<AreaBasedItem> body = new KtoApiResponse.Body<>(); body.setItems(items);
-        KtoApiResponse.Response<AreaBasedItem> response = new KtoApiResponse.Response<>(); response.setBody(body);
-        AreaBasedResponse result = new AreaBasedResponse(); result.setResponse(response); return result;
+        AreaBasedItem item = new AreaBasedItem();
+        item.setContentid(id);
+        item.setTitle(title);
+        KtoApiResponse.Items<AreaBasedItem> items = new KtoApiResponse.Items<>();
+        items.setItem(List.of(item));
+        KtoApiResponse.Body<AreaBasedItem> body = new KtoApiResponse.Body<>();
+        body.setItems(items);
+        KtoApiResponse.Response<AreaBasedItem> response = new KtoApiResponse.Response<>();
+        response.setBody(body);
+        AreaBasedResponse result = new AreaBasedResponse();
+        result.setResponse(response);
+        return result;
     }
 }

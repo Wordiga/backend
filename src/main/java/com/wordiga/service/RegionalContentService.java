@@ -1,11 +1,11 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaBasedItem;
-import com.wordiga.client.dto.AreaBasedResponse;
-import com.wordiga.client.dto.RelatedTourismItem;
 import com.wordiga.dto.plan.PlanGenerateRequest;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.AreaBasedItem;
+import com.wordiga.global.client.dto.AreaBasedResponse;
+import com.wordiga.global.client.dto.RelatedTourismItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -56,7 +56,7 @@ public class RegionalContentService {
         String signgu = candidate.getRlteSignguCd();
         if (signgu == null || !signgu.startsWith(CHUNGNAM_CODE)) return null;
         return items(tourismApiClient.searchContent(candidate.getRlteTatsNm(), null, CHUNGNAM_CODE,
-                        signgu.substring(CHUNGNAM_CODE.length()), 1, 10)).stream()
+                signgu.substring(CHUNGNAM_CODE.length()), 1, 10)).stream()
                 .filter(item -> candidate.getRlteTatsNm().equals(item.getTitle()))
                 .findFirst().orElse(null);
     }

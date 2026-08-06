@@ -1,35 +1,50 @@
 package com.wordiga.service;
 
-import com.wordiga.client.AiServerClient;
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.dto.ai.*;
-import com.wordiga.dto.plan.*;
+import com.wordiga.dto.ai.AiPlanRequest;
+import com.wordiga.dto.ai.AiPlanResponse;
+import com.wordiga.dto.plan.PlanDetailResponse;
+import com.wordiga.dto.plan.PlanGenerateRequest;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
-import org.junit.jupiter.api.*;
+import com.wordiga.global.client.AiServerClient;
+import com.wordiga.global.client.TourismApiClient;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+
 import java.time.LocalDate;
 import java.util.List;
-import static org.assertj.core.api.Assertions.*;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class PlanGenerationServiceUnitTest {
-    @Mock TourismContentDetailService tourismContentDetailService;
-    @Mock RegionalContentService regionalContentService;
-    @Mock TourismApiClient tourismApiClient;
-    @Mock AiServerClient aiServerClient;
-    @Mock PlanWriter planWriter;
+    @Mock
+    TourismContentDetailService tourismContentDetailService;
+    @Mock
+    RegionalContentService regionalContentService;
+    @Mock
+    TourismApiClient tourismApiClient;
+    @Mock
+    AiServerClient aiServerClient;
+    @Mock
+    PlanWriter planWriter;
     PlanGenerationService service;
-    @BeforeEach void setUp() {
+
+    @BeforeEach
+    void setUp() {
         lenient().when(regionalContentService.find(any(), anyList())).thenReturn(List.of());
         service = new PlanGenerationService(tourismContentDetailService, regionalContentService, tourismApiClient, aiServerClient, planWriter);
     }
 
-    @Test void callsAiOutsideWriterAndPersistsValidatedResponse() {
-        PlanGenerateRequest request = request("126508"); AiPlanResponse response = response("126508");
+    @Test
+    void callsAiOutsideWriterAndPersistsValidatedResponse() {
+        PlanGenerateRequest request = request("126508");
+        AiPlanResponse response = response("126508");
         when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
         when(tourismApiClient.fetchClassificationNames("AC", "AC01", null))
                 .thenReturn(List.of("숙박", "호텔"));
@@ -43,8 +58,10 @@ class PlanGenerationServiceUnitTest {
         verify(planWriter).saveGenerated(1L, request, response, null);
     }
 
-    @Test void sendsKoreanClassificationNamesAndFallsBackToNullOnFailure() {
-        PlanGenerateRequest request = request("126508"); AiPlanResponse response = response("126508");
+    @Test
+    void sendsKoreanClassificationNamesAndFallsBackToNullOnFailure() {
+        PlanGenerateRequest request = request("126508");
+        AiPlanResponse response = response("126508");
         when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
         when(tourismApiClient.fetchClassificationNames("AC", "AC01", null))
                 .thenThrow(new RuntimeException("분류 API 장애"));
@@ -57,16 +74,19 @@ class PlanGenerationServiceUnitTest {
         assertThat(captor.getValue().savedContents().get(0).tags()).isNull();
     }
 
-    @Test void rejectsDuplicateSelectionAndInvalidAiContent() {
+    @Test
+    void rejectsDuplicateSelectionAndInvalidAiContent() {
         assertThatThrownBy(() -> service.generate(1L, request("A", "A"))).hasMessageContaining("400");
-        PlanGenerateRequest request = request("A"); AiPlanResponse response = response("B");
+        PlanGenerateRequest request = request("A");
+        AiPlanResponse response = response("B");
         when(tourismContentDetailService.getAiDetail(eq("A"), any(), eq(true))).thenReturn(detail());
         when(aiServerClient.generatePlan(any())).thenReturn(response);
         assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("502");
         verifyNoInteractions(planWriter);
     }
 
-    @Test void acceptsRegionalContentButStillRequiresEverySavedContent() {
+    @Test
+    void acceptsRegionalContentButStillRequiresEverySavedContent() {
         PlanGenerateRequest request = request("126508");
         TourismContentDetailResponse regional = detail("regional-1", "외암민속마을");
         when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
@@ -83,7 +103,8 @@ class PlanGenerationServiceUnitTest {
                 .containsExactly("regional-1");
     }
 
-    @Test void rejectsPlanLongerThanThreeDays() {
+    @Test
+    void rejectsPlanLongerThanThreeDays() {
         PlanGenerateRequest request = request("A");
         request.setEndDate(request.getStartDate().plusDays(3));
 
@@ -91,7 +112,8 @@ class PlanGenerationServiceUnitTest {
         verifyNoInteractions(aiServerClient, planWriter);
     }
 
-    @Test void fetchesMonthlyWeatherOnlyForTheFirstSelectedContent() {
+    @Test
+    void fetchesMonthlyWeatherOnlyForTheFirstSelectedContent() {
         PlanGenerateRequest request = request("A", "B");
         when(tourismContentDetailService.getAiDetail("A", request.getStartDate(), true))
                 .thenReturn(detail("A", "A 관광지"));
@@ -106,24 +128,41 @@ class PlanGenerationServiceUnitTest {
     }
 
     private PlanGenerateRequest request(String... ids) {
-        PlanGenerateRequest r = new PlanGenerateRequest(); r.setStartDate(LocalDate.of(2026, 8, 20));
-        r.setEndDate(r.getStartDate()); r.setParticipantCount(2); r.setSelectedContentIds(List.of(ids)); return r;
+        PlanGenerateRequest r = new PlanGenerateRequest();
+        r.setStartDate(LocalDate.of(2026, 8, 20));
+        r.setEndDate(r.getStartDate());
+        r.setParticipantCount(2);
+        r.setSelectedContentIds(List.of(ids));
+        return r;
     }
+
     private AiPlanResponse response(String id) {
         return response(new String[]{id});
     }
+
     private AiPlanResponse response(String... ids) {
         java.util.ArrayList<AiPlanResponse.Content> contents = new java.util.ArrayList<>();
         for (int i = 0; i < ids.length; i++) {
-            AiPlanResponse.Content c = new AiPlanResponse.Content(); c.setSequence(i + 1); c.setContentId(ids[i]); c.setTitle(ids[i]);
+            AiPlanResponse.Content c = new AiPlanResponse.Content();
+            c.setSequence(i + 1);
+            c.setContentId(ids[i]);
+            c.setTitle(ids[i]);
             contents.add(c);
         }
-        AiPlanResponse.Day d = new AiPlanResponse.Day(); d.setDayNumber(1); d.setDate(LocalDate.of(2026, 8, 20)); d.setContents(contents);
-        AiPlanResponse r = new AiPlanResponse(); r.setScheduleId("schedule-1"); r.setDays(List.of(d)); return r;
+        AiPlanResponse.Day d = new AiPlanResponse.Day();
+        d.setDayNumber(1);
+        d.setDate(LocalDate.of(2026, 8, 20));
+        d.setContents(contents);
+        AiPlanResponse r = new AiPlanResponse();
+        r.setScheduleId("schedule-1");
+        r.setDays(List.of(d));
+        return r;
     }
+
     private TourismContentDetailResponse detail() {
         return detail("126508", "현충사");
     }
+
     private TourismContentDetailResponse detail(String id, String title) {
         return TourismContentDetailResponse.builder().common(
                 com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto.builder()

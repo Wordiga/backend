@@ -1,9 +1,5 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.KtoApiResponse;
-import com.wordiga.client.dto.PhotoGalleryItem;
-import com.wordiga.client.dto.PhotoGalleryResponse;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.DetailImageDto;
 import com.wordiga.dto.DetailInfoDto;
@@ -12,6 +8,9 @@ import com.wordiga.dto.tourismContent.detail.SeasonalImageDto;
 import com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
 import com.wordiga.dto.tourismContent.detail.TourismDetailImageDto;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.KtoApiResponse;
+import com.wordiga.global.client.dto.PhotoGalleryItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -123,11 +122,13 @@ public class TourismContentDetailService {
         LocalDate date = null;
         try {
             if (value != null && value.matches("\\d{8}")) {
-                date = LocalDate.parse(value, DateTimeFormatter.BASIC_ISO_DATE); month = date.getMonthValue();
+                date = LocalDate.parse(value, DateTimeFormatter.BASIC_ISO_DATE);
+                month = date.getMonthValue();
             } else if (value != null && value.matches("\\d{6}")) {
                 month = YearMonth.parse(value, DateTimeFormatter.ofPattern("yyyyMM")).getMonthValue();
             }
-        } catch (RuntimeException ignored) { }
+        } catch (RuntimeException ignored) {
+        }
         return SeasonalImageDto.builder().imageUrl(source.getGalWebImageUrl()).thumbnailUrl(source.getGalWebImageUrl())
                 .shootingDate(date).season(toSeason(month)).matchConfidence(BigDecimal.ONE).build();
     }

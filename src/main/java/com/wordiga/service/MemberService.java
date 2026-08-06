@@ -1,7 +1,7 @@
 package com.wordiga.service;
 
-import com.wordiga.client.KakaoUnlinkClient;
 import com.wordiga.dto.member.MemberProfileResponse;
+import com.wordiga.global.client.KakaoUnlinkClient;
 import com.wordiga.member.Member;
 import com.wordiga.member.OAuthProvider;
 import com.wordiga.repository.MemberRepository;

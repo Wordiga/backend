@@ -1,6 +1,6 @@
-package com.wordiga.client;
+package com.wordiga.global.client;
 
-import com.wordiga.client.dto.*;
+import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;

@@ -1,7 +1,7 @@
 package com.wordiga.service;
 
-import com.wordiga.client.WeatherApiClient;
-import com.wordiga.client.dto.AsosDailyResponse;
+import com.wordiga.global.client.WeatherApiClient;
+import com.wordiga.global.client.dto.AsosDailyResponse;
 import com.wordiga.global.config.WeatherProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

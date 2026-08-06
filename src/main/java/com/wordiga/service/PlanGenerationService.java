@@ -1,20 +1,24 @@
 package com.wordiga.service;
 
-import com.wordiga.client.AiServerClient;
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.dto.ai.*;
-import com.wordiga.dto.plan.*;
+import com.wordiga.dto.ai.AiPlanRequest;
+import com.wordiga.dto.ai.AiPlanResponse;
+import com.wordiga.dto.plan.PlanDetailResponse;
+import com.wordiga.dto.plan.PlanGenerateRequest;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
+import com.wordiga.global.client.AiServerClient;
+import com.wordiga.global.client.TourismApiClient;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
+
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 @Slf4j
-@Service @RequiredArgsConstructor
+@Service
+@RequiredArgsConstructor
 public class PlanGenerationService {
     private final TourismContentDetailService tourismContentDetailService;
     private final RegionalContentService regionalContentService;
@@ -29,7 +33,8 @@ public class PlanGenerationService {
             details.add(tourismContentDetailService.getAiDetail(
                     request.getSelectedContentIds().get(index), request.getStartDate(), index == 0));
         var regional = regionalContentService.find(request, details);
-        List<TourismContentDetailResponse> all = new ArrayList<>(details); all.addAll(regional);
+        List<TourismContentDetailResponse> all = new ArrayList<>(details);
+        all.addAll(regional);
         AiPlanResponse response = aiServerClient.generatePlan(
                 AiPlanRequest.from(request, details, regional, resolveTags(all)));
         validateResponse(request, regional, response);
@@ -65,8 +70,14 @@ public class PlanGenerationService {
         return result;
     }
 
-    private String value(String value) { return value == null ? "" : value; }
-    private String emptyToNull(String value) { return value.isEmpty() ? null : value; }
+    private String value(String value) {
+        return value == null ? "" : value;
+    }
+
+    private String emptyToNull(String value) {
+        return value.isEmpty() ? null : value;
+    }
+
     private void validateRequest(PlanGenerateRequest r) {
         if (r.getStartDate().isAfter(r.getEndDate()) || ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) > 2)
             invalid(HttpStatus.BAD_REQUEST, "일정 기간은 1~3일이어야 합니다.");
@@ -78,9 +89,11 @@ public class PlanGenerationService {
         if (r.getStayNights() != null && r.getStayNights() > maximumNights)
             invalid(HttpStatus.BAD_REQUEST, "숙박 수는 일정 기간보다 클 수 없습니다.");
     }
+
     private void validateResponse(PlanGenerateRequest r, List<TourismContentDetailResponse> regional,
                                   AiPlanResponse response) {
-        if (response.getDays() == null || response.getDays().isEmpty()) invalid(HttpStatus.BAD_GATEWAY, "AI 일정이 비어 있습니다.");
+        if (response.getDays() == null || response.getDays().isEmpty())
+            invalid(HttpStatus.BAD_GATEWAY, "AI 일정이 비어 있습니다.");
         Set<String> selected = new HashSet<>(r.getSelectedContentIds());
         Set<String> allowed = new HashSet<>(selected);
         regional.forEach(detail -> allowed.add(detail.getCommon().getContentId()));
@@ -98,5 +111,8 @@ public class PlanGenerationService {
         }
         if (!scheduled.containsAll(selected)) invalid(HttpStatus.BAD_GATEWAY, "AI 일정에 선택 콘텐츠가 모두 포함되어야 합니다.");
     }
-    private void invalid(HttpStatus status, String message) { throw new ResponseStatusException(status, message); }
+
+    private void invalid(HttpStatus status, String message) {
+        throw new ResponseStatusException(status, message);
+    }
 }

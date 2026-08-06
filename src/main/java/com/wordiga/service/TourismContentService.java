@@ -1,17 +1,11 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaBasedItem;
-import com.wordiga.client.dto.AreaBasedResponse;
-import com.wordiga.client.dto.AreaTarExpDsResponse;
-import com.wordiga.client.dto.AreaTarSjrnDsResponse;
-import com.wordiga.client.dto.AreaTarSvcDemItem;
-import com.wordiga.client.dto.AreaTarSvcDemResponse;
-import com.wordiga.client.dto.KtoApiResponse;
-import com.wordiga.config.TourismProperties;
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentDto;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.*;
+import com.wordiga.global.config.TourismProperties;
 import com.wordiga.repository.WishRepository;
 import com.wordiga.wish.Wish;
 import lombok.RequiredArgsConstructor;
@@ -20,13 +14,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service

@@ -1,9 +1,9 @@
 package com.wordiga.service;
 
-import com.wordiga.client.AiServerClient;
 import com.wordiga.dto.ai.AiProposalRequest;
 import com.wordiga.dto.proposal.ProposalCreateRequest;
 import com.wordiga.dto.proposal.ProposalResponse;
+import com.wordiga.global.client.AiServerClient;
 import com.wordiga.global.config.ProposalS3Properties;
 import com.wordiga.plan.Plan;
 import com.wordiga.proposal.Proposal;

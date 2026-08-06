@@ -1,7 +1,7 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
 import com.wordiga.dto.ContentDetailDto;
+import com.wordiga.global.client.TourismApiClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;

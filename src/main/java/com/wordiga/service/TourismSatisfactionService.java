@@ -1,19 +1,10 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaCulResDemItem;
-import com.wordiga.client.dto.AreaExpDivItem;
-import com.wordiga.client.dto.AreaExpDivResponse;
-import com.wordiga.client.dto.AreaTarExpDsItem;
-import com.wordiga.client.dto.AreaTarSjrnDsItem;
-import com.wordiga.client.dto.AreaTarSvcDemItem;
-import com.wordiga.client.dto.AreaTouDivItem;
-import com.wordiga.client.dto.AreaTouDivResponse;
-import com.wordiga.client.dto.KtoApiResponse;
-import com.wordiga.client.dto.TatsCnctrRateItem;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.tourismContent.detail.SatisfactionDto;
 import com.wordiga.dto.tourismContent.detail.ScoreComponentDto;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -22,12 +13,7 @@ import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
-import java.util.Collections;
-import java.util.List;
-import java.util.OptionalDouble;
-import java.util.Set;
-import java.util.HashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.DoubleStream;
 
 @Service
@@ -240,6 +226,9 @@ public class TourismSatisfactionService {
         private final Map<RegionKey, OptionalDouble> stayFit = new HashMap<>();
     }
 
-    private record RegionKey(String baseYm, String areaCode, String signguCode) { }
-    private record AgeKey(RegionKey region, List<String> ageGroups) { }
+    private record RegionKey(String baseYm, String areaCode, String signguCode) {
+    }
+
+    private record AgeKey(RegionKey region, List<String> ageGroups) {
+    }
 }

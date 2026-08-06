@@ -1,8 +1,8 @@
 package com.wordiga.config;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wordiga.client.dto.PhotoGalleryResponse;
 import com.wordiga.dto.ContentDetailDto;
+import com.wordiga.global.client.dto.PhotoGalleryResponse;
 import com.wordiga.global.config.RestClientConfig;
 import org.junit.jupiter.api.Test;
 

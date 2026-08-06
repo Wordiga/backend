@@ -1,21 +1,25 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaBasedItem;
-import com.wordiga.client.dto.AreaBasedResponse;
-import com.wordiga.client.dto.RelatedTourismItem;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.tourismContent.TourismContentDto;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.AreaBasedItem;
+import com.wordiga.global.client.dto.AreaBasedResponse;
+import com.wordiga.global.client.dto.RelatedTourismItem;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.*;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 
-@Service @RequiredArgsConstructor
+@Service
+@RequiredArgsConstructor
 public class RelatedTourismContentService {
     private static final String CHUNGNAM = "44";
     private final TourismApiClient tourismApiClient;
@@ -68,8 +72,11 @@ public class RelatedTourismContentService {
     }
 
     private BigDecimal number(String value) {
-        try { return value == null || value.isBlank() ? null : new BigDecimal(value); }
-        catch (NumberFormatException ignored) { return null; }
+        try {
+            return value == null || value.isBlank() ? null : new BigDecimal(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 
     private String baseYm() {

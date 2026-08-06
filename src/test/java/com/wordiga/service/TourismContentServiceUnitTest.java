@@ -1,9 +1,9 @@
 package com.wordiga.service;
 
-import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.*;
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
 import com.wordiga.repository.WishRepository;
 import com.wordiga.wish.Wish;
