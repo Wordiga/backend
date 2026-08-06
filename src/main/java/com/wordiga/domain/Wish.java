@@ -3,7 +3,6 @@ package com.wordiga.domain;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 @Entity
@@ -19,81 +18,41 @@ public class Wish {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "member_id", nullable = false)
+    @Column(nullable = false)
     private Long memberId;
 
-    @Column(name = "content_id", nullable = false, length = 50)
-    private String contentId;
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "content_id", nullable = false)
+    private TourismContentSnapshot content;
 
-    @Column(name = "content_type_id", length = 20)
-    private String contentTypeId;
-
-    @Column(nullable = false)
-    private String title;
-
-    @Column(length = 500)
-    private String firstimage;
-
-    @Column(length = 255)
-    private String addr1;
-
-    @Column(precision = 15, scale = 10)
-    private BigDecimal mapx;
-
-    @Column(precision = 15, scale = 10)
-    private BigDecimal mapy;
-
-    @Column(name = "sigungu_code", length = 10)
-    private String sigunguCode;
-
-    @Column(name = "sigungu_name", length = 50)
-    private String sigunguName;
-
-    @Column(name = "folder_name", nullable = false, length = 50)
+    @Column(nullable = false, length = 50)
     private String folderName;
 
-    @Column(name = "lcls_system1_code", length = 20)
-    private String lclsSystem1Code;
-    @Column(name = "lcls_system2_code", length = 20)
-    private String lclsSystem2Code;
-    @Column(name = "lcls_system3_code", length = 20)
-    private String lclsSystem3Code;
-
-    @Column(name = "created_at", nullable = false, updatable = false)
+    @Column(nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    public static Wish create(Long memberId, String contentId, String contentTypeId,
-                              String title, String firstimage, String addr1,
-                              BigDecimal mapx, BigDecimal mapy,
-                              String sigunguCode, String sigunguName, String folderName,
-                              String lclsSystem1Code, String lclsSystem2Code, String lclsSystem3Code) {
+    public static Wish create(Long memberId, TourismContentSnapshot content, String folderName) {
         return Wish.builder()
                 .memberId(memberId)
-                .contentId(contentId)
-                .contentTypeId(contentTypeId)
-                .title(title)
-                .firstimage(firstimage)
-                .addr1(addr1)
-                .mapx(mapx)
-                .mapy(mapy)
-                .sigunguCode(sigunguCode)
-                .sigunguName(sigunguName)
+                .content(content)
                 .folderName(folderName != null ? folderName : "기본 위시리스트")
-                .lclsSystem1Code(lclsSystem1Code).lclsSystem2Code(lclsSystem2Code)
-                .lclsSystem3Code(lclsSystem3Code)
                 .build();
-    }
-
-    public static Wish create(Long memberId, String contentId, String contentTypeId,
-                              String title, String firstimage, String addr1,
-                              BigDecimal mapx, BigDecimal mapy,
-                              String sigunguCode, String sigunguName, String folderName) {
-        return create(memberId, contentId, contentTypeId, title, firstimage, addr1, mapx, mapy,
-                sigunguCode, sigunguName, folderName, null, null, null);
     }
 
     @PrePersist
     protected void onCreate() {
         this.createdAt = LocalDateTime.now();
+    }
+
+    public String getContentId() {
+        return this.content.getContentId();
+    }
+
+    public String getSigunguCode() {
+        return this.content.getSigunguCode();
+    }
+
+    public String getLclsSystemCode() {
+        return this.content.getLclsSystemCode();
     }
 }

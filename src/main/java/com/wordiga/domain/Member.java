@@ -15,7 +15,7 @@ public class Member extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, length = 100, unique = true)
+    @Column(nullable = false, length = 100)
     private String email;
 
     @Column(length = 50)
@@ -27,7 +27,7 @@ public class Member extends BaseTimeEntity {
 
     private String providerId;
 
-    @Column(name = "profile_image", length = 500)
+    @Column(length = 500)
     private String profileImage;
 
     private Member(String email, String nickname, OAuthProvider provider, String providerId, String profileImage) {
