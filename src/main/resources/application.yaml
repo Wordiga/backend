@@ -9,32 +9,32 @@ spring:
           google:
             client-id: ${GOOGLE_CLIENT_ID}
             client-secret: ${GOOGLE_CLIENT_SECRET}
-            scope:
-              - openid
-              - profile
-              - email
+            scope: [ openid, profile, email ]
+            redirect-uri: "{baseUrl}/login/oauth2/code/google"
           kakao:
             client-id: ${KAKAO_CLIENT_ID}
             client-secret: ${KAKAO_CLIENT_SECRET}
             client-authentication-method: client_secret_post
             authorization-grant-type: authorization_code
-            redirect-uri: ${KAKAO_REDIRECT_URI}
-            scope:
-              - openid
-              - profile_nickname
-              - profile_image
-              - account_email
+            redirect-uri: "{baseUrl}/login/oauth2/code/kakao"
+            scope: [ openid, profile_nickname, profile_image, account_email ]
             client-name: Kakao
         provider:
           kakao:
             issuer-uri: https://kauth.kakao.com
 
+server:
+  forward-headers-strategy: native
+
 jwt:
   secret: ${JWT_SECRET}
   expiration-time: 3600000
+  refresh-expiration: 604800000
 
 kakao:
-  admin-key: ${KAKAO_ADMIN_KEY:}
+  admin-key: ${KAKAO_ADMIN_KEY}
+  url:
+    unlink: https://apis.kakao.com/v1/user/unlink
 
 springdoc:
   api-docs:
@@ -46,14 +46,10 @@ springdoc:
   default-consumes-media-type: application/json
   default-produces-media-type: application/json
 
-tour-api:
-  # 국문 관광정보 서비스 Open API Base URL (TourAPI 4.0 최신 운영서버)
-  base-url: https://apis.data.go.kr/B551011/KorService2
-  service-key: ${TOUR_API_SERVICE_KEY}
-
 tourism:
   region:
     chungnam-code: "44"
+    chungnam-name: "충남"
   api:
     base-url: https://apis.data.go.kr/B551011
     service-key: ${TOUR_API_SERVICE_KEY}
