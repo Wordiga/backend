@@ -1,5 +1,6 @@
 package com.wordiga.config;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.client.dto.PhotoGalleryResponse;
 import com.wordiga.dto.ContentDetailDto;
 import org.junit.jupiter.api.Test;
@@ -8,11 +9,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class TourismResponseMappingUnitTest {
 
-    private final AppConfig config = new AppConfig();
+    private final ObjectMapper objectMapper = new RestClientConfig().objectMapper();
 
     @Test
     void mapsLowerCamelCaseLegalDistrictCodes() throws Exception {
-        ContentDetailDto result = config.objectMapper().readValue(
+        ContentDetailDto result = objectMapper.readValue(
                 "{\"lDongRegnCd\":\"44\",\"lDongSignguCd\":\"150\"}", ContentDetailDto.class);
 
         assertThat(result.getLDongRegnCd()).isEqualTo("44");
