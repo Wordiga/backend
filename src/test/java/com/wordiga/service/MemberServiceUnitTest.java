@@ -1,9 +1,9 @@
 package com.wordiga.service;
 
 import com.wordiga.client.KakaoUnlinkClient;
-import com.wordiga.domain.Member;
-import com.wordiga.domain.OAuthProvider;
-import com.wordiga.domain.Proposal;
+import com.wordiga.member.Member;
+import com.wordiga.member.OAuthProvider;
+import com.wordiga.proposal.Proposal;
 import com.wordiga.repository.MemberRepository;
 import com.wordiga.repository.ProposalRepository;
 import org.junit.jupiter.api.Test;
@@ -20,12 +20,17 @@ import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class MemberServiceUnitTest {
-    @Mock MemberRepository memberRepository;
-    @Mock ProposalRepository proposalRepository;
-    @Mock ProposalStorage proposalStorage;
-    @Mock KakaoUnlinkClient kakaoUnlinkClient;
+    @Mock
+    MemberRepository memberRepository;
+    @Mock
+    ProposalRepository proposalRepository;
+    @Mock
+    ProposalStorage proposalStorage;
+    @Mock
+    KakaoUnlinkClient kakaoUnlinkClient;
 
-    @Test void readsSocialProfile() {
+    @Test
+    void readsSocialProfile() {
         Member member = mock(Member.class);
         when(member.getId()).thenReturn(1L);
         when(member.getEmail()).thenReturn("user@example.com");
@@ -39,7 +44,8 @@ class MemberServiceUnitTest {
         assertThat(result.getProvider()).isEqualTo(OAuthProvider.GOOGLE);
     }
 
-    @Test void unlinksKakaoDeletesFilesAndMember() {
+    @Test
+    void unlinksKakaoDeletesFilesAndMember() {
         Member member = mock(Member.class);
         Proposal proposal = mock(Proposal.class);
         when(member.getProvider()).thenReturn(OAuthProvider.KAKAO);
@@ -55,7 +61,8 @@ class MemberServiceUnitTest {
         verify(memberRepository).delete(member);
     }
 
-    @Test void googleWithdrawalUsesClientSideUnlinkAndDeletesMember() {
+    @Test
+    void googleWithdrawalUsesClientSideUnlinkAndDeletesMember() {
         Member member = mock(Member.class);
         when(member.getProvider()).thenReturn(OAuthProvider.GOOGLE);
         when(memberRepository.findById(1L)).thenReturn(Optional.of(member));
@@ -67,7 +74,8 @@ class MemberServiceUnitTest {
         verify(memberRepository).delete(member);
     }
 
-    @Test void rejectsUnknownMember() {
+    @Test
+    void rejectsUnknownMember() {
         when(memberRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service().withdraw(1L)).hasMessageContaining("404");

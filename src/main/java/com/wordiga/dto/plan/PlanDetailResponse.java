@@ -1,19 +1,31 @@
 package com.wordiga.dto.plan;
 
-import com.wordiga.domain.Plan;
-import com.wordiga.domain.PlanContent;
+import com.wordiga.plan.Plan;
+import com.wordiga.plan.PlanContent;
 import lombok.Builder;
 import lombok.Data;
+
 import java.math.BigDecimal;
-import java.time.*;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.*;
 import java.util.stream.Collectors;
 
-@Data @Builder
+@Data
+@Builder
 public class PlanDetailResponse {
-    private Long planId; private String scheduleId; private String title; private LocalDate startDate; private LocalDate endDate;
-    private Integer participantCount; private EstimatedBudget estimatedBudget; private List<Day> days;
-    private LocalDateTime createdAt; private LocalDateTime updatedAt;
+    private Long planId;
+    private String scheduleId;
+    private String title;
+    private LocalDate startDate;
+    private LocalDate endDate;
+    private Integer participantCount;
+    private EstimatedBudget estimatedBudget;
+    private List<Day> days;
+    private LocalDateTime createdAt;
+    private LocalDateTime updatedAt;
+
     public static PlanDetailResponse from(Plan p) {
         List<Day> days = p.getPlanContents().stream().collect(Collectors.groupingBy(PlanContent::getDayNumber,
                 TreeMap::new, Collectors.toList())).entrySet().stream().map(e -> Day.builder().dayNumber(e.getKey())
@@ -31,18 +43,43 @@ public class PlanDetailResponse {
                 .participantCount(p.getParticipantCount()).estimatedBudget(budget).days(days)
                 .createdAt(p.getCreatedAt()).updatedAt(p.getUpdatedAt()).build();
     }
+
     public record EstimatedBudget(Long totalAmount, Long perPersonAmount, String currency,
-                                  Map<String, Long> breakdown) { }
-    @Data @Builder public static class Day { private Integer dayNumber; private LocalDate date; private List<Content> contents; }
-    @Data @Builder public static class Content {
-        private Integer sequence; private String contentId; private String title; private String contentTypeId;
-        private String addr1; private BigDecimal mapx; private BigDecimal mapy; private LocalTime startTime; private LocalTime endTime;
-        private Integer durationMinutes; private Integer travelTimeMinutes; private Integer travelDistanceMeters;
-        private Long estimatedCost; private String memo;
-        static Content from(PlanContent c) { return builder().sequence(c.getSequence()).contentId(c.getContentId())
-                .title(c.getContentTitle()).contentTypeId(c.getContentTypeId()).addr1(c.getAddr1()).mapx(c.getMapx()).mapy(c.getMapy())
-                .startTime(c.getStartTime()).endTime(c.getEndTime()).durationMinutes(c.getDuration())
-                .travelTimeMinutes(c.getTravelTimeMinutes()).travelDistanceMeters(c.getTravelDistanceMeters())
-                .estimatedCost(c.getEstimatedCost()).memo(c.getMemo()).build(); }
+                                  Map<String, Long> breakdown) {
+    }
+
+    @Data
+    @Builder
+    public static class Day {
+        private Integer dayNumber;
+        private LocalDate date;
+        private List<Content> contents;
+    }
+
+    @Data
+    @Builder
+    public static class Content {
+        private Integer sequence;
+        private String contentId;
+        private String title;
+        private String contentTypeId;
+        private String addr1;
+        private BigDecimal mapx;
+        private BigDecimal mapy;
+        private LocalTime startTime;
+        private LocalTime endTime;
+        private Integer durationMinutes;
+        private Integer travelTimeMinutes;
+        private Integer travelDistanceMeters;
+        private Long estimatedCost;
+        private String memo;
+
+        static Content from(PlanContent c) {
+            return builder().sequence(c.getSequence()).contentId(c.getContentId())
+                    .title(c.getContentTitle()).contentTypeId(c.getContentTypeId()).addr1(c.getAddr1()).mapx(c.getMapx()).mapy(c.getMapy())
+                    .startTime(c.getStartTime()).endTime(c.getEndTime()).durationMinutes(c.getDuration())
+                    .travelTimeMinutes(c.getTravelTimeMinutes()).travelDistanceMeters(c.getTravelDistanceMeters())
+                    .estimatedCost(c.getEstimatedCost()).memo(c.getMemo()).build();
+        }
     }
 }

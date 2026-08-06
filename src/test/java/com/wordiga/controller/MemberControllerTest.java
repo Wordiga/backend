@@ -1,10 +1,10 @@
 package com.wordiga.controller;
 
-import com.wordiga.domain.OAuthProvider;
 import com.wordiga.dto.member.MemberProfileResponse;
-import com.wordiga.security.JwtTokenProvider;
-import com.wordiga.service.MemberService;
+import com.wordiga.global.security.JwtTokenProvider;
+import com.wordiga.member.OAuthProvider;
 import com.wordiga.repository.MemberRepository;
+import com.wordiga.service.MemberService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,18 +28,28 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @WebMvcTest(MemberController.class)
 @AutoConfigureMockMvc(addFilters = false)
 class MemberControllerTest {
-    @Autowired MockMvc mockMvc;
-    @MockitoBean MemberService memberService;
-    @MockitoBean JwtTokenProvider jwtTokenProvider;
-    @MockitoBean MemberRepository memberRepository;
+    @Autowired
+    MockMvc mockMvc;
+    @MockitoBean
+    MemberService memberService;
+    @MockitoBean
+    JwtTokenProvider jwtTokenProvider;
+    @MockitoBean
+    MemberRepository memberRepository;
 
-    @BeforeEach void login() {
+    @BeforeEach
+    void login() {
         SecurityContextHolder.getContext().setAuthentication(
                 new UsernamePasswordAuthenticationToken("1", null, List.of()));
     }
-    @AfterEach void clear() { SecurityContextHolder.clearContext(); }
 
-    @Test void getsProfileAndWithdraws() throws Exception {
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
+
+    @Test
+    void getsProfileAndWithdraws() throws Exception {
         when(memberService.getProfile(1L)).thenReturn(MemberProfileResponse.builder().memberId(1L)
                 .email("user@example.com").nickname("사용자").provider(OAuthProvider.GOOGLE).build());
 

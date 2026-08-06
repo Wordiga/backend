@@ -1,12 +1,12 @@
 package com.wordiga.client;
 
 import com.wordiga.client.dto.*;
-import com.wordiga.config.TourismProperties;
+import com.wordiga.global.config.TourismProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.util.UriUtils;
 

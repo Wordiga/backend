@@ -1,6 +1,6 @@
 package com.wordiga.repository;
 
-import com.wordiga.domain.Wish;
+import com.wordiga.wish.Wish;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

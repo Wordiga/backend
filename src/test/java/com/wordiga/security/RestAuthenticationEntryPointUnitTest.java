@@ -1,6 +1,7 @@
 package com.wordiga.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordiga.global.security.RestAuthenticationEntryPoint;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;

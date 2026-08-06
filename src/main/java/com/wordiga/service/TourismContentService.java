@@ -13,6 +13,7 @@ import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentDto;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
 import com.wordiga.repository.WishRepository;
+import com.wordiga.wish.Wish;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -94,8 +95,8 @@ public class TourismContentService {
     private TourismContentListResponse markWished(Long memberId, TourismContentListResponse response) {
         Set<String> wishedContentIds = memberId == null ? Set.of()
                 : wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(memberId).stream()
-                .map(com.wordiga.domain.Wish::getContentId)
-                .collect(Collectors.toSet());
+                  .map(Wish::getContentId)
+                  .collect(Collectors.toSet());
         response.getItems().forEach(item -> item.setWished(wishedContentIds.contains(item.getContentId())));
         return response;
     }

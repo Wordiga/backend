@@ -2,7 +2,7 @@ package com.wordiga.service;
 
 import com.wordiga.client.WeatherApiClient;
 import com.wordiga.client.dto.AsosDailyResponse;
-import com.wordiga.config.WeatherProperties;
+import com.wordiga.global.config.WeatherProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
@@ -12,14 +12,17 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class MonthlyWeatherServiceUnitTest {
-    @Mock WeatherApiClient weatherApiClient;
+    @Mock
+    WeatherApiClient weatherApiClient;
 
-    @Test void averagesFiveYearsOfSameMonthAsExpectedWeather() {
+    @Test
+    void averagesFiveYearsOfSameMonthAsExpectedWeather() {
         AsosDailyResponse.Item first = item("아산", "20.0", "10.0");
         AsosDailyResponse.Item second = item("아산", "22.0", "20.0");
         when(weatherApiClient.daily(eq("232"), any(LocalDate.class), any(LocalDate.class)))
@@ -37,7 +40,8 @@ class MonthlyWeatherServiceUnitTest {
         verify(weatherApiClient, times(5)).daily(eq("232"), any(LocalDate.class), any(LocalDate.class));
     }
 
-    @Test void returnsNullWhenSigunguHasNoStationMapping() {
+    @Test
+    void returnsNullWhenSigunguHasNoStationMapping() {
         MonthlyWeatherService service = new MonthlyWeatherService(weatherApiClient,
                 new WeatherProperties("https://weather", "key", 5));
 

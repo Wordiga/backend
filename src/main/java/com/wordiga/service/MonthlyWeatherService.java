@@ -2,8 +2,8 @@ package com.wordiga.service;
 
 import com.wordiga.client.WeatherApiClient;
 import com.wordiga.client.dto.AsosDailyResponse;
-import com.wordiga.config.WeatherProperties;
 import com.wordiga.dto.tourismContent.detail.MonthlyWeatherDto;
+import com.wordiga.global.config.WeatherProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -15,7 +15,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@Service @RequiredArgsConstructor
+@Service
+@RequiredArgsConstructor
 public class MonthlyWeatherService {
     private static final Map<String, String> STATIONS = Map.ofEntries(
             Map.entry("110", "232"), Map.entry("120", "232"), Map.entry("150", "236"),
@@ -43,8 +44,8 @@ public class MonthlyWeatherService {
         BigDecimal precipitation = observations.stream().map(AsosDailyResponse.Item::getSumRn)
                 .map(this::number).filter(java.util.Objects::nonNull).reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal temperature = temperatures.isEmpty() ? null : temperatures.stream()
-                .reduce(BigDecimal.ZERO, BigDecimal::add)
-                .divide(BigDecimal.valueOf(temperatures.size()), 1, RoundingMode.HALF_UP);
+                                                                 .reduce(BigDecimal.ZERO, BigDecimal::add)
+                                                                 .divide(BigDecimal.valueOf(temperatures.size()), 1, RoundingMode.HALF_UP);
         return MonthlyWeatherDto.builder().targetMonth(visitDate.getMonthValue())
                 .estimatedAverageTemperatureCelsius(temperature)
                 .estimatedMonthlyPrecipitationMillimeters(
@@ -54,7 +55,10 @@ public class MonthlyWeatherService {
     }
 
     private BigDecimal number(String value) {
-        try { return value == null || value.isBlank() ? null : new BigDecimal(value); }
-        catch (NumberFormatException ignored) { return null; }
+        try {
+            return value == null || value.isBlank() ? null : new BigDecimal(value);
+        } catch (NumberFormatException ignored) {
+            return null;
+        }
     }
 }

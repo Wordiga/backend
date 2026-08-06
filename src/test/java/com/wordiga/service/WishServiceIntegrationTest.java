@@ -1,10 +1,10 @@
 package com.wordiga.service;
 
-import com.wordiga.domain.Wish;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.wish.WishRequest;
 import com.wordiga.repository.WishRepository;
 import com.wordiga.support.PostgresIntegrationTest;
+import com.wordiga.wish.Wish;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

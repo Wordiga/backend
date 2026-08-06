@@ -1,8 +1,8 @@
 package com.wordiga.service;
 
 import com.wordiga.client.TourismApiClient;
-import com.wordiga.config.TourismProperties;
 import com.wordiga.dto.tourismContent.ListType;
+import com.wordiga.global.config.TourismProperties;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;

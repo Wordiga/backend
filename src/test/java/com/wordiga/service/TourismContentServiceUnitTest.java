@@ -1,20 +1,12 @@
 package com.wordiga.service;
 
 import com.wordiga.client.TourismApiClient;
-import com.wordiga.client.dto.AreaBasedItem;
-import com.wordiga.client.dto.AreaBasedResponse;
-import com.wordiga.client.dto.AreaTarExpDsItem;
-import com.wordiga.client.dto.AreaTarExpDsResponse;
-import com.wordiga.client.dto.AreaTarSjrnDsItem;
-import com.wordiga.client.dto.AreaTarSjrnDsResponse;
-import com.wordiga.client.dto.AreaTarSvcDemItem;
-import com.wordiga.client.dto.AreaTarSvcDemResponse;
-import com.wordiga.client.dto.KtoApiResponse;
-import com.wordiga.config.TourismProperties;
+import com.wordiga.client.dto.*;
 import com.wordiga.dto.tourismContent.ListType;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
-import com.wordiga.domain.Wish;
+import com.wordiga.global.config.TourismProperties;
 import com.wordiga.repository.WishRepository;
+import com.wordiga.wish.Wish;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -26,7 +18,6 @@ import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -35,10 +26,14 @@ class TourismContentServiceUnitTest {
 
     @Mock
     private TourismApiClient tourismApiClient;
-    @Mock private RelatedTourismContentService relatedTourismContentService;
-    @Mock private PersonalizedTourismContentService personalizedTourismContentService;
-    @Mock private TourismContentDetailService detailService;
-    @Mock private WishRepository wishRepository;
+    @Mock
+    private RelatedTourismContentService relatedTourismContentService;
+    @Mock
+    private PersonalizedTourismContentService personalizedTourismContentService;
+    @Mock
+    private TourismContentDetailService detailService;
+    @Mock
+    private WishRepository wishRepository;
 
     private TourismContentService tourismContentService;
 
@@ -76,8 +71,10 @@ class TourismContentServiceUnitTest {
 
     @Test
     void marksContentsWishedForAuthenticatedMember() {
-        AreaBasedItem wished = item("12"); wished.setContentid("wished");
-        AreaBasedItem unwished = item("14"); unwished.setContentid("unwished");
+        AreaBasedItem wished = item("12");
+        wished.setContentid("wished");
+        AreaBasedItem unwished = item("14");
+        unwished.setContentid("unwished");
         when(tourismApiClient.searchContent("충남", null, "44", null, 1, 20))
                 .thenReturn(response(List.of(wished, unwished), 2));
         when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of(
@@ -180,7 +177,8 @@ class TourismContentServiceUnitTest {
                 });
     }
 
-    @Test void delegatesRelatedAndPersonalizedRecommendations() {
+    @Test
+    void delegatesRelatedAndPersonalizedRecommendations() {
         TourismContentListResponse empty = TourismContentListResponse.builder()
                 .items(List.of()).page(0).size(20).hasNext(false).build();
         when(relatedTourismContentService.get("126508", LocalDate.of(2026, 8, 20), List.of("30S"), 0, 20))
@@ -195,9 +193,12 @@ class TourismContentServiceUnitTest {
                 null, null, null, " ", null, null, null, 0, 20)).hasMessageContaining("400");
     }
 
-    @Test void filtersSearchResultsToLodgingThatCanAccommodateParticipants() {
-        AreaBasedItem lodging = item("32"); lodging.setContentid("lodging");
-        AreaBasedItem tourist = item("12"); tourist.setContentid("tourist");
+    @Test
+    void filtersSearchResultsToLodgingThatCanAccommodateParticipants() {
+        AreaBasedItem lodging = item("32");
+        lodging.setContentid("lodging");
+        AreaBasedItem tourist = item("12");
+        tourist.setContentid("tourist");
         when(tourismApiClient.searchContent("숙소", null, "44", null, 1, 20))
                 .thenReturn(response(List.of(lodging, tourist), 2));
         when(detailService.capacitySatisfied("lodging", "32", 25)).thenReturn(true);

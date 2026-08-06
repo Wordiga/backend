@@ -1,17 +1,22 @@
 package com.wordiga.service;
 
-import com.wordiga.domain.Plan;
-import com.wordiga.domain.PlanContent;
 import com.wordiga.dto.ai.AiPlanResponse;
 import com.wordiga.dto.plan.PlanDetailResponse;
 import com.wordiga.dto.plan.PlanGenerateRequest;
+import com.wordiga.global.config.TourismProperties;
+import com.wordiga.member.Member;
+import com.wordiga.plan.Plan;
+import com.wordiga.plan.PlanContent;
 import com.wordiga.repository.MemberRepository;
 import com.wordiga.repository.PlanRepository;
+import com.wordiga.repository.TourismContentSnapshotRepository;
+import com.wordiga.tourism.TourismContentSnapshot;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
+
 import java.time.format.DateTimeFormatter;
 
 @Service @RequiredArgsConstructor

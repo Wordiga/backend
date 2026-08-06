@@ -1,12 +1,14 @@
 package com.wordiga.service;
 
-import com.wordiga.domain.Plan;
-import com.wordiga.domain.PlanContent;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.plan.*;
+import com.wordiga.plan.Plan;
+import com.wordiga.plan.PlanContent;
 import com.wordiga.repository.PlanRepository;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.*;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -14,9 +16,14 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Set;
 
-@Service @RequiredArgsConstructor @Transactional(readOnly = true)
+@Service
+@RequiredArgsConstructor
+@Transactional(readOnly = true)
 public class PlanService {
     private final PlanRepository planRepository;
     private final TourismContentDetailService tourismContentDetailService;
@@ -29,7 +36,9 @@ public class PlanService {
                 .page(page).size(size).hasNext(result.hasNext()).build();
     }
 
-    public PlanDetailResponse getPlan(Long memberId, Long planId) { return detail(owned(memberId, planId)); }
+    public PlanDetailResponse getPlan(Long memberId, Long planId) {
+        return detail(owned(memberId, planId));
+    }
 
     @Transactional
     public PlanDetailResponse updatePlan(Long memberId, Long planId, PlanUpdateRequest request) {
@@ -61,11 +70,20 @@ public class PlanService {
         return detail(plan);
     }
 
-    @Transactional public void deletePlan(Long memberId, Long planId) { planRepository.delete(owned(memberId, planId)); }
+    @Transactional
+    public void deletePlan(Long memberId, Long planId) {
+        planRepository.delete(owned(memberId, planId));
+    }
 
-    private Plan owned(Long memberId, Long planId) { return planRepository.findByIdAndMemberId(planId, memberId)
-            .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다.")); }
-    private PlanDetailResponse detail(Plan p) { return PlanDetailResponse.from(p); }
+    private Plan owned(Long memberId, Long planId) {
+        return planRepository.findByIdAndMemberId(planId, memberId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다."));
+    }
+
+    private PlanDetailResponse detail(Plan p) {
+        return PlanDetailResponse.from(p);
+    }
+
     private void validateDays(Plan p, List<PlanContentsUpdateRequest.Day> days) {
         int number = 1;
         for (PlanContentsUpdateRequest.Day day : days) {
@@ -74,7 +92,16 @@ public class PlanService {
         if (days.size() != java.time.temporal.ChronoUnit.DAYS.between(p.getStartDate(), p.getEndDate()) + 1)
             invalid("모든 일정 일차를 전달해야 합니다.");
     }
-    private BigDecimal decimal(String value) { try { return value == null || value.isBlank() ? null : new BigDecimal(value); }
-        catch (NumberFormatException e) { return null; } }
-    private void invalid(String message) { throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message); }
+
+    private BigDecimal decimal(String value) {
+        try {
+            return value == null || value.isBlank() ? null : new BigDecimal(value);
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    private void invalid(String message) {
+        throw new ResponseStatusException(HttpStatus.BAD_REQUEST, message);
+    }
 }

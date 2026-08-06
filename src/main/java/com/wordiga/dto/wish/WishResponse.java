@@ -1,6 +1,6 @@
 package com.wordiga.dto.wish;
 
-import com.wordiga.domain.Wish;
+import com.wordiga.wish.Wish;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;

@@ -1,6 +1,6 @@
 package com.wordiga.controller;
 
-import com.wordiga.security.JwtTokenProvider;
+import com.wordiga.global.security.JwtTokenProvider;
 import com.wordiga.repository.MemberRepository;
 import com.wordiga.service.TourismContentDetailService;
 import com.wordiga.service.TourismContentService;

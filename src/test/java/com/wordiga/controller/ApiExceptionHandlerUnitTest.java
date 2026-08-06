@@ -1,5 +1,6 @@
 package com.wordiga.controller;
 
+import com.wordiga.global.exception.ApiExceptionHandler;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Path;
@@ -18,7 +19,8 @@ import static org.mockito.Mockito.when;
 class ApiExceptionHandlerUnitTest {
     private final ApiExceptionHandler handler = new ApiExceptionHandler();
 
-    @Test void formatsBindingAndUnreadableErrors() {
+    @Test
+    void formatsBindingAndUnreadableErrors() {
         BindException binding = new BindException(new com.wordiga.dto.plan.PlanUpdateRequest(), "request");
         binding.rejectValue("title", "invalid", "잘못된 값");
         assertThat(handler.handleValidation(binding).getBody().fieldErrors()).hasSize(1);
@@ -26,7 +28,8 @@ class ApiExceptionHandlerUnitTest {
                 .isEqualTo(HttpStatus.BAD_REQUEST);
     }
 
-    @Test void formatsConstraintViolations() {
+    @Test
+    void formatsConstraintViolations() {
         ConstraintViolation<?> violation = mock(ConstraintViolation.class);
         Path path = mock(Path.class);
         when(path.toString()).thenReturn("size");
@@ -38,7 +41,8 @@ class ApiExceptionHandlerUnitTest {
         assertThat(response.getBody().fieldErrors().getFirst().field()).isEqualTo("size");
     }
 
-    @Test void mapsDomainAndUpstreamStatusCodes() {
+    @Test
+    void mapsDomainAndUpstreamStatusCodes() {
         assertThat(code(HttpStatus.NOT_FOUND, "일정을 찾을 수 없습니다.")).isEqualTo("PLAN_NOT_FOUND");
         assertThat(code(HttpStatus.NOT_FOUND, "콘텐츠를 찾을 수 없습니다.")).isEqualTo("CONTENT_NOT_FOUND");
         assertThat(code(HttpStatus.SERVICE_UNAVAILABLE, "관광공사 API를 사용할 수 없습니다.")).isEqualTo("TOURISM_API_UNAVAILABLE");

@@ -1,10 +1,10 @@
 package com.wordiga.service;
 
-import com.wordiga.domain.Wish;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.wish.WishRequest;
 import com.wordiga.dto.wish.WishResponse;
 import com.wordiga.repository.WishRepository;
+import com.wordiga.wish.Wish;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -107,9 +107,13 @@ class WishServiceUnitTest {
     @NullSource
     @ValueSource(strings = " ")
     void usesDefaultFolderForBlankRegionAndNullCoordinates(String sigunguCode) {
-        WishRequest request = new WishRequest(); request.setContentId("blank");
-        ContentDetailDto content = new ContentDetailDto(); content.setContentid("blank"); content.setTitle("미분류");
-        content.setLDongRegnCd("44"); content.setLDongSignguCd(sigunguCode);
+        WishRequest request = new WishRequest();
+        request.setContentId("blank");
+        ContentDetailDto content = new ContentDetailDto();
+        content.setContentid("blank");
+        content.setTitle("미분류");
+        content.setLDongRegnCd("44");
+        content.setLDongSignguCd(sigunguCode);
         when(tourismContentDetailService.getCommonDetail("blank")).thenReturn(content);
         when(wishRepository.save(any(Wish.class))).thenAnswer(invocation -> invocation.getArgument(0));
 

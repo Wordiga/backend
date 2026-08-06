@@ -2,19 +2,19 @@ package com.wordiga.controller;
 
 import com.wordiga.api.PlanApi;
 import com.wordiga.dto.plan.*;
-import com.wordiga.security.CurrentMemberId;
-import com.wordiga.service.PlanService;
+import com.wordiga.dto.proposal.ProposalCreateRequest;
+import com.wordiga.dto.proposal.ProposalResponse;
+import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.service.PlanGenerationService;
+import com.wordiga.service.PlanService;
 import com.wordiga.service.ProposalService;
-import com.wordiga.dto.proposal.*;
-import java.util.List;
 import jakarta.validation.Valid;
-import jakarta.validation.constraints.Max;
-import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
 
 @Validated
 @RestController
@@ -27,31 +27,35 @@ public class PlanController implements PlanApi {
 
     @PostMapping("/generate")
     public ResponseEntity<PlanDetailResponse> generatePlan(@CurrentMemberId Long memberId,
-                                                            @Valid @RequestBody PlanGenerateRequest request) {
+                                                           @Valid @RequestBody PlanGenerateRequest request) {
         return ResponseEntity.ok(planGenerationService.generate(memberId, request));
     }
 
     @GetMapping
     public ResponseEntity<PlanListResponse> getPlans(@CurrentMemberId Long memberId,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "LATEST") PlanSort sort) {
+                                                     @RequestParam(defaultValue = "0") int page,
+                                                     @RequestParam(defaultValue = "20") int size,
+                                                     @RequestParam(defaultValue = "LATEST") PlanSort sort) {
         return ResponseEntity.ok(planService.getPlans(memberId, page, size, sort));
     }
+
     @GetMapping("/{planId}")
     public ResponseEntity<PlanDetailResponse> getPlan(@CurrentMemberId Long memberId, @PathVariable Long planId) {
         return ResponseEntity.ok(planService.getPlan(memberId, planId));
     }
+
     @PatchMapping("/{planId}")
     public ResponseEntity<PlanDetailResponse> updatePlan(@CurrentMemberId Long memberId, @PathVariable Long planId,
                                                          @Valid @RequestBody PlanUpdateRequest request) {
         return ResponseEntity.ok(planService.updatePlan(memberId, planId, request));
     }
+
     @PutMapping("/{planId}/contents")
     public ResponseEntity<PlanDetailResponse> updateContents(@CurrentMemberId Long memberId, @PathVariable Long planId,
-                                                              @Valid @RequestBody PlanContentsUpdateRequest request) {
+                                                             @Valid @RequestBody PlanContentsUpdateRequest request) {
         return ResponseEntity.ok(planService.updateContents(memberId, planId, request));
     }
+
     @DeleteMapping("/{planId}")
     public ResponseEntity<Void> deletePlan(@CurrentMemberId Long memberId, @PathVariable Long planId) {
         planService.deletePlan(memberId, planId);
@@ -60,7 +64,7 @@ public class PlanController implements PlanApi {
 
     @PostMapping("/{planId}/proposals")
     public ResponseEntity<ProposalResponse> createProposal(@CurrentMemberId Long memberId, @PathVariable Long planId,
-                                                            @Valid @RequestBody ProposalCreateRequest request) {
+                                                           @Valid @RequestBody ProposalCreateRequest request) {
         return ResponseEntity.ok(proposalService.create(memberId, planId, request));
     }
 
@@ -71,7 +75,7 @@ public class PlanController implements PlanApi {
 
     @DeleteMapping("/{planId}/proposals/{proposalId}")
     public ResponseEntity<Void> deleteProposal(@CurrentMemberId Long memberId, @PathVariable Long planId,
-                                                @PathVariable Long proposalId) {
+                                               @PathVariable Long proposalId) {
         proposalService.delete(memberId, planId, proposalId);
         return ResponseEntity.noContent().build();
     }

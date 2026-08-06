@@ -4,7 +4,7 @@ import com.wordiga.dto.tourismContent.TourismContentDto;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
 import com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto;
 import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
-import com.wordiga.security.JwtTokenProvider;
+import com.wordiga.global.security.JwtTokenProvider;
 import com.wordiga.repository.MemberRepository;
 import com.wordiga.service.TourismContentDetailService;
 import com.wordiga.service.TourismContentService;

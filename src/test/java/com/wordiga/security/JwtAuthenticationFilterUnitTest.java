@@ -1,5 +1,7 @@
 package com.wordiga.security;
 
+import com.wordiga.global.security.JwtAuthenticationFilter;
+import com.wordiga.global.security.JwtTokenProvider;
 import com.wordiga.repository.MemberRepository;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -13,9 +15,13 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 class JwtAuthenticationFilterUnitTest {
-    @AfterEach void clear() { SecurityContextHolder.clearContext(); }
+    @AfterEach
+    void clear() {
+        SecurityContextHolder.clearContext();
+    }
 
-    @Test void authenticatesOnlyExistingMember() throws Exception {
+    @Test
+    void authenticatesOnlyExistingMember() throws Exception {
         JwtTokenProvider tokens = mock(JwtTokenProvider.class);
         MemberRepository members = mock(MemberRepository.class);
         when(tokens.isValid("token")).thenReturn(true);

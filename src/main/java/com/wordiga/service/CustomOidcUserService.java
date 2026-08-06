@@ -1,7 +1,7 @@
 package com.wordiga.service;
 
-import com.wordiga.domain.Member;
-import com.wordiga.domain.OAuthProvider;
+import com.wordiga.member.Member;
+import com.wordiga.member.OAuthProvider;
 import com.wordiga.repository.MemberRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.oauth2.client.oidc.userinfo.OidcUserRequest;

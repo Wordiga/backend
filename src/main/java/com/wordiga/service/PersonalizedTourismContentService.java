@@ -2,10 +2,10 @@ package com.wordiga.service;
 
 import com.wordiga.client.TourismApiClient;
 import com.wordiga.client.dto.AreaBasedItem;
-import com.wordiga.domain.Wish;
 import com.wordiga.dto.tourismContent.TourismContentDto;
 import com.wordiga.dto.tourismContent.TourismContentListResponse;
 import com.wordiga.repository.WishRepository;
+import com.wordiga.wish.Wish;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;

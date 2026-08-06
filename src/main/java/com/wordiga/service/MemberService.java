@@ -1,9 +1,9 @@
 package com.wordiga.service;
 
 import com.wordiga.client.KakaoUnlinkClient;
-import com.wordiga.domain.Member;
-import com.wordiga.domain.OAuthProvider;
 import com.wordiga.dto.member.MemberProfileResponse;
+import com.wordiga.member.Member;
+import com.wordiga.member.OAuthProvider;
 import com.wordiga.repository.MemberRepository;
 import com.wordiga.repository.ProposalRepository;
 import lombok.RequiredArgsConstructor;
@@ -11,7 +11,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-@Service @RequiredArgsConstructor
+@Service
+@RequiredArgsConstructor
 public class MemberService {
     private final MemberRepository memberRepository;
     private final ProposalRepository proposalRepository;

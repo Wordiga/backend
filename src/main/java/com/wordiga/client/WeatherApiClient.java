@@ -1,7 +1,7 @@
 package com.wordiga.client;
 
 import com.wordiga.client.dto.AsosDailyResponse;
-import com.wordiga.config.WeatherProperties;
+import com.wordiga.global.config.WeatherProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -13,7 +13,8 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
-@Component @RequiredArgsConstructor
+@Component
+@RequiredArgsConstructor
 public class WeatherApiClient {
     private final RestClient restClient;
     private final WeatherProperties properties;

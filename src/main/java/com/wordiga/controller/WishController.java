@@ -5,7 +5,7 @@ import com.wordiga.dto.wish.WishDeleteRequest;
 import com.wordiga.dto.wish.WishFolderResponse;
 import com.wordiga.dto.wish.WishRequest;
 import com.wordiga.dto.wish.WishResponse;
-import com.wordiga.security.CurrentMemberId;
+import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.service.WishService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;

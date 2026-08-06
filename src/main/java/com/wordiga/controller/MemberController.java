@@ -2,7 +2,7 @@ package com.wordiga.controller;
 
 import com.wordiga.api.MemberApi;
 import com.wordiga.dto.member.MemberProfileResponse;
-import com.wordiga.security.CurrentMemberId;
+import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.service.MemberService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

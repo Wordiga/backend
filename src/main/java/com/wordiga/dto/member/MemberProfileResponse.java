@@ -1,11 +1,12 @@
 package com.wordiga.dto.member;
 
-import com.wordiga.domain.Member;
-import com.wordiga.domain.OAuthProvider;
+import com.wordiga.member.Member;
+import com.wordiga.member.OAuthProvider;
 import lombok.Builder;
 import lombok.Getter;
 
-@Getter @Builder
+@Getter
+@Builder
 public class MemberProfileResponse {
     private Long memberId;
     private String email;

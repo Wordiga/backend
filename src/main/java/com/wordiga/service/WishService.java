@@ -1,18 +1,18 @@
 package com.wordiga.service;
 
-import com.wordiga.domain.Wish;
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.wish.WishFolderResponse;
 import com.wordiga.dto.wish.WishRequest;
 import com.wordiga.dto.wish.WishResponse;
 import com.wordiga.repository.WishRepository;
+import com.wordiga.wish.Wish;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
 
@@ -80,8 +80,8 @@ public class WishService {
                 .collect(Collectors.groupingBy(Wish::getFolderName, LinkedHashMap::new, Collectors.toList()));
         return folders.values().stream().sorted(java.util.Comparator.comparing(wishes -> wishes.getFirst().getFolderName()))
                 .map(wishes -> WishFolderResponse.builder()
-                .folderName(wishes.getFirst().getFolderName()).lDongSignguCd(wishes.getFirst().getSigunguCode())
-                .count((long) wishes.size()).thumbnailUrl(wishes.getFirst().getFirstimage()).build()).toList();
+                        .folderName(wishes.getFirst().getFolderName()).lDongSignguCd(wishes.getFirst().getSigunguCode())
+                        .count((long) wishes.size()).thumbnailUrl(wishes.getFirst().getFirstimage()).build()).toList();
     }
 
     /**
