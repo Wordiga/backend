@@ -1,9 +1,9 @@
 package com.wordiga.global.client;
 
-import com.wordiga.dto.ContentDetailDto;
-import com.wordiga.dto.DetailImageDto;
-import com.wordiga.dto.DetailInfoDto;
-import com.wordiga.dto.DetailIntroDto;
+import com.wordiga.global.client.dto.ContentDetailDto;
+import com.wordiga.global.client.dto.DetailImageDto;
+import com.wordiga.global.client.dto.DetailInfoDto;
+import com.wordiga.global.client.dto.DetailIntroDto;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
 import lombok.RequiredArgsConstructor;
