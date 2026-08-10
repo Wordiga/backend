@@ -29,9 +29,6 @@ import static org.mockito.Mockito.*;
 class TourismContentDetailServiceUnitTest {
 
     @Mock
-    private WorkshopDetailService workshopDetailService;
-
-    @Mock
     private TourismApiClient tourismApiClient;
 
     @Spy
@@ -64,11 +61,11 @@ class TourismContentDetailServiceUnitTest {
         image.setSmallimageurl("https://example.com/thumb.jpg");
         image.setSerialnum("7");
 
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
-        when(workshopDetailService.fetchIntroDetail("126508", "12")).thenReturn(intro);
-        when(workshopDetailService.fetchRepeatInfo("126508", "12", 1, 100))
+        when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
+        when(tourismApiClient.fetchIntroDetail("126508", "12")).thenReturn(intro);
+        when(tourismApiClient.fetchRepeatInfo("126508", "12", 1, 100))
                 .thenReturn(List.of(detail));
-        when(workshopDetailService.fetchImages("126508", "Y", 1, 100))
+        when(tourismApiClient.fetchImages("126508", "Y", 1, 100))
                 .thenReturn(List.of(image));
         when(tourismApiClient.searchPhotos("현충사")).thenReturn(photoResponse("202606"));
 
@@ -109,8 +106,8 @@ class TourismContentDetailServiceUnitTest {
 
     @Test
     void commonDetailRejectsMissingAndOutsideChungnam() {
-        when(workshopDetailService.fetchCommonDetail("missing")).thenReturn(null);
-        when(workshopDetailService.fetchCommonDetail("seoul")).thenReturn(common("11"));
+        when(tourismApiClient.fetchCommonDetail("missing")).thenReturn(null);
+        when(tourismApiClient.fetchCommonDetail("seoul")).thenReturn(common("11"));
         assertThatThrownBy(() -> service.getCommonDetail("missing")).hasMessageContaining("404");
         assertThatThrownBy(() -> service.getCommonDetail("seoul")).hasMessageContaining("404");
     }
@@ -121,10 +118,10 @@ class TourismContentDetailServiceUnitTest {
         common.setLDongSignguCd(null);
         common.setMapx("invalid");
         common.setMapy("");
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
-        when(workshopDetailService.fetchRepeatInfo("126508", "12", 1, 100))
+        when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
+        when(tourismApiClient.fetchRepeatInfo("126508", "12", 1, 100))
                 .thenReturn(List.of());
-        when(workshopDetailService.fetchImages("126508", "Y", 1, 100))
+        when(tourismApiClient.fetchImages("126508", "Y", 1, 100))
                 .thenReturn(List.of());
 
         TourismContentDetailResponse result = service.getDetail("126508", null, List.of(), 8);
@@ -140,10 +137,10 @@ class TourismContentDetailServiceUnitTest {
         DetailIntroDto intro = new DetailIntroDto();
         intro.setContenttypeid("32");
         intro.setAccomcountlodging("10명");
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
-        when(workshopDetailService.fetchIntroDetail("126508", "32")).thenReturn(intro);
-        when(workshopDetailService.fetchRepeatInfo("126508", "32", 1, 100)).thenReturn(List.of());
-        when(workshopDetailService.fetchImages("126508", "Y", 1, 100)).thenReturn(List.of());
+        when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
+        when(tourismApiClient.fetchIntroDetail("126508", "32")).thenReturn(intro);
+        when(tourismApiClient.fetchRepeatInfo("126508", "32", 1, 100)).thenReturn(List.of());
+        when(tourismApiClient.fetchImages("126508", "Y", 1, 100)).thenReturn(List.of());
 
         assertThat(service.getDetail("126508", null, List.of(), 8).getCapacitySatisfied()).isTrue();
         assertThat(service.getDetail("126508", null, List.of(), 11).getCapacitySatisfied()).isFalse();
@@ -155,24 +152,24 @@ class TourismContentDetailServiceUnitTest {
         DetailIntroDto intro = new DetailIntroDto();
         intro.setContenttypeid("12");
         LocalDate visitDate = LocalDate.of(2026, 8, 20);
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
-        when(workshopDetailService.fetchIntroDetail("126508", "12")).thenReturn(intro);
+        when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
+        when(tourismApiClient.fetchIntroDetail("126508", "12")).thenReturn(intro);
 
         TourismContentDetailResponse result = service.getAiDetail("126508", visitDate, false);
 
         assertThat(result.getDetails()).isEmpty();
         assertThat(result.getImages()).isEmpty();
         assertThat(result.getMonthlyWeather()).isNull();
-        verify(workshopDetailService, never()).fetchRepeatInfo(anyString(), anyString(), anyInt(), anyInt());
-        verify(workshopDetailService, never()).fetchImages(anyString(), anyString(), anyInt(), anyInt());
-        verifyNoInteractions(tourismApiClient, satisfactionService, monthlyWeatherService);
+        verify(tourismApiClient, never()).fetchRepeatInfo(anyString(), anyString(), anyInt(), anyInt());
+        verify(tourismApiClient, never()).fetchImages(anyString(), anyString(), anyInt(), anyInt());
+        verifyNoInteractions(satisfactionService, monthlyWeatherService);
     }
 
     @Test
     void aiDetailFetchesWeatherOnlyWhenRequested() {
         ContentDetailDto common = common("44");
         LocalDate visitDate = LocalDate.of(2026, 8, 20);
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(common);
+        when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
 
         service.getAiDetail("126508", visitDate, true);
 

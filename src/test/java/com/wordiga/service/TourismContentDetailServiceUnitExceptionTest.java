@@ -18,9 +18,6 @@ import static org.mockito.Mockito.when;
 class TourismContentDetailServiceUnitExceptionTest {
 
     @Mock
-    private WorkshopDetailService workshopDetailService;
-
-    @Mock
     private TourismApiClient tourismApiClient;
 
     @Mock
@@ -34,7 +31,7 @@ class TourismContentDetailServiceUnitExceptionTest {
 
     @Test
     void rejectsMissingContent() {
-        when(workshopDetailService.fetchCommonDetail("missing")).thenReturn(null);
+        when(tourismApiClient.fetchCommonDetail("missing")).thenReturn(null);
 
         assertThatThrownBy(() -> service.getDetail("missing", null, List.of(), 1))
                 .isInstanceOf(ResponseStatusException.class)
@@ -45,7 +42,7 @@ class TourismContentDetailServiceUnitExceptionTest {
     void rejectsContentOutsideChungnam() {
         ContentDetailDto content = new ContentDetailDto();
         content.setLDongRegnCd("11");
-        when(workshopDetailService.fetchCommonDetail("126508")).thenReturn(content);
+        when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(content);
 
         assertThatThrownBy(() -> service.getDetail("126508", null, List.of(), 1))
                 .isInstanceOf(ResponseStatusException.class)

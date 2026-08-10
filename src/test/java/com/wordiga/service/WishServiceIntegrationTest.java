@@ -2,6 +2,7 @@ package com.wordiga.service;
 
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.wish.WishRequest;
+import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.repository.WishRepository;
 import com.wordiga.support.PostgresIntegrationTest;
 import com.wordiga.wish.Wish;
@@ -27,7 +28,7 @@ class WishServiceIntegrationTest extends PostgresIntegrationTest {
     private WishRepository wishRepository;
 
     @MockitoBean
-    private WorkshopDetailService workshopDetailService;
+    private TourismApiClient tourismApiClient;
 
     @AfterEach
     void cleanUp() {
@@ -36,7 +37,7 @@ class WishServiceIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void savesFoldersQueriesAndDeletesWishInPostgres() {
-        when(workshopDetailService.fetchCommonDetail("126508"))
+        when(tourismApiClient.fetchCommonDetail("126508"))
                 .thenReturn(content("126508", "현충사", "200"));
 
         wishService.addWish(1L, request("126508"));
@@ -57,9 +58,9 @@ class WishServiceIntegrationTest extends PostgresIntegrationTest {
 
     @Test
     void concurrentDifferentWishesCompleteWithoutDeadlock() {
-        when(workshopDetailService.fetchCommonDetail("A"))
+        when(tourismApiClient.fetchCommonDetail("A"))
                 .thenReturn(content("A", "현충사", "200"));
-        when(workshopDetailService.fetchCommonDetail("B"))
+        when(tourismApiClient.fetchCommonDetail("B"))
                 .thenReturn(content("B", "공산성", "150"));
 
         assertThatCode(() -> {

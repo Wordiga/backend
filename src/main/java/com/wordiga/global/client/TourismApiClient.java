@@ -1,5 +1,9 @@
 package com.wordiga.global.client;
 
+import com.wordiga.dto.ContentDetailDto;
+import com.wordiga.dto.DetailImageDto;
+import com.wordiga.dto.DetailInfoDto;
+import com.wordiga.dto.DetailIntroDto;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
 import lombok.RequiredArgsConstructor;
@@ -40,6 +44,8 @@ public class TourismApiClient {
         return callApi(uri, AreaTarExpDsResponse.class);
     }
 
+    // ─── 관광 체류 강도 ───
+
     public AreaTarSjrnDsResponse fetchStayIntensity(String baseYm, String areaCd,
                                                     String signguCd, String tarSjrnDsIxCd) {
         Map<String, String> params = new LinkedHashMap<>();
@@ -68,6 +74,8 @@ public class TourismApiClient {
         return callApi(uri, AreaTarSvcDemResponse.class);
     }
 
+    // ─── 문화 자원 수요 ───
+
     public AreaCulResDemResponse fetchCulturalResourceDemand(String baseYm, String areaCd,
                                                              String signguCd, String culResDemIxCd) {
         Map<String, String> params = new LinkedHashMap<>();
@@ -79,6 +87,19 @@ public class TourismApiClient {
 
         URI uri = buildUri("AreaTarResDemService/areaCulResDemList", params);
         return callApi(uri, AreaCulResDemResponse.class);
+    }
+
+    // ─── 관광지 집중률 ───
+
+    public TatsCnctrRateResponse fetchConcentrationRate(String areaCd, String signguCd, String tAtsNm) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("areaCd", areaCd);
+        params.put("signguCd", signguCd);
+        params.put("numOfRows", "30");
+        putIfPresent(params, "tAtsNm", tAtsNm);
+
+        URI uri = buildUri("TatsCnctrRateService/tatsCnctrRateList", params);
+        return callApi(uri, TatsCnctrRateResponse.class);
     }
 
     // ─── 지역별 관광 다양성 ───
@@ -147,6 +168,61 @@ public class TourismApiClient {
         return callApi(uri, AreaBasedResponse.class);
     }
 
+    public ContentDetailDto fetchCommonDetail(String contentId) {
+        Map<String, String> params = detailParams(contentId, 1, 1);
+        ContentDetailResponse response = callApi(
+                buildUri("KorService2/detailCommon2", params), ContentDetailResponse.class);
+        List<ContentDetailDto> items = extractItems(response);
+        return items.isEmpty() ? null : items.getFirst();
+    }
+
+    public DetailIntroDto fetchIntroDetail(String contentId, String contentTypeId) {
+        Map<String, String> params = detailParams(contentId, 1, 1);
+        params.put("contentTypeId", contentTypeId);
+        DetailIntroResponse response = callApi(
+                buildUri("KorService2/detailIntro2", params), DetailIntroResponse.class);
+        List<DetailIntroDto> items = extractItems(response);
+        return items.isEmpty() ? null : items.getFirst();
+    }
+
+    public List<DetailInfoDto> fetchRepeatInfo(
+            String contentId, String contentTypeId, int pageNo, int numOfRows) {
+        Map<String, String> params = detailParams(contentId, pageNo, numOfRows);
+        params.put("contentTypeId", contentTypeId);
+        return extractItems(callApi(
+                buildUri("KorService2/detailInfo2", params), DetailInfoResponse.class));
+    }
+
+    public List<DetailImageDto> fetchImages(String contentId, String imageYN, int pageNo, int numOfRows) {
+        Map<String, String> params = detailParams(contentId, pageNo, numOfRows);
+        putIfPresent(params, "imageYN", imageYN);
+        return extractItems(callApi(
+                buildUri("KorService2/detailImage2", params), DetailImageResponse.class));
+    }
+
+    public List<RelatedTourismItem> fetchRelatedTourism(String baseYm, String areaCd, String signguCd,
+                                                        String keyword, int numOfRows) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("baseYm", baseYm);
+        params.put("areaCd", areaCd);
+        params.put("signguCd", signguCd);
+        params.put("keyword", keyword);
+        params.put("pageNo", "1");
+        params.put("numOfRows", String.valueOf(numOfRows));
+        RelatedTourismResponse response = callApi(
+                buildUri("TarRlteTarService1/searchKeyword1", params), RelatedTourismResponse.class);
+        if (response.getResponse() != null && response.getResponse().getHeader() != null
+                && response.getResponse().getHeader().getResultCode() != null
+                && !"0000".equals(response.getResponse().getHeader().getResultCode())) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
+                    "관광공사 연관 관광지 API를 사용할 수 없습니다.");
+        }
+        if (response.getResponse() == null || response.getResponse().getBody() == null
+                || response.getResponse().getBody().getItems() == null
+                || response.getResponse().getBody().getItems().getItem() == null) return List.of();
+        return response.getResponse().getBody().getItems().getItem();
+    }
+
     public List<String> fetchClassificationNames(String lclsSystm1, String lclsSystm2, String lclsSystm3) {
         Map<String, String> params = new LinkedHashMap<>();
         params.put("pageNo", "1");
@@ -180,6 +256,22 @@ public class TourismApiClient {
                 .orElse(null);
     }
 
+    public List<SigunguItem> fetchSigunguList(String regnCd) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("pageNo", "1");
+        params.put("numOfRows", "50");
+        params.put("IDongRegnCd", regnCd);
+        params.put("IDongListYn", "Y"); // 전체 목록 조회로 변경
+        URI uri = buildUri("KorService2/ldongCode2", params);
+        SigunguResponse response = callApi(uri, SigunguResponse.class);
+        if (response == null || response.getResponse() == null
+                || response.getResponse().getBody() == null
+                || response.getResponse().getBody().getItems() == null
+                || response.getResponse().getBody().getItems().getItem() == null) {
+            return Collections.emptyList();
+        }
+        return response.getResponse().getBody().getItems().getItem();
+    }
     // ─── 관광 사진 갤러리 서비스 ───
 
     public PhotoGalleryResponse searchPhotos(String keyword) {
@@ -194,7 +286,8 @@ public class TourismApiClient {
     // ─── 공통: API 호출 ───
 
     private <T> T callApi(URI uri, Class<T> responseType) {
-        log.info("[TourismAPI] 호출: {}", uri);
+        String operation = uri.getPath();
+        log.info("[TourismAPI] 호출: {}", operation);
         try {
             T response = restClient.get()
                     .uri(uri)
@@ -206,7 +299,7 @@ public class TourismApiClient {
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            log.error("[TourismAPI] 실패: {} - {}", uri, e.getMessage());
+            log.error("[TourismAPI] 실패: {} - {}", operation, e.getMessage());
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
                     "관광공사 API를 사용할 수 없습니다.", e);
         }
@@ -237,5 +330,23 @@ public class TourismApiClient {
         if (value != null && !value.isBlank()) {
             params.put(key, value);
         }
+    }
+
+    private Map<String, String> detailParams(String contentId, int pageNo, int numOfRows) {
+        Map<String, String> params = new LinkedHashMap<>();
+        params.put("contentId", contentId);
+        params.put("pageNo", String.valueOf(pageNo));
+        params.put("numOfRows", String.valueOf(numOfRows));
+        return params;
+    }
+
+    private <T> List<T> extractItems(KtoApiResponse<T> response) {
+        if (response == null || response.getResponse() == null
+                || response.getResponse().getBody() == null
+                || response.getResponse().getBody().getItems() == null
+                || response.getResponse().getBody().getItems().getItem() == null) {
+            return Collections.emptyList();
+        }
+        return response.getResponse().getBody().getItems().getItem();
     }
 }

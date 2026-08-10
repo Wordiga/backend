@@ -2,6 +2,7 @@ package com.wordiga.service;
 
 import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.wish.WishRequest;
+import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.repository.WishRepository;
 import com.wordiga.support.PostgresIntegrationTest;
 import org.junit.jupiter.api.AfterEach;
@@ -27,7 +28,7 @@ class WishServiceIntegrationExceptionTest extends PostgresIntegrationTest {
     private WishRepository wishRepository;
 
     @MockitoBean
-    private WorkshopDetailService workshopDetailService;
+    private TourismApiClient tourismApiClient;
 
     @AfterEach
     void cleanUp() {
@@ -37,7 +38,7 @@ class WishServiceIntegrationExceptionTest extends PostgresIntegrationTest {
     @Test
     void concurrentDuplicateWishKeepsUniqueConstraintWithoutDeadlock() throws Exception {
         CyclicBarrier barrier = new CyclicBarrier(2);
-        when(workshopDetailService.fetchCommonDetail("same")).thenAnswer(ignored -> {
+        when(tourismApiClient.fetchCommonDetail("same")).thenAnswer(ignored -> {
             barrier.await();
             return content();
         });

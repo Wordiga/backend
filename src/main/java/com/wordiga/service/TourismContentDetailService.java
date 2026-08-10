@@ -29,7 +29,6 @@ public class TourismContentDetailService {
 
     private static final String CHUNGNAM_REGION_CODE = "44";
 
-    private final WorkshopDetailService workshopDetailService;
     private final TourismApiClient tourismApiClient;
     private final TourismDetailMapper detailMapper;
     private final TourismSatisfactionService satisfactionService;
@@ -37,16 +36,16 @@ public class TourismContentDetailService {
 
     public TourismContentDetailResponse getDetail(
             String contentId, LocalDate visitDate, List<String> ageGroups, Integer participantCount) {
-        ContentDetailDto common = workshopDetailService.fetchCommonDetail(contentId);
+        ContentDetailDto common = tourismApiClient.fetchCommonDetail(contentId);
         if (common == null || !CHUNGNAM_REGION_CODE.equals(common.getLDongRegnCd())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관광 콘텐츠를 찾을 수 없습니다.");
         }
 
-        DetailIntroDto intro = workshopDetailService.fetchIntroDetail(
+        DetailIntroDto intro = tourismApiClient.fetchIntroDetail(
                 contentId, common.getContenttypeid());
-        List<DetailInfoDto> details = workshopDetailService.fetchRepeatInfo(
+        List<DetailInfoDto> details = tourismApiClient.fetchRepeatInfo(
                 contentId, common.getContenttypeid(), 1, 100);
-        List<DetailImageDto> images = workshopDetailService.fetchImages(
+        List<DetailImageDto> images = tourismApiClient.fetchImages(
                 contentId, "Y", 1, 100);
         List<SeasonalImageDto> seasonalImages = seasonalImages(common, images);
 
@@ -79,7 +78,7 @@ public class TourismContentDetailService {
     }
 
     public ContentDetailDto getCommonDetail(String contentId) {
-        ContentDetailDto common = workshopDetailService.fetchCommonDetail(contentId);
+        ContentDetailDto common = tourismApiClient.fetchCommonDetail(contentId);
         if (common == null || !CHUNGNAM_REGION_CODE.equals(common.getLDongRegnCd())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "관광 콘텐츠를 찾을 수 없습니다.");
         }
@@ -88,7 +87,7 @@ public class TourismContentDetailService {
 
     public TourismContentDetailResponse getAiDetail(String contentId, LocalDate visitDate, boolean includeWeather) {
         ContentDetailDto common = getCommonDetail(contentId);
-        DetailIntroDto intro = workshopDetailService.fetchIntroDetail(contentId, common.getContenttypeid());
+        DetailIntroDto intro = tourismApiClient.fetchIntroDetail(contentId, common.getContenttypeid());
         return TourismContentDetailResponse.builder()
                 .common(toCommon(common))
                 .intro(detailMapper.toIntro(intro))
@@ -105,8 +104,8 @@ public class TourismContentDetailService {
     }
 
     public Boolean capacitySatisfied(String contentId, String contentTypeId, Integer participantCount) {
-        DetailIntroDto intro = workshopDetailService.fetchIntroDetail(contentId, contentTypeId);
-        List<DetailInfoDto> details = workshopDetailService.fetchRepeatInfo(contentId, contentTypeId, 1, 100);
+        DetailIntroDto intro = tourismApiClient.fetchIntroDetail(contentId, contentTypeId);
+        List<DetailInfoDto> details = tourismApiClient.fetchRepeatInfo(contentId, contentTypeId, 1, 100);
         return capacitySatisfied(contentTypeId, intro, details, participantCount);
     }
 
