@@ -1,83 +1,142 @@
 package com.wordiga.tourism.service;
 
-import com.wordiga.tourism.dto.TourismContentDto;
-import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.AreaBasedItem;
-import com.wordiga.repository.WishRepository;
-import com.wordiga.wish.Wish;
+import com.wordiga.global.config.TourismProperties;
+import com.wordiga.tourism.dto.SatisfactionRequestDto;
+import com.wordiga.tourism.dto.TourismContentDto;
+import com.wordiga.tourism.dto.TourismContentListResponse;
+import com.wordiga.tourism.dto.detail.SatisfactionDto;
+import com.wordiga.wish.service.WishPreferenceCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.*;
-import java.util.function.Function;
+import java.util.Comparator;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 public class PersonalizedTourismContentService {
-    private static final String CHUNGNAM = "44";
-    private final WishRepository wishRepository;
+
+    private static final int TOTAL_CANDIDATE_LIMIT = 50;
+    private static final List<String> DEFAULT_FALLBACK_SIGUNGUS = List.of("150", "200", "010");
+
     private final TourismApiClient tourismApiClient;
+    private final WishPreferenceCacheService preferenceCacheService;
     private final TourismSatisfactionService satisfactionService;
+    private final TourismProperties tourismProperties;
 
-    public TourismContentListResponse get(Long memberId, LocalDate visitDate, int page, int size) {
-        if (memberId == null) throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
-        List<Wish> wishes = wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(memberId);
-        if (wishes.isEmpty()) return TourismContentListResponse.builder()
-                .items(List.of()).page(page).size(size).hasNext(false).build();
-        Set<String> wishIds = wishes.stream().map(Wish::getContentId).collect(Collectors.toSet());
-        Set<String> themes = wishes.stream().map(this::theme).filter(Objects::nonNull).collect(Collectors.toSet());
+    public TourismContentListResponse get(
+            Long memberId, LocalDate visitDate, List<String> ageGroups, Integer stayNights, int page, int size) {
 
-        List<String> signgus = wishes.stream().map(Wish::getSigunguCode).filter(Objects::nonNull)
-                .collect(Collectors.groupingBy(Function.identity(), Collectors.counting())).entrySet().stream()
-                .sorted(Map.Entry.<String, Long>comparingByValue().reversed()).limit(3).map(Map.Entry::getKey).toList();
-        Map<String, TourismContentDto> candidates = new LinkedHashMap<>();
-        var satisfactionContext = new TourismSatisfactionService.Context();
-        for (String signgu : signgus) {
-            for (AreaBasedItem item : tourismApiClient.fetchAreaBasedContent(CHUNGNAM, signgu, 50)) {
-                if (wishIds.contains(item.getContentid()) || !matchesTheme(item, themes)
-                        || candidates.containsKey(item.getContentid())) continue;
-                var satisfaction = satisfactionService.calculate(satisfactionContext, CHUNGNAM,
-                        item.getLDongSignguCd(), item.getTitle(), visitDate, List.of());
-                BigDecimal score = satisfaction == null ? BigDecimal.ZERO : satisfaction.getTotalScore();
-                candidates.put(item.getContentid(), dto(item, score));
-                if (candidates.size() == 30) break;
-            }
-            if (candidates.size() == 30) break;
+        if (memberId == null) {
+            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
         }
-        List<TourismContentDto> sorted = candidates.values().stream()
-                .sorted(Comparator.comparing(TourismContentDto::getRecommendationScore).reversed()).toList();
-        int from = Math.min(page * size, sorted.size());
-        int to = Math.min(from + size, sorted.size());
-        return TourismContentListResponse.builder().items(sorted.subList(from, to)).page(page).size(size)
-                .hasNext(to < sorted.size()).build();
+
+        // 1. 인메모리 캐시에서 유저의 시군구별 비중(Map) 조회
+        Map<String, BigDecimal> sigunguRatios = preferenceCacheService.getSigunguPreferenceRatios(memberId);
+
+        String regionCode = tourismProperties.getRegion().getChungnamCode();
+        Map<String, TourismContentDto> candidateMap = new LinkedHashMap<>();
+        var cache = new TourismSatisfactionService.CalculationCache();
+
+        // 2-A. 위시 비중 데이터가 없는 신규/미등록 회원 -> Fallback 대표 시군구 조회
+        if (sigunguRatios.isEmpty()) {
+            fetchCandidatesForSigungus(
+                    DEFAULT_FALLBACK_SIGUNGUS, regionCode, candidateMap, cache, visitDate, ageGroups, stayNights, 15
+            );
+        }
+        // 2-B. 위시 비중 데이터가 있는 회원 -> 지분율(Ratio)에 비례하여 시군구별 API 호출 제한 조율
+        else {
+            for (Map.Entry<String, BigDecimal> entry : sigunguRatios.entrySet()) {
+                String sigunguCode = entry.getKey();
+                BigDecimal ratio = entry.getValue();
+
+                // 비율에 비례하여 후보군 수집 제한 개수 계산 (최소 5개 보장)
+                int fetchLimit = Math.max(ratio.multiply(BigDecimal.valueOf(TOTAL_CANDIDATE_LIMIT)).intValue(), 5);
+
+                fetchCandidatesForSigungus(
+                        List.of(sigunguCode), regionCode, candidateMap, cache, visitDate, ageGroups, stayNights, fetchLimit
+                );
+
+                if (candidateMap.size() >= TOTAL_CANDIDATE_LIMIT) break;
+            }
+        }
+
+        // 3. 만족도 점수 기준 내림차순 정렬 및 메모리 페이징
+        List<TourismContentDto> sortedList = candidateMap.values().stream()
+                .sorted(Comparator.comparing(TourismContentDto::getRecommendationScore, Comparator.nullsLast(Comparator.reverseOrder())))
+                .toList();
+
+        int fromIndex = Math.min(page * size, sortedList.size());
+        int toIndex = Math.min(fromIndex + size, sortedList.size());
+
+        return TourismContentListResponse.builder()
+                .items(sortedList.subList(fromIndex, toIndex))
+                .page(page)
+                .size(size)
+                .hasNext(toIndex < sortedList.size())
+                .build();
     }
 
-    private String theme(Wish wish) {
-        return wish.getLclsSystemCode();
+    private void fetchCandidatesForSigungus(
+            List<String> sigungus, String regionCode, Map<String, TourismContentDto> candidateMap,
+            TourismSatisfactionService.CalculationCache cache, LocalDate visitDate,
+            List<String> ageGroups, Integer stayNights, int limitPerSigungu) {
+
+        for (String sigungu : sigungus) {
+            List<AreaBasedItem> items = tourismApiClient.fetchAreaBasedContent(regionCode, sigungu, limitPerSigungu);
+
+            for (AreaBasedItem item : items) {
+                if (candidateMap.containsKey(item.getContentid())) continue;
+
+                var request = new SatisfactionRequestDto(
+                        regionCode, item.getLDongSignguCd(), item.getTitle(), visitDate, parseAgeRatios(ageGroups), stayNights
+                );
+
+                SatisfactionDto satisfaction = satisfactionService.calculate(request, cache);
+                BigDecimal score = (satisfaction != null) ? satisfaction.getTotalScore() : BigDecimal.ZERO;
+
+                candidateMap.put(item.getContentid(), buildContentDto(item, score, satisfaction));
+            }
+        }
+    }
+    // ─── Helper Methods ───
+
+    private TourismContentDto buildContentDto(AreaBasedItem item, BigDecimal score, SatisfactionDto satisfaction) {
+        return TourismContentDto.builder()
+                .contentId(item.getContentid())
+                .contentTypeId(item.getContenttypeid())
+                .title(item.getTitle())
+                .addr1(item.getAddr1())
+                .firstImage(item.getFirstimage())
+                .lDongSignguCd(item.getLDongSignguCd())
+                .mapx(parseBigDecimal(item.getMapx()))
+                .mapy(parseBigDecimal(item.getMapy()))
+                .recommendationScore(score)
+                .satisfaction(satisfaction)
+                .build();
     }
 
-    private boolean matchesTheme(AreaBasedItem item, Set<String> themes) {
-        return themes.isEmpty() || themes.contains(item.getLclsSystm3()) || themes.contains(item.getLclsSystm2())
-                || themes.contains(item.getLclsSystm1()) || themes.contains(item.getContenttypeid());
+    private Map<String, BigDecimal> parseAgeRatios(List<String> ageGroups) {
+        if (ageGroups == null || ageGroups.isEmpty()) return Map.of();
+        BigDecimal equalRatio = BigDecimal.ONE.divide(BigDecimal.valueOf(ageGroups.size()), 2, RoundingMode.HALF_UP);
+        return ageGroups.stream().collect(Collectors.toMap(age -> age, age -> equalRatio, (a, b) -> a));
     }
 
-    private TourismContentDto dto(AreaBasedItem item, BigDecimal score) {
-        return TourismContentDto.builder().contentId(item.getContentid()).contentTypeId(item.getContenttypeid())
-                .title(item.getTitle()).addr1(item.getAddr1()).firstImage(item.getFirstimage())
-                .lDongSignguCd(item.getLDongSignguCd()).mapx(number(item.getMapx())).mapy(number(item.getMapy()))
-                .recommendationScore(score).build();
-    }
-
-    private BigDecimal number(String value) {
+    private BigDecimal parseBigDecimal(String value) {
         try {
-            return value == null || value.isBlank() ? null : new BigDecimal(value);
-        } catch (NumberFormatException ignored) {
+            return StringUtils.hasText(value) ? new BigDecimal(value) : null;
+        } catch (NumberFormatException e) {
             return null;
         }
     }

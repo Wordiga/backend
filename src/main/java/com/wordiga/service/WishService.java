@@ -1,11 +1,15 @@
 package com.wordiga.service;
 
-import com.wordiga.dto.ContentDetailDto;
 import com.wordiga.dto.wish.WishFolderResponse;
 import com.wordiga.dto.wish.WishRequest;
 import com.wordiga.dto.wish.WishResponse;
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.ContentDetailDto;
+import com.wordiga.repository.MemberRepository;
 import com.wordiga.repository.WishRepository;
+import com.wordiga.tourism.service.TourismContentDetailService;
 import com.wordiga.wish.Wish;
+import com.wordiga.wish.service.WishPreferenceCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,7 +26,10 @@ import java.util.stream.Collectors;
 public class WishService {
 
     private final WishRepository wishRepository;
+    private final MemberRepository memberRepository;
+    private final WishPreferenceCacheService preferenceCacheService;
     private final TourismContentDetailService tourismContentDetailService;
+    private final TourismApiClient tourismApiClient;
 
     /**
      * 위시 등록
@@ -60,6 +67,8 @@ public class WishService {
         );
 
         Wish saved = wishRepository.save(wish);
+
+        preferenceCacheService.evictUserPreferenceCache(memberId);
         return WishResponse.from(saved);
     }
 
@@ -69,6 +78,7 @@ public class WishService {
     @Transactional
     public void removeWish(Long memberId, String contentId) {
         wishRepository.deleteByMemberIdAndContentId(memberId, contentId);
+        preferenceCacheService.evictUserPreferenceCache(memberId);
     }
 
     /**
@@ -101,7 +111,11 @@ public class WishService {
         if (sigunguCode == null || sigunguCode.isBlank()) {
             return null;
         }
-        return ChungnamSigungu.NAMES.get(sigunguCode);
+        return tourismApiClient.fetchSigunguList().stream()
+                .filter(item -> sigunguCode.equals(item.getCode()))
+                .map(com.wordiga.global.client.dto.SigunguItem::getName)
+                .findFirst()
+                .orElse(null);
     }
 
     private BigDecimal parseCoordinate(String value) {
@@ -114,4 +128,5 @@ public class WishService {
             return null;
         }
     }
+    
 }
