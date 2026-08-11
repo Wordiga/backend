@@ -131,7 +131,8 @@ public record AiPlanRequest(
     }
 
     public record OperatingHours(String open, String close,
-                                 @JsonProperty("closed_days") List<String> closedDays, String raw) { }
+                                 @JsonProperty("closed_days") List<String> closedDays, String raw) {
+    }
 
     public record MonthlyWeather(
             @JsonProperty("target_month") Integer targetMonth,
@@ -141,8 +142,8 @@ public record AiPlanRequest(
             String basis) {
         static MonthlyWeather from(com.wordiga.dto.tourismContent.detail.MonthlyWeatherDto source) {
             return source == null ? null : new MonthlyWeather(source.getTargetMonth(),
-                    source.getEstimatedAverageTemperatureCelsius(),
-                    source.getEstimatedMonthlyPrecipitationMillimeters(), source.getHistoricalYears(), source.getBasis());
+                    source.getAvgTemp(),
+                    source.getMonthlyPrecipitation(), source.getHistoricalYears(), source.getBasis());
         }
     }
 }

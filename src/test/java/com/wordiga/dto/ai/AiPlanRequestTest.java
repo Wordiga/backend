@@ -2,10 +2,10 @@ package com.wordiga.dto.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.dto.plan.PlanGenerateRequest;
-import com.wordiga.dto.tourismContent.detail.TourismCommonDetailDto;
-import com.wordiga.dto.tourismContent.detail.TourismContentDetailResponse;
-import com.wordiga.dto.tourismContent.detail.TourismIntroDetailDto;
-import com.wordiga.dto.tourismContent.detail.MonthlyWeatherDto;
+import com.wordiga.tourism.dto.detail.MonthlyWeatherDto;
+import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
+import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
+import com.wordiga.tourism.dto.detail.TourismIntroDetailDto;
 import org.junit.jupiter.api.Test;
 
 import java.math.BigDecimal;
@@ -32,8 +32,8 @@ class AiPlanRequestTest {
                         .mapy(BigDecimal.valueOf(36.4)).lDongSignguCd("380").build())
                 .intro(TourismIntroDetailDto.builder().checkInTime("15:00").build())
                 .monthlyWeather(MonthlyWeatherDto.builder().targetMonth(9)
-                        .estimatedAverageTemperatureCelsius(BigDecimal.valueOf(21.3))
-                        .estimatedMonthlyPrecipitationMillimeters(BigDecimal.valueOf(145.2))
+                        .avgTemp(BigDecimal.valueOf(21.3))
+                        .monthlyPrecipitation(BigDecimal.valueOf(145.2))
                         .historicalYears(5).basis("ASOS_HISTORICAL_MONTHLY_AVERAGE").build())
                 .build();
 

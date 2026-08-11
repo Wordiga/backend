@@ -6,7 +6,6 @@ import com.wordiga.global.config.WeatherProperties;
 import com.wordiga.tourism.dto.detail.MonthlyWeatherDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -15,6 +14,8 @@ import java.time.YearMonth;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+
+import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -95,17 +96,6 @@ public class MonthlyWeatherService {
                 .stationName(station.name())
                 .basis("ASOS_HISTORICAL_MONTHLY_AVERAGE")
                 .build();
-    }
-
-    private BigDecimal parseBigDecimal(String value) {
-        if (!StringUtils.hasText(value)) {
-            return null;
-        }
-        try {
-            return new BigDecimal(value);
-        } catch (NumberFormatException e) {
-            return null;
-        }
     }
 
     private record AsosStation(String id, String name) {

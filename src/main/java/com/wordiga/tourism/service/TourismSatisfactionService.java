@@ -16,6 +16,9 @@ import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 
+import static com.wordiga.global.util.KtoUtils.extractItems;
+import static com.wordiga.global.util.KtoUtils.parseDouble;
+
 @Service
 @RequiredArgsConstructor
 public class TourismSatisfactionService {
@@ -166,7 +169,7 @@ public class TourismSatisfactionService {
                 ? OptionalDouble.empty()
                 : OptionalDouble.of(clamp(100.0 - avgConcentration));
     }
-    
+
     // ─── Helper Methods ───
 
     private String resolveStayCode(Integer stayNights) {
@@ -213,14 +216,6 @@ public class TourismSatisfactionService {
         }
     }
 
-    private double parseDouble(String value) {
-        try {
-            return value == null || value.isBlank() ? Double.NaN : Double.parseDouble(value);
-        } catch (NumberFormatException e) {
-            return Double.NaN;
-        }
-    }
-
     private double clamp(double value) {
         return Math.max(0.0, Math.min(100.0, value));
     }
@@ -229,16 +224,6 @@ public class TourismSatisfactionService {
         LocalDate now = LocalDate.now();
         LocalDate target = now.getDayOfMonth() >= 16 ? now.minusMonths(1) : now.minusMonths(2);
         return target.format(DateTimeFormatter.ofPattern("yyyyMM"));
-    }
-
-    private <T> List<T> extractItems(KtoApiResponse<T> response) {
-        if (response == null || response.getResponse() == null
-                || response.getResponse().getBody() == null
-                || response.getResponse().getBody().getItems() == null
-                || response.getResponse().getBody().getItems().getItem() == null) {
-            return Collections.emptyList();
-        }
-        return response.getResponse().getBody().getItems().getItem();
     }
 
     // ─── Inner DTO / Cache ───

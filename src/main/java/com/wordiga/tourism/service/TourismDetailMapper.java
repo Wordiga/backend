@@ -1,28 +1,103 @@
 package com.wordiga.tourism.service;
 
-import com.wordiga.global.client.dto.DetailInfoDto;
-import com.wordiga.global.client.dto.DetailIntroDto;
-import com.wordiga.tourism.dto.detail.RoomImageDto;
-import com.wordiga.tourism.dto.detail.TourismDetailInfoDto;
-import com.wordiga.tourism.dto.detail.TourismIntroDetailDto;
+import com.wordiga.global.client.dto.*;
+import com.wordiga.global.util.KtoUtils;
+import com.wordiga.tourism.domain.TourismContentType;
+import com.wordiga.tourism.dto.detail.*;
 import org.springframework.stereotype.Component;
 
+import java.math.BigDecimal;
+import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
 public class TourismDetailMapper {
 
-    public TourismIntroDetailDto toIntro(DetailIntroDto source) {
-        if (source == null) {
-            return null;
+    public TourismCommonDetailDto toCommon(ContentDetailDto source) {
+        return TourismCommonDetailDto.builder()
+                .contentId(source.getContentid())
+                .contentTypeId(source.getContenttypeid())
+                .title(source.getTitle())
+                .createdTime(source.getCreatedtime())
+                .modifiedTime(source.getModifiedtime())
+                .tel(source.getTel())
+                .telName(source.getTelname())
+                .homepage(source.getHomepage())
+                .firstImage(source.getFirstimage())
+                .firstImage2(source.getFirstimage2())
+                .copyrightTypeCode(source.getCpyrhtDivCd())
+                .addr1(source.getAddr1())
+                .addr2(source.getAddr2())
+                .zipcode(source.getZipcode())
+                .mapx(KtoUtils.parseBigDecimal(source.getMapx()))
+                .mapy(KtoUtils.parseBigDecimal(source.getMapy()))
+                .mapLevel(source.getMlevel())
+                .overview(source.getOverview())
+                .lDongRegnCd(source.getLDongRegnCd())
+                .lDongSignguCd(source.getLDongSignguCd())
+                .lclsSystm1(source.getLclsSystm1())
+                .lclsSystm2(source.getLclsSystm2())
+                .lclsSystm3(source.getLclsSystm3())
+                .build();
+    }
+
+    public TourismDetailImageDto toImage(DetailImageDto source) {
+        return TourismDetailImageDto.builder()
+                .imageName(source.getImgname())
+                .imageUrl(source.getOriginimgurl())
+                .thumbnailUrl(source.getSmallimageurl())
+                .copyrightTypeCode(source.getCpyrhtDivCd())
+                .serialNumber(KtoUtils.parseInteger(source.getSerialnum()))
+                .build();
+    }
+
+    public SeasonalImageDto toGallerySeasonalImage(PhotoGalleryItem source) {
+        String value = source.getGalPhotographyMonth();
+        Integer month = null;
+        LocalDate date = null;
+        try {
+            if (value != null && value.matches("\\d{8}")) {
+                date = LocalDate.parse(value, DateTimeFormatter.BASIC_ISO_DATE);
+                month = date.getMonthValue();
+            } else if (value != null && value.matches("\\d{6}")) {
+                month = YearMonth.parse(value, DateTimeFormatter.ofPattern("yyyyMM")).getMonthValue();
+            }
+        } catch (RuntimeException ignored) {
         }
+        return SeasonalImageDto.builder()
+                .imageUrl(source.getGalWebImageUrl())
+                .thumbnailUrl(source.getGalWebImageUrl())
+                .shootingDate(date)
+                .season(toSeason(month))
+                .matchConfidence(BigDecimal.ONE)
+                .build();
+    }
+
+    public SeasonalImageDto toFallbackSeasonalImage(DetailImageDto source) {
+        return SeasonalImageDto.builder()
+                .imageUrl(source.getOriginimgurl())
+                .thumbnailUrl(source.getSmallimageurl())
+                .shootingDate(null)
+                .season(SeasonalImageDto.Season.UNKNOWN)
+                .matchConfidence(BigDecimal.ONE)
+                .build();
+    }
+
+    public TourismIntroDetailDto toIntro(DetailIntroDto source) {
+        if (source == null) return null;
+
         TourismIntroDetailDto.TourismIntroDetailDtoBuilder target = TourismIntroDetailDto.builder()
                 .contentId(source.getContentid())
                 .contentTypeId(source.getContenttypeid());
 
-        switch (source.getContenttypeid()) {
-            case "12" -> target
+        TourismContentType contentType = TourismContentType.fromCode(source.getContenttypeid());
+        if (contentType == null) return target.build();
+
+        switch (contentType) {
+            case TOURIST_ATTRACTION -> target
                     .accomCount(source.getAccomcount())
                     .checkBabyCarriage(source.getChkbabycarriage())
                     .checkCreditCard(source.getChkcreditcard())
@@ -38,7 +113,8 @@ public class TourismDetailMapper {
                     .restDate(source.getRestdate())
                     .useSeason(source.getUseseason())
                     .useTime(source.getUsetime());
-            case "14" -> target
+
+            case CULTURAL_FACILITY -> target
                     .accomCount(source.getAccomcountculture())
                     .checkBabyCarriage(source.getChkbabycarriageculture())
                     .checkCreditCard(source.getChkcreditcardculture())
@@ -52,7 +128,8 @@ public class TourismDetailMapper {
                     .useTime(source.getUsetimeculture())
                     .scale(source.getScale())
                     .spendTime(source.getSpendtime());
-            case "15" -> target
+
+            case FESTIVAL -> target
                     .ageLimit(source.getAgelimit())
                     .bookingPlace(source.getBookingplace())
                     .discountInfo(source.getDiscountinfofestival())
@@ -71,13 +148,15 @@ public class TourismDetailMapper {
                     .sponsor2Tel(source.getSponsor2tel())
                     .subEvent(source.getSubevent())
                     .useFee(source.getUsetimefestival());
-            case "25" -> target
+
+            case TRAVEL_COURSE -> target
                     .distance(source.getDistance())
                     .infoCenter(source.getInfocentertourcourse())
                     .schedule(source.getSchedule())
                     .takeTime(source.getTaketime())
                     .theme(source.getTheme());
-            case "28" -> target
+
+            case LEPORTS -> target
                     .accomCount(source.getAccomcountleports())
                     .checkBabyCarriage(source.getChkbabycarriageleports())
                     .checkCreditCard(source.getChkcreditcardleports())
@@ -92,7 +171,8 @@ public class TourismDetailMapper {
                     .scale(source.getScaleleports())
                     .useFee(source.getUsefeeleports())
                     .useTime(source.getUsetimeleports());
-            case "32" -> target
+
+            case LODGING -> target
                     .accomCount(source.getAccomcountlodging())
                     .checkInTime(source.getCheckintime())
                     .checkOutTime(source.getCheckouttime())
@@ -120,7 +200,8 @@ public class TourismDetailMapper {
                     .seminar(source.getSeminar())
                     .sports(source.getSports())
                     .refundRegulation(source.getRefundregulation());
-            case "38" -> target
+
+            case SHOPPING -> target
                     .checkBabyCarriage(source.getChkbabycarriageshopping())
                     .checkCreditCard(source.getChkcreditcardshopping())
                     .checkPet(source.getChkpetshopping())
@@ -136,7 +217,8 @@ public class TourismDetailMapper {
                     .saleItemCost(source.getSaleitemcost())
                     .scale(source.getScaleshopping())
                     .shopGuide(source.getShopguide());
-            case "39" -> target
+
+            case RESTAURANT -> target
                     .checkCreditCard(source.getChkcreditcardfood())
                     .discountInfo(source.getDiscountinfofood())
                     .firstMenu(source.getFirstmenu())
@@ -153,16 +235,15 @@ public class TourismDetailMapper {
                     .smoking(source.getSmoking())
                     .treatMenu(source.getTreatmenu())
                     .licenseNumber(source.getLcnsno());
-            default -> {
+
+            case OTHER -> {
             }
         }
         return target.build();
     }
 
     public List<TourismDetailInfoDto> toDetails(List<DetailInfoDto> sources) {
-        if (sources == null) {
-            return List.of();
-        }
+        if (sources == null) return List.of();
         return sources.stream().map(this::toDetail).toList();
     }
 
@@ -170,7 +251,7 @@ public class TourismDetailMapper {
         return TourismDetailInfoDto.builder()
                 .contentId(source.getContentid())
                 .contentTypeId(source.getContenttypeid())
-                .serialNumber(parseInteger(source.getSerialnum()))
+                .serialNumber(KtoUtils.parseInteger(source.getSerialnum()))
                 .infoName(source.getInfoname())
                 .infoText(source.getInfotext())
                 .fieldType(source.getFldgubun())
@@ -179,7 +260,7 @@ public class TourismDetailMapper {
                 .subDetailImage(source.getSubdetailimg())
                 .subDetailOverview(source.getSubdetailoverview())
                 .subName(source.getSubname())
-                .subNumber(parseInteger(source.getSubnum()))
+                .subNumber(KtoUtils.parseInteger(source.getSubnum()))
                 .roomCode(source.getRoomcode())
                 .roomTitle(source.getRoomtitle())
                 .roomSizePyeong(source.getRoomsize1())
@@ -230,11 +311,13 @@ public class TourismDetailMapper {
         }
     }
 
-    private Integer parseInteger(String value) {
-        try {
-            return value == null || value.isBlank() ? null : Integer.valueOf(value);
-        } catch (NumberFormatException ignored) {
-            return null;
-        }
+    private SeasonalImageDto.Season toSeason(Integer month) {
+        if (month == null) return SeasonalImageDto.Season.UNKNOWN;
+        return switch (month) {
+            case 3, 4, 5 -> SeasonalImageDto.Season.SPRING;
+            case 6, 7, 8 -> SeasonalImageDto.Season.SUMMER;
+            case 9, 10, 11 -> SeasonalImageDto.Season.AUTUMN;
+            default -> SeasonalImageDto.Season.WINTER;
+        };
     }
 }

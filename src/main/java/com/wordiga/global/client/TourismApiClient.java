@@ -14,9 +14,10 @@ import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
+
+import static com.wordiga.global.util.KtoUtils.extractItems;
 
 @Slf4j
 @Component
@@ -233,16 +234,6 @@ public class TourismApiClient {
         if (!StringUtils.hasText(properties.getApi().getServiceKey())) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "관광공사 API 서비스 키가 설정되지 않았습니다.");
         }
-    }
-
-    private <T> List<T> extractItems(KtoApiResponse<T> response) {
-        if (response == null || response.getResponse() == null
-                || response.getResponse().getBody() == null
-                || response.getResponse().getBody().getItems() == null
-                || response.getResponse().getBody().getItems().getItem() == null) {
-            return Collections.emptyList();
-        }
-        return response.getResponse().getBody().getItems().getItem();
     }
 
     private String serviceKey() {
