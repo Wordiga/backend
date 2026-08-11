@@ -220,8 +220,8 @@ GET /api/v1/tourism/contents/{contentId}
 | `capacitySatisfied` | Boolean | N | 숙박 콘텐츠가 참가 인원을 수용할 수 있는지 여부이며 원천 수용인원이 없으면 `null` |
 | `monthlyWeather` | MonthlyWeather | N | 방문 월의 최근 5개년 ASOS 동일 월 관측값으로 계산한 기후 예상치 |
 | `monthlyWeather.targetMonth` | Integer | Y | 대상 월 1~12 |
-| `monthlyWeather.estimatedAverageTemperatureCelsius` | BigDecimal | N | ASOS 일평균기온의 5개년 동일 월 평균 |
-| `monthlyWeather.estimatedMonthlyPrecipitationMillimeters` | BigDecimal | N | 연도별 동일 월 누적강수량의 5개년 평균 |
+| `monthlyWeather.avgTemp` | BigDecimal | N | ASOS 일평균기온의 5개년 동일 월 평균 |
+| `monthlyWeather.monthlyPrecipitation` | BigDecimal | N | 연도별 동일 월 누적강수량의 5개년 평균 |
 | `monthlyWeather.historicalYears` | Integer | Y | 산출에 사용한 연도 수, 기본 5 |
 | `monthlyWeather.stationName` | String | N | 시군구에 매핑한 인근 ASOS 관측소명 |
 | `monthlyWeather.basis` | String | Y | `ASOS_HISTORICAL_MONTHLY_AVERAGE` |

@@ -33,9 +33,10 @@ class MonthlyWeatherServiceUnitTest {
         var result = service.estimate("110", LocalDate.of(2026, 9, 10));
 
         assertThat(result.getTargetMonth()).isEqualTo(9);
-        assertThat(result.getEstimatedAverageTemperatureCelsius()).isEqualByComparingTo("21.0");
-        assertThat(result.getEstimatedMonthlyPrecipitationMillimeters()).isEqualByComparingTo("30.0");
+        assertThat(result.getAvgTemp()).isEqualByComparingTo("21.0");
+        assertThat(result.getMonthlyPrecipitation()).isEqualByComparingTo("30.0");
         assertThat(result.getHistoricalYears()).isEqualTo(5);
+        assertThat(result.getStationName()).isEqualTo("천안");
         assertThat(result.getBasis()).isEqualTo("ASOS_HISTORICAL_MONTHLY_AVERAGE");
         verify(weatherApiClient, times(5)).daily(eq("232"), any(LocalDate.class), any(LocalDate.class));
     }
