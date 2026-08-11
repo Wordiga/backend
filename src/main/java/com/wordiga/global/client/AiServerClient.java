@@ -9,33 +9,50 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.JdkClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.client.RestClient;
-import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.annotation.PostExchange;
+import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import java.net.http.HttpClient;
 
 @Component
 @Slf4j
 public class AiServerClient {
-    private final RestClient client;
 
-    public AiServerClient(AiServerProperties p) {
-        HttpClient http = HttpClient.newBuilder().connectTimeout(p.connectTimeout()).build();
-        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(http);
-        factory.setReadTimeout(p.readTimeout());
-        this.client = RestClient.builder().baseUrl(p.baseUrl()).requestFactory(factory).build();
+    private final AiHttpExchangeClient client;
+
+    public AiServerClient(RestClient.Builder restClientBuilder, AiServerProperties properties) {
+        HttpClient httpClient = HttpClient.newBuilder()
+                .connectTimeout(properties.connectTimeout())
+                .build();
+
+        JdkClientHttpRequestFactory factory = new JdkClientHttpRequestFactory(httpClient);
+        factory.setReadTimeout(properties.readTimeout());
+
+        RestClient restClient = restClientBuilder
+                .baseUrl(properties.baseUrl())
+                .requestFactory(factory)
+                .build();
+
+        HttpServiceProxyFactory proxyFactory = HttpServiceProxyFactory
+                .builderFor(RestClientAdapter.create(restClient))
+                .build();
+
+        this.client = proxyFactory.createClient(AiHttpExchangeClient.class);
     }
 
     public AiPlanResponse generatePlan(AiPlanRequest request) {
         try {
-            AiPlanResponse response = client.post().uri("/api/v1/schedule/generate")
-                    .contentType(MediaType.APPLICATION_JSON).body(request).retrieve().body(AiPlanResponse.class);
+            AiPlanResponse response = client.generatePlan(request);
             if (response == null) throw invalid("일정 계획 응답이 비어 있습니다.");
             return response;
         } catch (ResponseStatusException e) {
             throw e;
-        } catch (RestClientException e) {
+        } catch (Exception e) {
             log.error("[AiServerClient] AI 서버 통신 중 오류 발생 (일정 생성): {}", e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI 서버를 사용할 수 없습니다.", e);
         }
@@ -43,15 +60,14 @@ public class AiServerClient {
 
     public byte[] generateProposal(AiProposalRequest request) {
         try {
-            byte[] response = client.post().uri("/internal/v1/proposals")
-                    .contentType(MediaType.APPLICATION_JSON).accept(MediaType.parseMediaType(
-                            "application/vnd.openxmlformats-officedocument.wordprocessingml.document"))
-                    .body(request).retrieve().body(byte[].class);
+            byte[] response = client.generateProposal(
+                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", request
+            );
             if (response == null) throw invalid("제안서 문서 응답이 비어 있습니다.");
             return response;
         } catch (ResponseStatusException e) {
             throw e;
-        } catch (RestClientException e) {
+        } catch (Exception e) {
             log.error("[AiServerClient] AI 서버 통신 중 오류 발생 (제안서 생성): {}", e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "AI 서버를 사용할 수 없습니다.", e);
         }
@@ -60,5 +76,18 @@ public class AiServerClient {
     private ResponseStatusException invalid(String reason) {
         log.error("[AiServerClient] 유효하지 않은 AI 응답: {}", reason);
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 응답이 올바르지 않습니다.");
+    }
+
+    @HttpExchange
+    private interface AiHttpExchangeClient {
+
+        @PostExchange(value = "/api/v1/schedule/generate", contentType = MediaType.APPLICATION_JSON_VALUE)
+        AiPlanResponse generatePlan(@RequestBody AiPlanRequest request);
+
+        @PostExchange(value = "/internal/v1/proposals", contentType = MediaType.APPLICATION_JSON_VALUE)
+        byte[] generateProposal(
+                @org.springframework.web.bind.annotation.RequestHeader("Accept") String acceptHeader,
+                @RequestBody AiProposalRequest request
+        );
     }
 }

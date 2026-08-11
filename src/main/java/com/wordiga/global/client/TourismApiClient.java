@@ -1,343 +1,238 @@
 package com.wordiga.global.client;
 
-import com.wordiga.global.client.dto.ContentDetailDto;
-import com.wordiga.global.client.dto.DetailImageDto;
-import com.wordiga.global.client.dto.DetailInfoDto;
-import com.wordiga.global.client.dto.DetailIntroDto;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.support.RestClientAdapter;
 import org.springframework.web.server.ResponseStatusException;
-import org.springframework.web.util.UriUtils;
+import org.springframework.web.service.annotation.GetExchange;
+import org.springframework.web.service.annotation.HttpExchange;
+import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import java.net.URI;
-import java.nio.charset.StandardCharsets;
 import java.util.Collections;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
+import java.util.Objects;
 
 @Slf4j
 @Component
-@RequiredArgsConstructor
 public class TourismApiClient {
 
-    private final RestClient restClient;
+    private final TourismHttpExchangeClient client;
     private final TourismProperties properties;
+
+    public TourismApiClient(RestClient.Builder restClientBuilder, TourismProperties properties) {
+        this.properties = properties;
+
+        RestClient restClient = restClientBuilder
+                .baseUrl(properties.getApi().getBaseUrl())
+                .build();
+
+        HttpServiceProxyFactory factory = HttpServiceProxyFactory
+                .builderFor(RestClientAdapter.create(restClient))
+                .build();
+
+        this.client = factory.createClient(TourismHttpExchangeClient.class);
+    }
 
     // ─── 지역별 관광 수요 강도 ───
 
     public AreaTarExpDsResponse fetchExpenditureIntensity(String baseYm, String areaCd,
                                                           String signguCd, String tarExpDsIxCd) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("baseYm", baseYm);
-        params.put("areaCd", areaCd);
-        params.put("numOfRows", String.valueOf(properties.getApi().getDefaultNumOfRows()));
-        putIfPresent(params, "signguCd", signguCd);
-        putIfPresent(params, "tarExpDsIxCd", tarExpDsIxCd);
-
-        URI uri = buildUri("AreaTarDemDsService/areaTarExpDsList", params);
-        return callApi(uri, AreaTarExpDsResponse.class);
+        return execute(() -> client.fetchExpenditureIntensity(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                baseYm, areaCd, properties.getApi().getDefaultNumOfRows(), signguCd, tarExpDsIxCd
+        ));
     }
 
     // ─── 관광 체류 강도 ───
 
     public AreaTarSjrnDsResponse fetchStayIntensity(String baseYm, String areaCd,
                                                     String signguCd, String tarSjrnDsIxCd) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("baseYm", baseYm);
-        params.put("areaCd", areaCd);
-        params.put("numOfRows", String.valueOf(properties.getApi().getDefaultNumOfRows()));
-        putIfPresent(params, "signguCd", signguCd);
-        putIfPresent(params, "tarSjrnDsIxCd", tarSjrnDsIxCd);
-
-        URI uri = buildUri("AreaTarDemDsService/areaTarSjrnDsList", params);
-        return callApi(uri, AreaTarSjrnDsResponse.class);
+        return execute(() -> client.fetchStayIntensity(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                baseYm, areaCd, properties.getApi().getDefaultNumOfRows(), signguCd, tarSjrnDsIxCd
+        ));
     }
 
     // ─── 지역별 관광 자원 수요 ───
 
     public AreaTarSvcDemResponse fetchServiceDemand(String baseYm, String areaCd,
                                                     String signguCd, String tarSvcDemIxCd) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("baseYm", baseYm);
-        params.put("areaCd", areaCd);
-        params.put("numOfRows", String.valueOf(properties.getApi().getDefaultNumOfRows()));
-        putIfPresent(params, "signguCd", signguCd);
-        putIfPresent(params, "tarSvcDemIxCd", tarSvcDemIxCd);
-
-        URI uri = buildUri("AreaTarResDemService/areaTarSvcDemList", params);
-        return callApi(uri, AreaTarSvcDemResponse.class);
+        return execute(() -> client.fetchServiceDemand(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                baseYm, areaCd, properties.getApi().getDefaultNumOfRows(), signguCd, tarSvcDemIxCd
+        ));
     }
 
     // ─── 문화 자원 수요 ───
 
     public AreaCulResDemResponse fetchCulturalResourceDemand(String baseYm, String areaCd,
                                                              String signguCd, String culResDemIxCd) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("baseYm", baseYm);
-        params.put("areaCd", areaCd);
-        params.put("numOfRows", String.valueOf(properties.getApi().getDefaultNumOfRows()));
-        putIfPresent(params, "signguCd", signguCd);
-        putIfPresent(params, "culResDemIxCd", culResDemIxCd);
-
-        URI uri = buildUri("AreaTarResDemService/areaCulResDemList", params);
-        return callApi(uri, AreaCulResDemResponse.class);
+        return execute(() -> client.fetchCulturalResourceDemand(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                baseYm, areaCd, properties.getApi().getDefaultNumOfRows(), signguCd, culResDemIxCd
+        ));
     }
 
     // ─── 관광지 집중률 ───
 
     public TatsCnctrRateResponse fetchConcentrationRate(String areaCd, String signguCd, String tAtsNm) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("areaCd", areaCd);
-        params.put("signguCd", signguCd);
-        params.put("numOfRows", "30");
-        putIfPresent(params, "tAtsNm", tAtsNm);
-
-        URI uri = buildUri("TatsCnctrRateService/tatsCnctrRateList", params);
-        return callApi(uri, TatsCnctrRateResponse.class);
+        return execute(() -> client.fetchConcentrationRate(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                areaCd, signguCd, 30, tAtsNm
+        ));
     }
 
     // ─── 지역별 관광 다양성 ───
 
-    public AreaTouDivResponse fetchTouristDiversity(
-            String baseYm, String areaCd, String signguCd, String touDivIxCd) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("baseYm", baseYm);
-        params.put("areaCd", areaCd);
-        params.put("numOfRows", "100");
-        putIfPresent(params, "signguCd", signguCd);
-        putIfPresent(params, "touDivIxCd", touDivIxCd);
-
-        URI uri = buildUri("AreaTarDivService/areaTouDivList", params);
-        return callApi(uri, AreaTouDivResponse.class);
+    public AreaTouDivResponse fetchTouristDiversity(String baseYm, String areaCd,
+                                                    String signguCd, String touDivIxCd) {
+        return execute(() -> client.fetchTouristDiversity(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                baseYm, areaCd, 100, signguCd, touDivIxCd
+        ));
     }
 
-    public AreaExpDivResponse fetchExpenditureDiversity(
-            String baseYm, String areaCd, String signguCd, String expDivIxCd) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("baseYm", baseYm);
-        params.put("areaCd", areaCd);
-        params.put("numOfRows", "100");
-        putIfPresent(params, "signguCd", signguCd);
-        putIfPresent(params, "expDivIxCd", expDivIxCd);
-
-        URI uri = buildUri("AreaTarDivService/areaExpDivList", params);
-        return callApi(uri, AreaExpDivResponse.class);
+    public AreaExpDivResponse fetchExpenditureDiversity(String baseYm, String areaCd,
+                                                        String signguCd, String expDivIxCd) {
+        return execute(() -> client.fetchExpenditureDiversity(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                baseYm, areaCd, 100, signguCd, expDivIxCd
+        ));
     }
 
     // ─── 국문 관광정보 서비스 ───
 
     public List<AreaBasedItem> fetchAreaBasedContent(String lDongRegnCd, String lDongSignguCd, int numOfRows) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("numOfRows", String.valueOf(numOfRows));
-        params.put("pageNo", "1");
-        params.put("arrange", "Q");
-        params.put("lDongRegnCd", lDongRegnCd);
-        putIfPresent(params, "lDongSignguCd", lDongSignguCd);
-
-        URI uri = buildUri("KorService2/areaBasedList2", params);
-        AreaBasedResponse response = callApi(uri, AreaBasedResponse.class);
-
-        if (response == null || response.getResponse() == null
-                || response.getResponse().getBody() == null
-                || response.getResponse().getBody().getItems() == null
-                || response.getResponse().getBody().getItems().getItem() == null) {
-            return Collections.emptyList();
-        }
-        return response.getResponse().getBody().getItems().getItem();
+        AreaBasedResponse response = execute(() -> client.fetchAreaBasedContent(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                numOfRows, 1, "Q", lDongRegnCd, lDongSignguCd
+        ));
+        return extractItems(response);
     }
 
     public AreaBasedResponse searchContent(String keyword, String contentTypeId,
                                            String lDongRegnCd, String lDongSignguCd,
                                            int pageNo, int numOfRows) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("keyword", keyword);
-        params.put("pageNo", String.valueOf(pageNo));
-        params.put("numOfRows", String.valueOf(numOfRows));
-        params.put("arrange", "Q");
-        params.put("lDongRegnCd", lDongRegnCd);
-        putIfPresent(params, "contentTypeId", contentTypeId);
-        putIfPresent(params, "lDongSignguCd", lDongSignguCd);
-
-        URI uri = buildUri("KorService2/searchKeyword2", params);
-        return callApi(uri, AreaBasedResponse.class);
+        return execute(() -> client.searchContent(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                keyword, pageNo, numOfRows, "Q", lDongRegnCd, contentTypeId, lDongSignguCd
+        ));
     }
 
     public ContentDetailDto fetchCommonDetail(String contentId) {
-        Map<String, String> params = detailParams(contentId, 1, 1);
-        ContentDetailResponse response = callApi(
-                buildUri("KorService2/detailCommon2", params), ContentDetailResponse.class);
+        ContentDetailResponse response = execute(() -> client.fetchCommonDetail(
+                serviceKey(), mobileOs(), mobileApp(), "json", contentId, 1, 1
+        ));
         List<ContentDetailDto> items = extractItems(response);
         return items.isEmpty() ? null : items.getFirst();
     }
 
     public DetailIntroDto fetchIntroDetail(String contentId, String contentTypeId) {
-        Map<String, String> params = detailParams(contentId, 1, 1);
-        params.put("contentTypeId", contentTypeId);
-        DetailIntroResponse response = callApi(
-                buildUri("KorService2/detailIntro2", params), DetailIntroResponse.class);
+        DetailIntroResponse response = execute(() -> client.fetchIntroDetail(
+                serviceKey(), mobileOs(), mobileApp(), "json", contentId, 1, 1, contentTypeId
+        ));
         List<DetailIntroDto> items = extractItems(response);
         return items.isEmpty() ? null : items.getFirst();
     }
 
-    public List<DetailInfoDto> fetchRepeatInfo(
-            String contentId, String contentTypeId, int pageNo, int numOfRows) {
-        Map<String, String> params = detailParams(contentId, pageNo, numOfRows);
-        params.put("contentTypeId", contentTypeId);
-        return extractItems(callApi(
-                buildUri("KorService2/detailInfo2", params), DetailInfoResponse.class));
+    public List<DetailInfoDto> fetchRepeatInfo(String contentId, String contentTypeId, int pageNo, int numOfRows) {
+        DetailInfoResponse response = execute(() -> client.fetchRepeatInfo(
+                serviceKey(), mobileOs(), mobileApp(), "json", contentId, pageNo, numOfRows, contentTypeId
+        ));
+        return extractItems(response);
     }
 
     public List<DetailImageDto> fetchImages(String contentId, String imageYN, int pageNo, int numOfRows) {
-        Map<String, String> params = detailParams(contentId, pageNo, numOfRows);
-        putIfPresent(params, "imageYN", imageYN);
-        return extractItems(callApi(
-                buildUri("KorService2/detailImage2", params), DetailImageResponse.class));
+        DetailImageResponse response = execute(() -> client.fetchImages(
+                serviceKey(), mobileOs(), mobileApp(), "json", contentId, pageNo, numOfRows, imageYN
+        ));
+        return extractItems(response);
     }
 
     public List<RelatedTourismItem> fetchRelatedTourism(String baseYm, String areaCd, String signguCd,
                                                         String keyword, int numOfRows) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("baseYm", baseYm);
-        params.put("areaCd", areaCd);
-        params.put("signguCd", signguCd);
-        params.put("keyword", keyword);
-        params.put("pageNo", "1");
-        params.put("numOfRows", String.valueOf(numOfRows));
-        RelatedTourismResponse response = callApi(
-                buildUri("TarRlteTarService1/searchKeyword1", params), RelatedTourismResponse.class);
-        if (response.getResponse() != null && response.getResponse().getHeader() != null
-                && response.getResponse().getHeader().getResultCode() != null
+        RelatedTourismResponse response = execute(() -> client.fetchRelatedTourism(
+                serviceKey(), mobileOs(), mobileApp(), "json", baseYm, areaCd, signguCd, keyword, 1, numOfRows
+        ));
+
+        if (response != null && response.getResponse() != null && response.getResponse().getHeader() != null
                 && !"0000".equals(response.getResponse().getHeader().getResultCode())) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "관광공사 연관 관광지 API를 사용할 수 없습니다.");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "관광공사 연관 관광지 API를 사용할 수 없습니다.");
         }
-        if (response.getResponse() == null || response.getResponse().getBody() == null
-                || response.getResponse().getBody().getItems() == null
-                || response.getResponse().getBody().getItems().getItem() == null) return List.of();
-        return response.getResponse().getBody().getItems().getItem();
+        return extractItems(response);
     }
 
     public List<String> fetchClassificationNames(String lclsSystm1, String lclsSystm2, String lclsSystm3) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("pageNo", "1");
-        params.put("numOfRows", "1000");
-        params.put("lclsSystmListYn", "Y");
-        putIfPresent(params, "lclsSystm1", lclsSystm1);
-        putIfPresent(params, "lclsSystm2", lclsSystm2);
-        putIfPresent(params, "lclsSystm3", lclsSystm3);
+        ClassificationSystemResponse response = execute(() -> client.fetchClassificationNames(
+                serviceKey(), mobileOs(), mobileApp(), "json", 1, 1000, "Y", lclsSystm1, lclsSystm2, lclsSystm3
+        ));
 
-        ClassificationSystemResponse response = callApi(
-                buildUri("KorService2/lclsSystmCode2", params), ClassificationSystemResponse.class);
-        if (response.getResponse() != null && response.getResponse().getHeader() != null
-                && response.getResponse().getHeader().getResultCode() != null
+        if (response != null && response.getResponse() != null && response.getResponse().getHeader() != null
                 && !"0000".equals(response.getResponse().getHeader().getResultCode())) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "관광공사 분류체계 API를 사용할 수 없습니다.");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "관광공사 분류체계 API를 사용할 수 없습니다.");
         }
-        if (response.getResponse() == null || response.getResponse().getBody() == null
-                || response.getResponse().getBody().getItems() == null
-                || response.getResponse().getBody().getItems().getItem() == null) return null;
 
-        return response.getResponse().getBody().getItems().getItem().stream()
-                .filter(item -> java.util.Objects.equals(lclsSystm1, item.getLclsSystm1Cd())
-                        && (lclsSystm2 == null || java.util.Objects.equals(lclsSystm2, item.getLclsSystm2Cd()))
-                        && (lclsSystm3 == null || java.util.Objects.equals(lclsSystm3, item.getLclsSystm3Cd())))
+        List<ClassificationSystemItem> items = extractItems(response);
+        if (items.isEmpty()) return null;
+
+        return items.stream()
+                .filter(item -> Objects.equals(lclsSystm1, item.getLclsSystm1Cd())
+                        && (lclsSystm2 == null || Objects.equals(lclsSystm2, item.getLclsSystm2Cd()))
+                        && (lclsSystm3 == null || Objects.equals(lclsSystm3, item.getLclsSystm3Cd())))
                 .findFirst()
                 .map(item -> java.util.stream.Stream.of(
                                 item.getLclsSystm1Nm(), item.getLclsSystm2Nm(), item.getLclsSystm3Nm())
-                        .filter(value -> value != null && !value.isBlank()).distinct().toList())
+                        .filter(StringUtils::hasText)
+                        .distinct()
+                        .toList())
                 .filter(names -> !names.isEmpty())
                 .orElse(null);
     }
 
-    public List<SigunguItem> fetchSigunguList(String regnCd) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("pageNo", "1");
-        params.put("numOfRows", "50");
-        params.put("IDongRegnCd", regnCd);
-        params.put("IDongListYn", "Y"); // 전체 목록 조회로 변경
-        URI uri = buildUri("KorService2/ldongCode2", params);
-        SigunguResponse response = callApi(uri, SigunguResponse.class);
-        if (response == null || response.getResponse() == null
-                || response.getResponse().getBody() == null
-                || response.getResponse().getBody().getItems() == null
-                || response.getResponse().getBody().getItems().getItem() == null) {
-            return Collections.emptyList();
-        }
-        return response.getResponse().getBody().getItems().getItem();
+    public List<SigunguItem> fetchSigunguList() {
+        SigunguResponse response = execute(() -> client.fetchSigunguList(
+                serviceKey(), mobileOs(), mobileApp(), "json", 1, 50,
+                properties.getRegion().getChungnamCode(), "Y"
+        ));
+        return extractItems(response);
     }
+
     // ─── 관광 사진 갤러리 서비스 ───
 
     public PhotoGalleryResponse searchPhotos(String keyword) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("keyword", keyword);
-        params.put("pageNo", "1");
-        params.put("numOfRows", "20");
-        params.put("arrange", "A");
-        return callApi(buildUri("PhotoGalleryService1/gallerySearchList1", params), PhotoGalleryResponse.class);
+        return execute(() -> client.searchPhotos(
+                serviceKey(), mobileOs(), mobileApp(), "json", keyword, 1, 20, "A"
+        ));
     }
 
-    // ─── 공통: API 호출 ───
+    // ─── Helper Methods ───
 
-    private <T> T callApi(URI uri, Class<T> responseType) {
-        String operation = uri.getPath();
-        log.info("[TourismAPI] 호출: {}", operation);
+    private <T> T execute(ApiSupplier<T> supplier) {
+        validateServiceKey();
         try {
-            T response = restClient.get()
-                    .uri(uri)
-                    .retrieve()
-                    .body(responseType);
-            if (response == null) throw new ResponseStatusException(
-                    HttpStatus.SERVICE_UNAVAILABLE, "관광공사 API 응답이 비어 있습니다.");
+            T response = supplier.get();
+            if (response == null) {
+                throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "관광공사 API 응답이 비어 있습니다.");
+            }
             return response;
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            log.error("[TourismAPI] 실패: {} - {}", operation, e.getMessage());
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE,
-                    "관광공사 API를 사용할 수 없습니다.", e);
+            log.error("[TourismAPI] 호출 실패: {}", e.getMessage(), e);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "관광공사 API를 사용할 수 없습니다.", e);
         }
     }
 
-    // ─── 공통: URI 빌더 ───
-
-    private URI buildUri(String operation, Map<String, String> params) {
-        StringBuilder sb = new StringBuilder();
-        sb.append(properties.getApi().getBaseUrl())
-                .append("/").append(operation)
-                .append("?serviceKey=").append(properties.getApi().getServiceKey())
-                .append("&MobileOS=").append(properties.getApi().getMobileOs())
-                .append("&MobileApp=").append(properties.getApi().getMobileApp())
-                .append("&_type=json");
-
-        for (Map.Entry<String, String> entry : params.entrySet()) {
-            sb.append("&")
-                    .append(entry.getKey())
-                    .append("=")
-                    .append(UriUtils.encodeQueryParam(entry.getValue(), StandardCharsets.UTF_8));
+    private void validateServiceKey() {
+        if (!StringUtils.hasText(properties.getApi().getServiceKey())) {
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "관광공사 API 서비스 키가 설정되지 않았습니다.");
         }
-
-        return URI.create(sb.toString());
-    }
-
-    private void putIfPresent(Map<String, String> params, String key, String value) {
-        if (value != null && !value.isBlank()) {
-            params.put(key, value);
-        }
-    }
-
-    private Map<String, String> detailParams(String contentId, int pageNo, int numOfRows) {
-        Map<String, String> params = new LinkedHashMap<>();
-        params.put("contentId", contentId);
-        params.put("pageNo", String.valueOf(pageNo));
-        params.put("numOfRows", String.valueOf(numOfRows));
-        return params;
     }
 
     private <T> List<T> extractItems(KtoApiResponse<T> response) {
@@ -348,5 +243,175 @@ public class TourismApiClient {
             return Collections.emptyList();
         }
         return response.getResponse().getBody().getItems().getItem();
+    }
+
+    private String serviceKey() {
+        return properties.getApi().getServiceKey();
+    }
+
+    private String mobileOs() {
+        return properties.getApi().getMobileOs();
+    }
+
+    private String mobileApp() {
+        return properties.getApi().getMobileApp();
+    }
+
+    @FunctionalInterface
+    private interface ApiSupplier<T> {
+        T get();
+    }
+
+    @HttpExchange
+    private interface TourismHttpExchangeClient {
+
+        @GetExchange("/AreaTarDemDsService/areaTarExpDsList")
+        AreaTarExpDsResponse fetchExpenditureIntensity(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "signguCd", required = false) String signguCd,
+                @RequestParam(value = "tarExpDsIxCd", required = false) String tarExpDsIxCd
+        );
+
+        @GetExchange("/AreaTarDemDsService/areaTarSjrnDsList")
+        AreaTarSjrnDsResponse fetchStayIntensity(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "signguCd", required = false) String signguCd,
+                @RequestParam(value = "tarSjrnDsIxCd", required = false) String tarSjrnDsIxCd
+        );
+
+        @GetExchange("/AreaTarResDemService/areaTarSvcDemList")
+        AreaTarSvcDemResponse fetchServiceDemand(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "signguCd", required = false) String signguCd,
+                @RequestParam(value = "tarSvcDemIxCd", required = false) String tarSvcDemIxCd
+        );
+
+        @GetExchange("/AreaTarResDemService/areaCulResDemList")
+        AreaCulResDemResponse fetchCulturalResourceDemand(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "signguCd", required = false) String signguCd,
+                @RequestParam(value = "culResDemIxCd", required = false) String culResDemIxCd
+        );
+
+        @GetExchange("/TatsCnctrRateService/tatsCnctrRateList")
+        TatsCnctrRateResponse fetchConcentrationRate(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("areaCd") String areaCd, @RequestParam("signguCd") String signguCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "tAtsNm", required = false) String tAtsNm
+        );
+
+        @GetExchange("/AreaTarDivService/areaTouDivList")
+        AreaTouDivResponse fetchTouristDiversity(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "signguCd", required = false) String signguCd,
+                @RequestParam(value = "touDivIxCd", required = false) String touDivIxCd
+        );
+
+        @GetExchange("/AreaTarDivService/areaExpDivList")
+        AreaExpDivResponse fetchExpenditureDiversity(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "signguCd", required = false) String signguCd,
+                @RequestParam(value = "expDivIxCd", required = false) String expDivIxCd
+        );
+
+        @GetExchange("/KorService2/areaBasedList2")
+        AreaBasedResponse fetchAreaBasedContent(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam("pageNo") int pageNo,
+                @RequestParam("arrange") String arrange, @RequestParam("lDongRegnCd") String lDongRegnCd,
+                @RequestParam(value = "lDongSignguCd", required = false) String lDongSignguCd
+        );
+
+        @GetExchange("/KorService2/searchKeyword2")
+        AreaBasedResponse searchContent(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("keyword") String keyword, @RequestParam("pageNo") int pageNo,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam("arrange") String arrange,
+                @RequestParam("lDongRegnCd") String lDongRegnCd, @RequestParam(value = "contentTypeId", required = false) String contentTypeId,
+                @RequestParam(value = "lDongSignguCd", required = false) String lDongSignguCd
+        );
+
+        @GetExchange("/KorService2/detailCommon2")
+        ContentDetailResponse fetchCommonDetail(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("contentId") String contentId, @RequestParam("pageNo") int pageNo,
+                @RequestParam("numOfRows") int numOfRows
+        );
+
+        @GetExchange("/KorService2/detailIntro2")
+        DetailIntroResponse fetchIntroDetail(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("contentId") String contentId, @RequestParam("pageNo") int pageNo,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam("contentTypeId") String contentTypeId
+        );
+
+        @GetExchange("/KorService2/detailInfo2")
+        DetailInfoResponse fetchRepeatInfo(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("contentId") String contentId, @RequestParam("pageNo") int pageNo,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam("contentTypeId") String contentTypeId
+        );
+
+        @GetExchange("/KorService2/detailImage2")
+        DetailImageResponse fetchImages(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("contentId") String contentId, @RequestParam("pageNo") int pageNo,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "imageYN", required = false) String imageYN
+        );
+
+        @GetExchange("/TarRlteTarService1/searchKeyword1")
+        RelatedTourismResponse fetchRelatedTourism(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
+                @RequestParam("signguCd") String signguCd, @RequestParam("keyword") String keyword,
+                @RequestParam("pageNo") int pageNo, @RequestParam("numOfRows") int numOfRows
+        );
+
+        @GetExchange("/KorService2/lclsSystmCode2")
+        ClassificationSystemResponse fetchClassificationNames(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("pageNo") int pageNo, @RequestParam("numOfRows") int numOfRows,
+                @RequestParam("lclsSystmListYn") String lclsSystmListYn,
+                @RequestParam(value = "lclsSystm1", required = false) String lclsSystm1,
+                @RequestParam(value = "lclsSystm2", required = false) String lclsSystm2,
+                @RequestParam(value = "lclsSystm3", required = false) String lclsSystm3
+        );
+
+        @GetExchange("/KorService2/ldongCode2")
+        SigunguResponse fetchSigunguList(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("pageNo") int pageNo, @RequestParam("numOfRows") int numOfRows,
+                @RequestParam("IDongRegnCd") String lDongRegnCd, @RequestParam("IDongListYn") String lDongListYn
+        );
+
+        @GetExchange("/PhotoGalleryService1/gallerySearchList1")
+        PhotoGalleryResponse searchPhotos(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("keyword") String keyword, @RequestParam("pageNo") int pageNo,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam("arrange") String arrange
+        );
     }
 }

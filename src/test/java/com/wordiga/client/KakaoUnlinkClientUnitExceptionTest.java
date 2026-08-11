@@ -10,7 +10,7 @@ import static org.mockito.Mockito.mock;
 class KakaoUnlinkClientUnitExceptionTest {
     @Test
     void rejectsMissingAdminKey() {
-        KakaoUnlinkClient client = new KakaoUnlinkClient(mock(RestClient.class), "", "");
+        KakaoUnlinkClient client = new KakaoUnlinkClient(mock(RestClient.builder()), "", "");
 
         assertThatThrownBy(() -> client.unlink("12345")).hasMessageContaining("503");
     }
