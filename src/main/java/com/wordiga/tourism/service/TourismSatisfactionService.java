@@ -1,12 +1,13 @@
 package com.wordiga.tourism.service;
 
-import com.wordiga.global.client.dto.ContentDetailDto;
-import com.wordiga.tourism.dto.detail.SatisfactionDto;
-import com.wordiga.tourism.dto.detail.ScoreComponentDto;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.*;
+import com.wordiga.tourism.dto.SatisfactionRequestDto;
+import com.wordiga.tourism.dto.detail.SatisfactionDto;
+import com.wordiga.tourism.dto.detail.ScoreComponentDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.util.CollectionUtils;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -14,7 +15,6 @@ import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
-import java.util.stream.DoubleStream;
 
 @Service
 @RequiredArgsConstructor
@@ -28,48 +28,44 @@ public class TourismSatisfactionService {
 
     private final TourismApiClient tourismApiClient;
 
-    public SatisfactionDto calculate(
-            ContentDetailDto content, LocalDate visitDate, List<String> ageGroups) {
-        return calculate(new Context(), content.getLDongRegnCd(), content.getLDongSignguCd(),
-                content.getTitle(), visitDate, ageGroups);
-    }
+    public SatisfactionDto calculate(SatisfactionRequestDto request, CalculationCache cache) {
+        if (cache == null) {
+            cache = new CalculationCache();
+        }
 
-    public SatisfactionDto calculate(Context context, String areaCode, String localSignguCode,
-                                     String title, LocalDate visitDate, List<String> ageGroups) {
         String baseYm = latestBaseYm();
-        String signguCode = areaCode + localSignguCode;
-        RegionKey region = new RegionKey(baseYm, areaCode, signguCode);
+        String signguCode = request.areaCode() + request.localSignguCode();
+        RegionKey regionKey = new RegionKey(baseYm, request.areaCode(), signguCode);
 
-        OptionalDouble popularity = context.popularity.computeIfAbsent(region,
-                ignored -> popularity(baseYm, areaCode, signguCode));
-        List<String> normalizedAges = ageGroups == null ? List.of()
-                : ageGroups.stream().filter(java.util.Objects::nonNull).toList();
-        AgeKey ageKey = new AgeKey(region, normalizedAges);
-        OptionalDouble ageFit = context.ageFit.computeIfAbsent(ageKey,
-                ignored -> ageFit(baseYm, areaCode, signguCode, normalizedAges));
-        OptionalDouble stayFit = context.stayFit.computeIfAbsent(region,
-                ignored -> stayFit(baseYm, areaCode, signguCode));
-        OptionalDouble comfort = comfort(areaCode, signguCode, title, visitDate);
+        // 1. 인기도 계산 (전체 지표 12, 11 사용)
+        OptionalDouble popularity = cache.popularity.computeIfAbsent(regionKey,
+                k -> calculatePopularity(baseYm, request.areaCode(), signguCode));
+
+        // 2. 연령 적합도 계산 (가중치 연산)
+        OptionalDouble ageFit = calculateAgeFit(baseYm, request.areaCode(), signguCode, request.ageGroupRatios());
+
+        // 3. 체류 적합도 계산 (숙박 일수 반영)
+        OptionalDouble stayFit = cache.stayFit.computeIfAbsent(
+                new StayKey(regionKey, request.stayNights()),
+                k -> calculateStayFit(baseYm, request.areaCode(), signguCode, request.stayNights()));
+
+        // 4. 쾌적도 계산 (30일 관측 데이터)
+        OptionalDouble comfort = calculateComfort(request.areaCode(), signguCode, request.title(), request.visitDate());
+
+        // 모두 데이터가 없으면 null 반환
         if (popularity.isEmpty() && ageFit.isEmpty() && stayFit.isEmpty() && comfort.isEmpty()) {
             return null;
         }
 
-        ScoreComponentDto popularityComponent = component(
-                popularity, POPULARITY_WEIGHT, "areaCulResDemList, areaTarSvcDemList");
-        ScoreComponentDto ageFitComponent = component(
-                ageFit, AGE_FIT_WEIGHT, "areaTouDivList, areaExpDivList");
-        ScoreComponentDto stayFitComponent = component(
-                stayFit, STAY_FIT_WEIGHT, "areaTarSjrnDsList, areaTarExpDsList");
-        ScoreComponentDto comfortComponent = component(
-                comfort, COMFORT_WEIGHT, "tatsCnctrRateList");
+        ScoreComponentDto popularityComponent = buildComponent(popularity, POPULARITY_WEIGHT, "areaCulResDemList, areaTarSvcDemList");
+        ScoreComponentDto ageFitComponent = buildComponent(ageFit, AGE_FIT_WEIGHT, "areaTouDivList, areaExpDivList");
+        ScoreComponentDto stayFitComponent = buildComponent(stayFit, STAY_FIT_WEIGHT, "areaTarSjrnDsList, areaTarExpDsList");
+        ScoreComponentDto comfortComponent = buildComponent(comfort, COMFORT_WEIGHT, "tatsCnctrRatedList");
 
-        BigDecimal total = weighted(popularityComponent)
-                .add(weighted(ageFitComponent))
-                .add(weighted(stayFitComponent))
-                .add(weighted(comfortComponent))
-                .setScale(1, RoundingMode.HALF_UP);
+        BigDecimal totalScore = calculateWeightedTotal(popularityComponent, ageFitComponent, stayFitComponent, comfortComponent);
+
         return SatisfactionDto.builder()
-                .totalScore(total)
+                .totalScore(totalScore)
                 .popularityScore(popularityComponent)
                 .ageFitScore(ageFitComponent)
                 .stayFitScore(stayFitComponent)
@@ -78,82 +74,115 @@ public class TourismSatisfactionService {
                 .build();
     }
 
-    private OptionalDouble popularity(String baseYm, String areaCode, String signguCode) {
-        List<AreaCulResDemItem> resources = extractItems(tourismApiClient.fetchCulturalResourceDemand(
-                baseYm, areaCode, signguCode, null));
-        List<AreaTarSvcDemItem> services = extractItems(tourismApiClient.fetchServiceDemand(
-                baseYm, areaCode, signguCode, null));
-        return average(
-                resources.stream().mapToDouble(item -> parse(item.getCulResDemIxVal())),
-                services.stream().mapToDouble(item -> parse(item.getTarSvcDemIxVal()))
-        );
+    // ─── 1. 인기도 연산 ───
+    private OptionalDouble calculatePopularity(String baseYm, String areaCode, String signguCode) {
+        // 전체 지표 코드 명시 (문화: 12, 서비스: 11)
+        List<AreaCulResDemItem> resources = extractItems(tourismApiClient.fetchCulturalResourceDemand(baseYm, areaCode, signguCode, "12"));
+        List<AreaTarSvcDemItem> services = extractItems(tourismApiClient.fetchServiceDemand(baseYm, areaCode, signguCode, "11"));
+
+        double resScore = resources.stream().mapToDouble(i -> parseDouble(i.getCulResDemIxVal())).filter(Double::isFinite).average().orElse(Double.NaN);
+        double svcScore = services.stream().mapToDouble(i -> parseDouble(i.getTarSvcDemIxVal())).filter(Double::isFinite).average().orElse(Double.NaN);
+
+        return averageValidValues(resScore, svcScore);
     }
 
-    private OptionalDouble ageFit(
-            String baseYm, String areaCode, String signguCode, List<String> ageGroups) {
-        if (ageGroups == null || ageGroups.isEmpty()) {
+    // ─── 2. 연령 적합도 연산 (가중 평균) ───
+    private OptionalDouble calculateAgeFit(String baseYm, String areaCode, String signguCode, Map<String, BigDecimal> ageRatios) {
+        if (CollectionUtils.isEmpty(ageRatios)) {
             return OptionalDouble.empty();
         }
-        Set<String> touristCodes = ageGroups.stream()
-                .map(this::ageNumber)
-                .filter(age -> age >= 10 && age <= 70)
-                .map(age -> "310" + age / 10)
-                .collect(java.util.stream.Collectors.toSet());
-        Set<String> expenditureCodes = ageGroups.stream()
-                .map(this::ageNumber)
-                .filter(age -> age >= 10 && age <= 70)
-                .map(age -> "320" + age / 10)
-                .collect(java.util.stream.Collectors.toSet());
 
-        AreaTouDivResponse touristResponse = tourismApiClient.fetchTouristDiversity(
-                baseYm, areaCode, signguCode, null);
-        AreaExpDivResponse expenditureResponse = tourismApiClient.fetchExpenditureDiversity(
-                baseYm, areaCode, signguCode, null);
-        DoubleStream tourists = extractItems(touristResponse).stream()
-                .filter(item -> touristCodes.contains(item.getTouDivIxCd()))
-                .mapToDouble(item -> parse(item.getTouDivIxVal()));
-        DoubleStream expenditures = extractItems(expenditureResponse).stream()
-                .filter(item -> expenditureCodes.contains(item.getExpDivIxCd()))
-                .mapToDouble(item -> parse(item.getExpDivIxVal()));
-        return average(tourists, expenditures);
+        double weightedScoreSum = 0.0;
+        double totalRatioApplied = 0.0;
+
+        for (Map.Entry<String, BigDecimal> entry : ageRatios.entrySet()) {
+            int age = parseAgeGroup(entry.getKey());
+            if (age < 10 || age > 70) continue;
+
+            String visitorCode = "310" + (age / 10);
+            String expCode = "320" + (age / 10);
+            double ratio = entry.getValue() != null ? entry.getValue().doubleValue() : 0.0;
+
+            // 세부 지표 코드로 각각 개별 조회
+            List<AreaTouDivItem> visitors = extractItems(tourismApiClient.fetchTouristDiversity(baseYm, areaCode, signguCode, visitorCode));
+            List<AreaExpDivItem> expenditures = extractItems(tourismApiClient.fetchExpenditureDiversity(baseYm, areaCode, signguCode, expCode));
+
+            double visitorVal = visitors.stream().mapToDouble(i -> parseDouble(i.getTouDivIxVal())).filter(Double::isFinite).findFirst().orElse(Double.NaN);
+            double expVal = expenditures.stream().mapToDouble(i -> parseDouble(i.getExpDivIxVal())).filter(Double::isFinite).findFirst().orElse(Double.NaN);
+
+            OptionalDouble avgAgeScore = averageValidValues(visitorVal, expVal);
+            if (avgAgeScore.isPresent()) {
+                weightedScoreSum += avgAgeScore.getAsDouble() * ratio;
+                totalRatioApplied += ratio;
+            }
+        }
+
+        return totalRatioApplied == 0 ? OptionalDouble.empty() : OptionalDouble.of(weightedScoreSum / totalRatioApplied);
     }
 
-    private OptionalDouble stayFit(String baseYm, String areaCode, String signguCode) {
-        List<AreaTarSjrnDsItem> stay = extractItems(tourismApiClient.fetchStayIntensity(
-                baseYm, areaCode, signguCode, "2101"));
-        List<AreaTarExpDsItem> expenditure = extractItems(tourismApiClient.fetchExpenditureIntensity(
-                baseYm, areaCode, signguCode, "2201"));
-        return average(
-                stay.stream().mapToDouble(item -> parse(item.getTarSjrnDsIxVal())),
-                expenditure.stream().mapToDouble(item -> parse(item.getTarExpDsIxVal()))
-        );
+    // ─── 3. 체류 적합도 연산 (숙박 일수 반영) ───
+    private OptionalDouble calculateStayFit(String baseYm, String areaCode, String signguCode, Integer stayNights) {
+        String stayCode = resolveStayCode(stayNights);
+        List<AreaTarSjrnDsItem> stayItems = extractItems(tourismApiClient.fetchStayIntensity(baseYm, areaCode, signguCode, stayCode));
+
+        // 외지인 소비액(2201) 지표 명시적 사용
+        List<AreaTarExpDsItem> expItems = extractItems(tourismApiClient.fetchExpenditureIntensity(baseYm, areaCode, signguCode, "2201"));
+
+        double stayScore = stayItems.stream().mapToDouble(i -> parseDouble(i.getTarSjrnDsIxVal())).filter(Double::isFinite).average().orElse(Double.NaN);
+        double expScore = expItems.stream().mapToDouble(i -> parseDouble(i.getTarExpDsIxVal())).filter(Double::isFinite).average().orElse(Double.NaN);
+
+        return averageValidValues(stayScore, expScore);
     }
 
-    private OptionalDouble comfort(
-            String areaCode, String signguCode, String title, LocalDate visitDate) {
-        List<TatsCnctrRateItem> items = extractItems(tourismApiClient.fetchConcentrationRate(
-                areaCode, signguCode, title));
+    // ─── 4. 쾌적도 연산 ───
+    private OptionalDouble calculateComfort(String areaCode, String signguCode, String title, LocalDate visitDate) {
+        List<TatsCnctrRateItem> items = extractItems(tourismApiClient.fetchConcentrationRate(areaCode, signguCode, title));
         if (items.isEmpty()) {
             return OptionalDouble.empty();
         }
-        String targetDate = (visitDate == null ? LocalDate.now() : visitDate)
-                .format(DateTimeFormatter.BASIC_ISO_DATE);
-        TatsCnctrRateItem selected = items.stream()
-                .filter(item -> targetDate.equals(item.getBaseYmd()))
-                .findFirst()
-                .orElse(items.getFirst());
-        return numeric(selected.getCnctrRate()).stream()
-                .map(value -> clamp(100 - value))
-                .findFirst();
+
+        // 1. visitDate가 유효하고 30일 관측 목록 내에 존재하는지 확인
+        if (visitDate != null) {
+            String targetDateStr = visitDate.format(DateTimeFormatter.BASIC_ISO_DATE);
+            OptionalDouble exactMatch = items.stream()
+                    .filter(item -> targetDateStr.equals(item.getBaseYmd()))
+                    .mapToDouble(item -> parseDouble(item.getCnctrRate()))
+                    .filter(Double::isFinite)
+                    .findFirst();
+
+            if (exactMatch.isPresent()) {
+                return OptionalDouble.of(clamp(100.0 - exactMatch.getAsDouble()));
+            }
+        }
+
+        // 2. visitDate가 범위를 벗어났거나 지정되지 않은 경우 -> 향후 30일 전체 평균 집중률 적용
+        double avgConcentration = items.stream()
+                .mapToDouble(item -> parseDouble(item.getCnctrRate()))
+                .filter(Double::isFinite)
+                .average()
+                .orElse(Double.NaN);
+
+        return Double.isNaN(avgConcentration)
+                ? OptionalDouble.empty()
+                : OptionalDouble.of(clamp(100.0 - avgConcentration));
+    }
+    
+    // ─── Helper Methods ───
+
+    private String resolveStayCode(Integer stayNights) {
+        if (stayNights == null) return "21";      // 전체
+        return switch (stayNights) {
+            case 0 -> "2101"; // 당일 / 타권역
+            case 1 -> "2103"; // 1박
+            case 2 -> "2104"; // 2박
+            default -> "2105"; // 3박 이상
+        };
     }
 
-    private ScoreComponentDto component(
-            OptionalDouble score, BigDecimal weight, String source) {
+    private ScoreComponentDto buildComponent(OptionalDouble score, BigDecimal weight, String source) {
         boolean imputed = score.isEmpty();
         return ScoreComponentDto.builder()
-                .score(imputed
-                        ? NEUTRAL_SCORE
-                        : BigDecimal.valueOf(clamp(score.getAsDouble())).setScale(1, RoundingMode.HALF_UP))
+                .score(imputed ? NEUTRAL_SCORE : BigDecimal.valueOf(clamp(score.getAsDouble())).setScale(1, RoundingMode.HALF_UP))
                 .weight(weight)
                 .imputed(imputed)
                 .reason(imputed ? "원천 데이터가 없어 중립값 50을 적용했습니다." : null)
@@ -161,47 +190,39 @@ public class TourismSatisfactionService {
                 .build();
     }
 
-    private BigDecimal weighted(ScoreComponentDto component) {
-        return component.getScore().multiply(component.getWeight());
-    }
-
-    private OptionalDouble average(DoubleStream first, DoubleStream second) {
-        double[] values = DoubleStream.concat(first, second)
-                .filter(Double::isFinite)
-                .toArray();
-        return values.length == 0
-                ? OptionalDouble.empty()
-                : OptionalDouble.of(DoubleStream.of(values).average().orElseThrow());
-    }
-
-    private int ageNumber(String value) {
-        if (value == null) {
-            return -1;
+    private BigDecimal calculateWeightedTotal(ScoreComponentDto... components) {
+        BigDecimal total = BigDecimal.ZERO;
+        for (ScoreComponentDto comp : components) {
+            total = total.add(comp.getScore().multiply(comp.getWeight()));
         }
-        String digits = value.replaceAll("\\D", "");
+        return total.setScale(1, RoundingMode.HALF_UP);
+    }
+
+    private OptionalDouble averageValidValues(double... values) {
+        double[] valid = Arrays.stream(values).filter(Double::isFinite).toArray();
+        return valid.length == 0 ? OptionalDouble.empty() : OptionalDouble.of(Arrays.stream(valid).average().orElseThrow());
+    }
+
+    private int parseAgeGroup(String ageStr) {
+        if (ageStr == null) return -1;
+        String digits = ageStr.replaceAll("\\D", "");
         try {
             return digits.isEmpty() ? -1 : Integer.parseInt(digits);
-        } catch (NumberFormatException ignored) {
+        } catch (NumberFormatException e) {
             return -1;
         }
     }
 
-    private double parse(String value) {
-        return numeric(value).orElse(Double.NaN);
-    }
-
-    private OptionalDouble numeric(String value) {
+    private double parseDouble(String value) {
         try {
-            return value == null || value.isBlank()
-                    ? OptionalDouble.empty()
-                    : OptionalDouble.of(Double.parseDouble(value));
-        } catch (NumberFormatException ignored) {
-            return OptionalDouble.empty();
+            return value == null || value.isBlank() ? Double.NaN : Double.parseDouble(value);
+        } catch (NumberFormatException e) {
+            return Double.NaN;
         }
     }
 
     private double clamp(double value) {
-        return Math.max(0, Math.min(100, value));
+        return Math.max(0.0, Math.min(100.0, value));
     }
 
     private String latestBaseYm() {
@@ -220,15 +241,16 @@ public class TourismSatisfactionService {
         return response.getResponse().getBody().getItems().getItem();
     }
 
-    public static final class Context {
+    // ─── Inner DTO / Cache ───
+
+    public static final class CalculationCache {
         private final Map<RegionKey, OptionalDouble> popularity = new HashMap<>();
-        private final Map<AgeKey, OptionalDouble> ageFit = new HashMap<>();
-        private final Map<RegionKey, OptionalDouble> stayFit = new HashMap<>();
+        private final Map<StayKey, OptionalDouble> stayFit = new HashMap<>();
     }
 
     private record RegionKey(String baseYm, String areaCode, String signguCode) {
     }
 
-    private record AgeKey(RegionKey region, List<String> ageGroups) {
+    private record StayKey(RegionKey region, Integer stayNights) {
     }
 }

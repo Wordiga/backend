@@ -301,7 +301,7 @@ public class TourismApiClient {
                 @RequestParam(value = "culResDemIxCd", required = false) String culResDemIxCd
         );
 
-        @GetExchange("/TatsCnctrRateService/tatsCnctrRateList")
+        @GetExchange("/TatsCnctrRateService/tatsCnctrRatedList")
         TatsCnctrRateResponse fetchConcentrationRate(
                 @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
                 @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
