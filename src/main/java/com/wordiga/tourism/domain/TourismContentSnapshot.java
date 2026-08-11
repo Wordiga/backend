@@ -1,12 +1,10 @@
-package com.wordiga.tourism;
+package com.wordiga.tourism.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AccessLevel;
-import lombok.Getter;
-import lombok.NoArgsConstructor;
+import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -14,7 +12,9 @@ import java.time.LocalDateTime;
 @Entity
 @Table(name = "tourism_content_snapshots")
 @Getter
+@Builder
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+@AllArgsConstructor(access = AccessLevel.PRIVATE)
 public class TourismContentSnapshot {
 
     @Id

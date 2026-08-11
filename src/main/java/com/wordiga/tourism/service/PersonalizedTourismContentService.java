@@ -11,7 +11,6 @@ import com.wordiga.wish.service.WishPreferenceCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
@@ -22,6 +21,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+
+import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
 
 @Service
 @RequiredArgsConstructor
@@ -133,11 +134,4 @@ public class PersonalizedTourismContentService {
         return ageGroups.stream().collect(Collectors.toMap(age -> age, age -> equalRatio, (a, b) -> a));
     }
 
-    private BigDecimal parseBigDecimal(String value) {
-        try {
-            return StringUtils.hasText(value) ? new BigDecimal(value) : null;
-        } catch (NumberFormatException e) {
-            return null;
-        }
-    }
 }
