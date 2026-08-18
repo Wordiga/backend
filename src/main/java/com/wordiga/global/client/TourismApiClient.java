@@ -16,6 +16,8 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import java.util.List;
 import java.util.Objects;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 
 import static com.wordiga.global.util.KtoUtils.extractItems;
 
@@ -46,7 +48,7 @@ public class TourismApiClient {
                                                           String signguCd, String tarExpDsIxCd) {
         return execute(() -> client.fetchExpenditureIntensity(
                 serviceKey(), mobileOs(), mobileApp(), "json",
-                baseYm, areaCd, properties.getApi().getDefaultNumOfRows(), signguCd, tarExpDsIxCd
+                baseYm, areaCd, properties.getApi().getDefaultNumOfRows(), 1, signguCd, tarExpDsIxCd
         ));
     }
 
@@ -56,7 +58,7 @@ public class TourismApiClient {
                                                     String signguCd, String tarSjrnDsIxCd) {
         return execute(() -> client.fetchStayIntensity(
                 serviceKey(), mobileOs(), mobileApp(), "json",
-                baseYm, areaCd, properties.getApi().getDefaultNumOfRows(), signguCd, tarSjrnDsIxCd
+                baseYm, areaCd, properties.getApi().getDefaultNumOfRows(), 1, signguCd, tarSjrnDsIxCd
         ));
     }
 
@@ -237,7 +239,7 @@ public class TourismApiClient {
     }
 
     private String serviceKey() {
-        return properties.getApi().getServiceKey();
+        return URLDecoder.decode(properties.getApi().getServiceKey(), StandardCharsets.UTF_8);
     }
 
     private String mobileOs() {
@@ -261,7 +263,8 @@ public class TourismApiClient {
                 @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
                 @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
                 @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
-                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "signguCd", required = false) String signguCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam("pageNo") int pageNo,
+                @RequestParam(value = "signguCd", required = false) String signguCd,
                 @RequestParam(value = "tarExpDsIxCd", required = false) String tarExpDsIxCd
         );
 
@@ -270,7 +273,8 @@ public class TourismApiClient {
                 @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
                 @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
                 @RequestParam("baseYm") String baseYm, @RequestParam("areaCd") String areaCd,
-                @RequestParam("numOfRows") int numOfRows, @RequestParam(value = "signguCd", required = false) String signguCd,
+                @RequestParam("numOfRows") int numOfRows, @RequestParam("pageNo") int pageNo,
+                @RequestParam(value = "signguCd", required = false) String signguCd,
                 @RequestParam(value = "tarSjrnDsIxCd", required = false) String tarSjrnDsIxCd
         );
 
@@ -394,7 +398,7 @@ public class TourismApiClient {
                 @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
                 @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
                 @RequestParam("pageNo") int pageNo, @RequestParam("numOfRows") int numOfRows,
-                @RequestParam("IDongRegnCd") String lDongRegnCd, @RequestParam("IDongListYn") String lDongListYn
+                @RequestParam("lDongRegnCd") String lDongRegnCd, @RequestParam("lDongListYn") String lDongListYn
         );
 
         @GetExchange("/PhotoGalleryService1/gallerySearchList1")

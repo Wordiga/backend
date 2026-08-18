@@ -9,10 +9,10 @@ import lombok.Setter;
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class SigunguItem {
-    @JsonProperty("IDongSignguCd")
+    @JsonProperty("lDongSignguCd")
     private String code;
 
-    @JsonProperty("IDongSignguNm")
+    @JsonProperty("lDongSignguNm")
     private String name;
 
     private String rnum;
