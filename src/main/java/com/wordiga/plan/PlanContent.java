@@ -30,7 +30,7 @@ public class PlanContent {
     private Integer dayNumber;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false)
+    @JoinColumn(name = "content_id", nullable = false)
     private TourismContentSnapshot content;
 
     private LocalDateTime scheduledTime;
