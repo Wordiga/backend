@@ -1,6 +1,6 @@
 package com.wordiga.wish.service;
 
-import com.wordiga.repository.WishRepository;
+import com.wordiga.wish.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;

@@ -39,15 +39,14 @@ public class TourismContentController implements TourismContentApi {
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String contentTypeId,
             @RequestParam(required = false) String lDongSignguCd,
-            @RequestParam(required = false) String referenceContentId,
             @RequestParam(required = false) Boolean capacitySatisfied,
-            @RequestParam(required = false) Integer participantCount,
+            @RequestParam(defaultValue = "10") Integer participantCount,
             @RequestParam(required = false) List<String> ageGroups,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(tourismContentService.getContentList(
-                memberId, type, visitDate, keyword, contentTypeId, lDongSignguCd, referenceContentId,
+                memberId, type, visitDate, keyword, contentTypeId, lDongSignguCd,
                 capacitySatisfied, participantCount, ageGroups, page, size));
     }
 
@@ -56,7 +55,8 @@ public class TourismContentController implements TourismContentApi {
             @PathVariable String contentId,
             @RequestParam(required = false) LocalDate visitDate,
             @RequestParam(required = false) List<String> ageGroups,
-            @RequestParam(required = false) Integer participantCount) {
-        return ResponseEntity.ok(tourismContentDetailService.getDetail(contentId, visitDate, ageGroups, participantCount));
+            @RequestParam(defaultValue = "10") Integer participantCount) {
+        return ResponseEntity.ok(tourismContentDetailService.getDetail(
+                contentId, visitDate, ageGroups, null, participantCount));
     }
 }

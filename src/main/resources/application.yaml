@@ -32,7 +32,7 @@ jwt:
   refresh-expiration: 604800000
 
 kakao:
-  admin-key: ${KAKAO_ADMIN_KEY}
+  admin-key: ${KAKAO_ADMIN_KEY:}
   url:
     unlink: https://apis.kakao.com/v1/user/unlink
 

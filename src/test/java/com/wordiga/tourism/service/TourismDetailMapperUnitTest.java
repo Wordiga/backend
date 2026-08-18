@@ -2,6 +2,8 @@ package com.wordiga.tourism.service;
 
 import com.wordiga.global.client.dto.DetailInfoDto;
 import com.wordiga.global.client.dto.DetailIntroDto;
+import com.wordiga.global.client.dto.PhotoGalleryItem;
+import com.wordiga.tourism.dto.detail.SeasonalImageDto;
 import com.wordiga.tourism.dto.detail.TourismDetailInfoDto;
 import com.wordiga.tourism.dto.detail.TourismIntroDetailDto;
 import org.junit.jupiter.api.Test;
@@ -87,5 +89,24 @@ class TourismDetailMapperUnitTest {
                     assertThat(detail.getSubNumber()).isNull();
                     assertThat(detail.getRoomImages()).isEmpty();
                 });
+    }
+
+    @Test
+    void mapsGalleryShootingDateAndInvalidValues() {
+        PhotoGalleryItem exact = new PhotoGalleryItem();
+        exact.setGalPhotographyMonth("20260315");
+        PhotoGalleryItem invalid = new PhotoGalleryItem();
+        invalid.setGalPhotographyMonth("unknown");
+        PhotoGalleryItem malformed = new PhotoGalleryItem();
+        malformed.setGalPhotographyMonth("20261340");
+
+        assertThat(mapper.toGallerySeasonalImage(exact)).satisfies(image -> {
+            assertThat(image.getShootingDate()).isEqualTo("2026-03-15");
+            assertThat(image.getSeason()).isEqualTo(SeasonalImageDto.Season.SPRING);
+        });
+        assertThat(mapper.toGallerySeasonalImage(invalid).getSeason())
+                .isEqualTo(SeasonalImageDto.Season.UNKNOWN);
+        assertThat(mapper.toGallerySeasonalImage(malformed).getSeason())
+                .isEqualTo(SeasonalImageDto.Season.UNKNOWN);
     }
 }

@@ -10,6 +10,7 @@ import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.KtoApiResponse;
 import com.wordiga.global.client.dto.PhotoGalleryItem;
 import com.wordiga.global.client.dto.PhotoGalleryResponse;
+import com.wordiga.global.config.TourismProperties;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -33,6 +34,9 @@ class TourismContentDetailServiceUnitTest {
 
     @Spy
     private TourismDetailMapper detailMapper = new TourismDetailMapper();
+
+    @Spy
+    private TourismProperties tourismProperties = tourismProperties();
 
     @Mock
     private TourismSatisfactionService satisfactionService;
@@ -69,7 +73,7 @@ class TourismContentDetailServiceUnitTest {
                 .thenReturn(List.of(image));
         when(tourismApiClient.searchPhotos("현충사")).thenReturn(photoResponse("202606"));
 
-        TourismContentDetailResponse result = service.getDetail("126508", null, List.of("20S"), 8);
+        TourismContentDetailResponse result = service.getDetail("126508", null, List.of("20S"), null, 8);
 
         assertThat(result.getCommon().getTitle()).isEqualTo("현충사");
         assertThat(result.getIntro().getUseTime()).isEqualTo("09:00~18:00");
@@ -82,26 +86,6 @@ class TourismContentDetailServiceUnitTest {
                     assertThat(item.getSeason()).isEqualTo(SeasonalImageDto.Season.SUMMER);
                     assertThat(item.getShootingDate()).isNull();
                 });
-    }
-
-    @Test
-    void mapsExactShootingDateAndUnknownInvalidDate() {
-        PhotoGalleryItem exact = new PhotoGalleryItem();
-        exact.setGalPhotographyMonth("20260315");
-        PhotoGalleryItem invalid = new PhotoGalleryItem();
-        invalid.setGalPhotographyMonth("unknown");
-        PhotoGalleryItem malformed = new PhotoGalleryItem();
-        malformed.setGalPhotographyMonth("20261340");
-        PhotoGalleryItem malformedMonth = new PhotoGalleryItem();
-        malformedMonth.setGalPhotographyMonth("202613");
-
-        assertThat(service.toSeasonalImage(exact)).satisfies(image -> {
-            assertThat(image.getShootingDate()).isEqualTo("2026-03-15");
-            assertThat(image.getSeason()).isEqualTo(SeasonalImageDto.Season.SPRING);
-        });
-        assertThat(service.toSeasonalImage(invalid).getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN);
-        assertThat(service.toSeasonalImage(malformed).getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN);
-        assertThat(service.toSeasonalImage(malformedMonth).getSeason()).isEqualTo(SeasonalImageDto.Season.UNKNOWN);
     }
 
     @Test
@@ -124,7 +108,7 @@ class TourismContentDetailServiceUnitTest {
         when(tourismApiClient.fetchImages("126508", "Y", 1, 100))
                 .thenReturn(List.of());
 
-        TourismContentDetailResponse result = service.getDetail("126508", null, List.of(), 8);
+        TourismContentDetailResponse result = service.getDetail("126508", null, List.of(), null, 8);
 
         assertThat(result.getCommon().getMapx()).isNull();
         assertThat(result.getCommon().getMapy()).isNull();
@@ -142,8 +126,9 @@ class TourismContentDetailServiceUnitTest {
         when(tourismApiClient.fetchRepeatInfo("126508", "32", 1, 100)).thenReturn(List.of());
         when(tourismApiClient.fetchImages("126508", "Y", 1, 100)).thenReturn(List.of());
 
-        assertThat(service.getDetail("126508", null, List.of(), 8).getCapacitySatisfied()).isTrue();
-        assertThat(service.getDetail("126508", null, List.of(), 11).getCapacitySatisfied()).isFalse();
+        assertThat(service.getDetail("126508", null, List.of(), null, 8).getCapacitySatisfied()).isTrue();
+        assertThat(service.getDetail("126508", null, List.of(), null, null).getCapacitySatisfied()).isTrue();
+        assertThat(service.getDetail("126508", null, List.of(), null, 11).getCapacitySatisfied()).isFalse();
     }
 
     @Test
@@ -201,6 +186,12 @@ class TourismContentDetailServiceUnitTest {
         response.setBody(body);
         result.setResponse(response);
         return result;
+    }
+
+    private static TourismProperties tourismProperties() {
+        TourismProperties properties = new TourismProperties();
+        properties.getRegion().setChungnamCode("44");
+        return properties;
     }
 
 }

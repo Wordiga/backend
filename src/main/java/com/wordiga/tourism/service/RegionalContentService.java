@@ -1,6 +1,6 @@
 package com.wordiga.tourism.service;
 
-import com.wordiga.dto.plan.PlanGenerateRequest;
+import com.wordiga.plan.dto.PlanGenerateRequest;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.AreaBasedItem;
 import com.wordiga.global.config.TourismProperties;

@@ -2,10 +2,11 @@ package com.wordiga.tourism.controller;
 
 import com.wordiga.tourism.dto.TourismContentDto;
 import com.wordiga.tourism.dto.TourismContentListResponse;
+import com.wordiga.tourism.dto.SigunguResponse;
 import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.global.security.JwtTokenProvider;
-import com.wordiga.repository.MemberRepository;
+import com.wordiga.member.repository.MemberRepository;
 import com.wordiga.tourism.service.TourismContentDetailService;
 import com.wordiga.tourism.service.TourismContentService;
 import org.junit.jupiter.api.Test;
@@ -16,6 +17,7 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.util.List;
+import java.util.stream.IntStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -51,7 +53,7 @@ class TourismContentControllerTest {
                 .isWished(true)
                 .build();
         when(tourismContentService.getContentList(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
                 .thenReturn(TourismContentListResponse.builder()
                         .items(List.of(item))
                         .page(0)
@@ -72,6 +74,13 @@ class TourismContentControllerTest {
 
     @Test
     void returnsSixteenChungnamSigungu() throws Exception {
+        List<SigunguResponse> sigungus = new java.util.ArrayList<>(List.of(
+                new SigunguResponse("110", "천안시 동남구"),
+                new SigunguResponse("120", "천안시 서북구")));
+        IntStream.range(2, 16).forEach(index ->
+                sigungus.add(new SigunguResponse(String.valueOf(index), "시군구 " + index)));
+        when(tourismContentService.getSigunguList()).thenReturn(sigungus);
+
         mockMvc.perform(get("/api/v1/tourism/contents/sigungu"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(16))
@@ -85,7 +94,7 @@ class TourismContentControllerTest {
                 .contentId("126508")
                 .title("현충사")
                 .build();
-        when(tourismContentDetailService.getDetail(eq("126508"), any(), any(), any()))
+        when(tourismContentDetailService.getDetail(eq("126508"), any(), any(), any(), any()))
                 .thenReturn(TourismContentDetailResponse.builder()
                         .common(common)
                         .details(List.of())

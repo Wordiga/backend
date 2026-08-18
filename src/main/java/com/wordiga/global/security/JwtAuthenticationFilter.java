@@ -1,6 +1,6 @@
 package com.wordiga.global.security;
 
-import com.wordiga.repository.MemberRepository;
+import com.wordiga.member.repository.MemberRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;

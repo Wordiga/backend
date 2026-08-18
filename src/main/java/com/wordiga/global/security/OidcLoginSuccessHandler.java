@@ -2,7 +2,7 @@ package com.wordiga.global.security;
 
 import com.wordiga.member.Member;
 import com.wordiga.member.OAuthProvider;
-import com.wordiga.repository.MemberRepository;
+import com.wordiga.member.repository.MemberRepository;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;

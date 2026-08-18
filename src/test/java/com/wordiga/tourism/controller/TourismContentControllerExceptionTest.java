@@ -1,7 +1,7 @@
 package com.wordiga.tourism.controller;
 
 import com.wordiga.global.security.JwtTokenProvider;
-import com.wordiga.repository.MemberRepository;
+import com.wordiga.member.repository.MemberRepository;
 import com.wordiga.tourism.service.TourismContentDetailService;
 import com.wordiga.tourism.service.TourismContentService;
 import org.junit.jupiter.api.Test;

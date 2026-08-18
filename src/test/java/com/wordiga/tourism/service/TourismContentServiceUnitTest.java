@@ -2,11 +2,13 @@ package com.wordiga.tourism.service;
 
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.TourismContentListResponse;
+import com.wordiga.tourism.dto.detail.SatisfactionDto;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
-import com.wordiga.repository.WishRepository;
+import com.wordiga.wish.repository.WishRepository;
 import com.wordiga.wish.Wish;
+import com.wordiga.tourism.domain.TourismContentSnapshot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -17,8 +19,8 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -27,11 +29,11 @@ class TourismContentServiceUnitTest {
     @Mock
     private TourismApiClient tourismApiClient;
     @Mock
-    private RelatedTourismContentService relatedTourismContentService;
-    @Mock
     private PersonalizedTourismContentService personalizedTourismContentService;
     @Mock
     private TourismContentDetailService detailService;
+    @Mock
+    private TourismSatisfactionService satisfactionService;
     @Mock
     private WishRepository wishRepository;
 
@@ -42,7 +44,7 @@ class TourismContentServiceUnitTest {
         TourismProperties properties = new TourismProperties();
         properties.getRegion().setChungnamCode("44");
         tourismContentService = new TourismContentService(tourismApiClient, properties,
-                relatedTourismContentService, personalizedTourismContentService, detailService, wishRepository);
+                personalizedTourismContentService, detailService, satisfactionService, wishRepository);
     }
 
     @Test
@@ -60,37 +62,43 @@ class TourismContentServiceUnitTest {
         when(tourismApiClient.searchContent("현충사", "12", "44", "200", 1, 20))
                 .thenReturn(response);
 
-        TourismContentListResponse result = tourismContentService.getContentList(
-                ListType.POPULAR, null, " 현충사 ", "12", "200", 0, 20);
+        TourismContentListResponse result = tourismContentService.getContentList(null,
+                ListType.POPULAR, null, " 현충사 ", "12", "200", null, null, null, 0, 20);
 
         assertThat(result.getItems()).hasSize(1);
         assertThat(result.getItems().getFirst().getContentId()).isEqualTo("126508");
         assertThat(result.getItems().getFirst().getFirstImage()).isNull();
         assertThat(result.isHasNext()).isTrue();
+        verifyNoInteractions(satisfactionService);
     }
 
     @Test
     void marksContentsWishedForAuthenticatedMember() {
         AreaBasedItem wished = item("12");
         wished.setContentid("wished");
+        wished.setLDongSignguCd("200");
         AreaBasedItem unwished = item("14");
         unwished.setContentid("unwished");
+        unwished.setLDongSignguCd("200");
         when(tourismApiClient.searchContent("충남", null, "44", null, 1, 20))
                 .thenReturn(response(List.of(wished, unwished), 2));
         when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of(
-                Wish.create(1L, "wished", "12", "위시", null, null, null, null,
-                        "200", "아산시", "아산시")));
+                Wish.create(1L, snapshot("wished", "위시", null), "아산시")));
+        SatisfactionDto satisfaction = SatisfactionDto.builder().totalScore(java.math.BigDecimal.valueOf(87.5)).build();
+        when(satisfactionService.calculate(org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any())).thenReturn(satisfaction);
 
         TourismContentListResponse result = tourismContentService.getContentList(1L, ListType.POPULAR, null,
-                "충남", null, null, null, null, null, null, 0, 20);
+                "충남", null, null, null, null, List.of("30S"), 0, 20);
 
         assertThat(result.getItems()).extracting("wished").containsExactly(true, false);
+        assertThat(result.getItems()).extracting("satisfaction").containsOnly(satisfaction);
     }
 
     @Test
     void usesPreviousYearMonthForSeasonalDemand() {
-        tourismContentService.getContentList(
-                ListType.SEASONAL, LocalDate.of(2026, 8, 20), null, null, null, 0, 20);
+        tourismContentService.getContentList(null,
+                ListType.SEASONAL, LocalDate.of(2026, 8, 20), null, null, null, null, null, null, 0, 20);
 
         verify(tourismApiClient).fetchServiceDemand("202508", "44", null, "11");
     }
@@ -118,8 +126,8 @@ class TourismContentServiceUnitTest {
                 item("32"), item("38"), item("39"), item("unknown"), nullType);
         when(tourismApiClient.fetchAreaBasedContent("44", "200", 50)).thenReturn(contents);
 
-        TourismContentListResponse result = tourismContentService.getContentList(
-                ListType.POPULAR, null, null, null, null, 0, 20);
+        TourismContentListResponse result = tourismContentService.getContentList(null,
+                ListType.POPULAR, null, null, null, null, null, null, null, 0, 20);
 
         assertThat(result.getItems()).hasSize(10);
         assertThat(result.getItems().getFirst().getRecommendationScore()).isEqualByComparingTo("86");
@@ -130,8 +138,8 @@ class TourismContentServiceUnitTest {
 
     @Test
     void treatsBlankKeywordAsRecommendationRequest() {
-        TourismContentListResponse result = tourismContentService.getContentList(
-                ListType.POPULAR, null, " ", null, null, 0, 20);
+        TourismContentListResponse result = tourismContentService.getContentList(null,
+                ListType.POPULAR, null, " ", null, null, null, null, null, 0, 20);
 
         assertThat(result.getItems()).isEmpty();
         verify(tourismApiClient, org.mockito.Mockito.never())
@@ -165,9 +173,9 @@ class TourismContentServiceUnitTest {
         when(tourismApiClient.fetchAreaBasedContent("44", "200", 50))
                 .thenReturn(List.of(matched, duplicate, otherType, otherRegion));
 
-        TourismContentListResponse result = tourismContentService.getContentList(
+        TourismContentListResponse result = tourismContentService.getContentList(null,
                 ListType.SEASONAL, LocalDate.of(2026, 8, 20),
-                null, "12", "200", 0, 20);
+                null, "12", "200", null, null, null, 0, 20);
 
         assertThat(result.getItems()).singleElement()
                 .satisfies(item -> {
@@ -178,19 +186,15 @@ class TourismContentServiceUnitTest {
     }
 
     @Test
-    void delegatesRelatedAndPersonalizedRecommendations() {
+    void delegatesPersonalizedRecommendationsWithoutReloadingWishes() {
         TourismContentListResponse empty = TourismContentListResponse.builder()
                 .items(List.of()).page(0).size(20).hasNext(false).build();
-        when(relatedTourismContentService.get("126508", LocalDate.of(2026, 8, 20), List.of("30S"), 0, 20))
-                .thenReturn(empty);
-        when(personalizedTourismContentService.get(1L, LocalDate.of(2026, 8, 20), 0, 20)).thenReturn(empty);
+        when(personalizedTourismContentService.get(
+                1L, LocalDate.of(2026, 8, 20), List.of("30S"), null, 0, 20)).thenReturn(empty);
 
-        assertThat(tourismContentService.getContentList(1L, ListType.RELATED, LocalDate.of(2026, 8, 20),
-                null, null, null, "126508", null, null, List.of("30S"), 0, 20)).isSameAs(empty);
         assertThat(tourismContentService.getContentList(1L, ListType.PERSONALIZED, LocalDate.of(2026, 8, 20),
-                null, null, null, null, null, null, null, 0, 20)).isSameAs(empty);
-        assertThatThrownBy(() -> tourismContentService.getContentList(1L, ListType.RELATED, null,
-                null, null, null, " ", null, null, null, 0, 20)).hasMessageContaining("400");
+                null, null, null, null, null, List.of("30S"), 0, 20)).isSameAs(empty);
+        verify(wishRepository, org.mockito.Mockito.never()).findByMemberIdOrderByCreatedAtDescIdDesc(1L);
     }
 
     @Test
@@ -201,14 +205,30 @@ class TourismContentServiceUnitTest {
         tourist.setContentid("tourist");
         when(tourismApiClient.searchContent("숙소", null, "44", null, 1, 20))
                 .thenReturn(response(List.of(lodging, tourist), 2));
-        when(detailService.capacitySatisfied("lodging", "32", 25)).thenReturn(true);
+        when(detailService.getDetail("lodging", null, null, null, 25)).thenReturn(
+                com.wordiga.tourism.dto.detail.TourismContentDetailResponse.builder()
+                        .capacitySatisfied(true).build());
 
         TourismContentListResponse result = tourismContentService.getContentList(1L, ListType.POPULAR, null,
-                "숙소", null, null, null, true, 25, null, 0, 20);
+                "숙소", null, null, true, 25, null, 0, 20);
 
         assertThat(result.getItems()).extracting("contentId").containsExactly("lodging");
-        assertThatThrownBy(() -> tourismContentService.getContentList(1L, ListType.POPULAR, null,
-                "숙소", null, null, null, true, null, null, 0, 20)).hasMessageContaining("400");
+    }
+
+    @Test
+    void defaultsParticipantCountToTenForCapacityFilter() {
+        AreaBasedItem lodging = item("32");
+        lodging.setContentid("lodging");
+        when(tourismApiClient.searchContent("숙소", null, "44", null, 1, 20))
+                .thenReturn(response(List.of(lodging), 1));
+        when(detailService.getDetail("lodging", null, null, null, 10)).thenReturn(
+                com.wordiga.tourism.dto.detail.TourismContentDetailResponse.builder()
+                        .capacitySatisfied(true).build());
+
+        TourismContentListResponse result = tourismContentService.getContentList(1L, ListType.POPULAR, null,
+                "숙소", null, null, true, null, null, 0, 20);
+
+        assertThat(result.getItems()).extracting("contentId").containsExactly("lodging");
     }
 
     private AreaBasedItem item(String contentTypeId) {
@@ -217,6 +237,18 @@ class TourismContentServiceUnitTest {
         item.setContenttypeid(contentTypeId);
         item.setTitle(contentTypeId);
         return item;
+    }
+
+    private TourismContentSnapshot snapshot(String contentId, String title, String image) {
+        return TourismContentSnapshot.builder()
+                .contentId(contentId)
+                .contentTypeId("12")
+                .title(title)
+                .firstimage(image)
+                .sigunguCode("200")
+                .sigunguName("아산시")
+                .updatedAt(java.time.LocalDateTime.now())
+                .build();
     }
 
     private AreaBasedResponse response(List<AreaBasedItem> items, int totalCount) {

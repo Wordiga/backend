@@ -23,7 +23,6 @@ public abstract class PostgresIntegrationTest {
         registry.add("spring.jpa.hibernate.ddl-auto", () -> "create-drop");
         registry.add("jwt.secret", () -> "test-secret-key-for-wordiga-integration-tests-1234567890");
         registry.add("tourism.api.service-key", () -> "test-service-key");
-        registry.add("tourism.api.service-key", () -> "test-service-key");
         registry.add("spring.security.oauth2.client.registration.google.client-id", () -> "test");
         registry.add("spring.security.oauth2.client.registration.google.client-secret", () -> "test");
         registry.add("spring.security.oauth2.client.registration.kakao.client-id", () -> "test");

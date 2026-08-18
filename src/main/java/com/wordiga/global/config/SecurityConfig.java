@@ -3,7 +3,7 @@ package com.wordiga.global.config;
 import com.wordiga.global.security.JwtAuthenticationFilter;
 import com.wordiga.global.security.OidcLoginSuccessHandler;
 import com.wordiga.global.security.RestAuthenticationEntryPoint;
-import com.wordiga.service.CustomOidcUserService;
+import com.wordiga.member.service.CustomOidcUserService;
 import jakarta.servlet.DispatcherType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;

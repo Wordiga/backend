@@ -5,12 +5,10 @@ import org.junit.jupiter.api.Test;
 import org.springframework.web.client.RestClient;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.Mockito.mock;
-
 class KakaoUnlinkClientUnitExceptionTest {
     @Test
     void rejectsMissingAdminKey() {
-        KakaoUnlinkClient client = new KakaoUnlinkClient(mock(RestClient.builder()), "", "");
+        KakaoUnlinkClient client = new KakaoUnlinkClient(RestClient.builder(), "", "http://localhost");
 
         assertThatThrownBy(() -> client.unlink("12345")).hasMessageContaining("503");
     }

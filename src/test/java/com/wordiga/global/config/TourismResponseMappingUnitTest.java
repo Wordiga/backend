@@ -3,6 +3,7 @@ package com.wordiga.global.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.global.client.dto.PhotoGalleryResponse;
+import com.wordiga.global.config.RestClientConfig;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -22,7 +23,7 @@ class TourismResponseMappingUnitTest {
 
     @Test
     void mapsEmptyItemsStringToNull() throws Exception {
-        PhotoGalleryResponse result = RestClientConfig.jsonMapper().readValue("""
+        PhotoGalleryResponse result = objectMapper.readValue("""
                 {"response":{"header":{"resultCode":"0000"},
                 "body":{"items":"","numOfRows":0,"pageNo":1,"totalCount":0}}}
                 """, PhotoGalleryResponse.class);

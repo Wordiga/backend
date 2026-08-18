@@ -1,8 +1,8 @@
 package com.wordiga.global.client;
 
-import com.wordiga.dto.ai.AiPlanRequest;
-import com.wordiga.dto.ai.AiPlanResponse;
-import com.wordiga.dto.ai.AiProposalRequest;
+import com.wordiga.plan.dto.ai.AiPlanRequest;
+import com.wordiga.plan.dto.ai.AiPlanResponse;
+import com.wordiga.proposal.dto.AiProposalRequest;
 import com.wordiga.global.config.AiServerProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;

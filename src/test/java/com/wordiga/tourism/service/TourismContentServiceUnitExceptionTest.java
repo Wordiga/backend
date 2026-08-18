@@ -28,15 +28,15 @@ class TourismContentServiceUnitExceptionTest {
 
     @Test
     void returnsEmptyPageWhenPublicApiResponseIsMissing() {
-        assertThat(service.getContentList(
-                ListType.POPULAR, null, null, null, null, 0, 20).getItems())
+        assertThat(service.getContentList(null,
+                ListType.POPULAR, null, null, null, null, null, null, null, 0, 20).getItems())
                 .isEmpty();
     }
 
     @Test
     void returnsEmptySearchPageWhenResponseIsMissing() {
-        assertThat(service.getContentList(
-                ListType.POPULAR, null, "unknown", null, null, 0, 20).getItems())
+        assertThat(service.getContentList(null,
+                ListType.POPULAR, null, "unknown", null, null, null, null, null, 0, 20).getItems())
                 .isEmpty();
     }
 }

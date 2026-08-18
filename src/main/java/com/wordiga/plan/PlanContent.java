@@ -1,6 +1,6 @@
 package com.wordiga.plan;
 
-import com.wordiga.tourism.TourismContentSnapshot;
+import com.wordiga.tourism.domain.TourismContentSnapshot;
 import jakarta.persistence.*;
 import lombok.AccessLevel;
 import lombok.Getter;

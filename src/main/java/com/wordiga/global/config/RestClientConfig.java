@@ -1,4 +1,4 @@
-package com.wordiga.weather.config;
+package com.wordiga.global.config;
 
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.ObjectMapper;
