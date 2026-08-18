@@ -60,9 +60,7 @@ public class AiServerClient {
 
     public byte[] generateProposal(AiProposalRequest request) {
         try {
-            byte[] response = client.generateProposal(
-                    "application/vnd.openxmlformats-officedocument.wordprocessingml.document", request
-            );
+            byte[] response = client.generateProposal("docx", request);
             if (response == null) throw invalid("제안서 문서 응답이 비어 있습니다.");
             return response;
         } catch (ResponseStatusException e) {
@@ -84,9 +82,9 @@ public class AiServerClient {
         @PostExchange(value = "/api/v1/schedule/generate", contentType = MediaType.APPLICATION_JSON_VALUE)
         AiPlanResponse generatePlan(@RequestBody AiPlanRequest request);
 
-        @PostExchange(value = "/internal/v1/proposals", contentType = MediaType.APPLICATION_JSON_VALUE)
+        @PostExchange(value = "/api/v1/proposal/generate", contentType = MediaType.APPLICATION_JSON_VALUE)
         byte[] generateProposal(
-                @org.springframework.web.bind.annotation.RequestHeader("Accept") String acceptHeader,
+                @org.springframework.web.bind.annotation.RequestParam("format") String format,
                 @RequestBody AiProposalRequest request
         );
     }
