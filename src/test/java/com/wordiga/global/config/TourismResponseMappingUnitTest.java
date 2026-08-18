@@ -3,6 +3,7 @@ package com.wordiga.global.config;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.global.client.dto.PhotoGalleryResponse;
+import com.wordiga.global.client.dto.SigunguItem;
 import com.wordiga.global.config.RestClientConfig;
 import org.junit.jupiter.api.Test;
 
@@ -19,6 +20,15 @@ class TourismResponseMappingUnitTest {
 
         assertThat(result.getLDongRegnCd()).isEqualTo("44");
         assertThat(result.getLDongSignguCd()).isEqualTo("150");
+    }
+
+    @Test
+    void mapsLowerCamelCaseSigunguFields() throws Exception {
+        SigunguItem result = objectMapper.readValue(
+                "{\"lDongSignguCd\":\"200\",\"lDongSignguNm\":\"아산시\"}", SigunguItem.class);
+
+        assertThat(result.getCode()).isEqualTo("200");
+        assertThat(result.getName()).isEqualTo("아산시");
     }
 
     @Test

@@ -167,7 +167,7 @@ public class TourismContentService {
         AreaTarExpDsResponse expenditure = tourismApiClient.fetchExpenditureIntensity(
                 currentYm, chungnamCode, null, "2201");
         AreaTarSjrnDsResponse stay = tourismApiClient.fetchStayIntensity(
-                currentYm, chungnamCode, null, "2101");
+                currentYm, chungnamCode, null, "2103");
 
         Map<String, Double> scores = calculatePopularityScore(expenditure, stay);
         List<String> signguCodes = scores

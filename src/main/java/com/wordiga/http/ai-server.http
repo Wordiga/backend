@@ -11,8 +11,9 @@ POST {{aiBaseUrl}}/api/v1/schedule/generate
 Content-Type: application/json
 
 {
+  "plan_id": 1001,
   "visit_month": 8,
-  "num_people": 4,
+  "num_people": 10,
   "num_days": 2,
   "num_nights": 1,
   "saved_content_ids": ["126508"],
@@ -57,8 +58,9 @@ Content-Type: application/json
 
 # AiPlanRequest DTO 구조
 # {
-#   visit_month: int,
-#   num_people: int,
+#   plan_id: long,
+#   visit_month: int (1..12),
+#   num_people: int (10..50),
 #   num_days: int,
 #   num_nights: int,
 #   saved_content_ids: string[],
@@ -72,70 +74,59 @@ Content-Type: application/json
 #
 # AiPlanResponse DTO 구조
 # {
-#   schedule_id: long,
-#   estimated_budget: {
-#     total_amount: long,
-#     per_person_amount: long,
-#     currency: string,
-#     breakdown: { [category: string]: long }
-#   } | null,
-#   days: [{
-#     day_number: int,
-#     date: yyyy-MM-dd,
-#     contents: [{
-#       sequence: int,
+#   plan_id: long,
+#   status: string,
+#   timetable: {
+#     total_days: int,
+#     total_travel_time_min: int,
+#     days: [{
+#       day: int,
+#       date_label: string,
+#       items: [{
+#       order: int,
 #       content_id: string,
 #       title: string,
-#       content_type_id: string,
-#       addr1: string,
-#       mapx: decimal,
-#       mapy: decimal,
+#       category: string,
+#       latitude: decimal,
+#       longitude: decimal,
 #       start_time: HH:mm,
 #       end_time: HH:mm,
-#       duration_minutes: int,
-#       travel_time_minutes: int,
-#       travel_distance_meters: int,
-#       estimated_cost: long,
+#       travel_time_from_prev_min: int,
 #       memo: string
+#       }]
 #     }]
-#   }]
+#   },
+#   warnings: string[]
 # }
 
 ### [AI 제안서 생성] 저장 일정 기반 DOCX 생성
-POST {{aiBaseUrl}}/internal/v1/proposals
+POST {{aiBaseUrl}}/api/v1/proposal/generate?format=docx
 Accept: application/vnd.openxmlformats-officedocument.wordprocessingml.document
 Content-Type: application/json
 
 {
-  "requestId": "proposal-1",
-  "proposalTitle": "아산 워크숍 제안서",
-  "organizationName": "Wordiga",
-  "purpose": "팀 워크숍",
-  "additionalRequest": "일정과 예상 비용을 표로 정리해 주세요.",
-  "plan": {
-    "planId": 1,
-    "scheduleId": 1001,
-    "title": "아산 워크숍",
-    "startDate": "2026-08-20",
-    "endDate": "2026-08-21",
-    "participantCount": 4,
-    "estimatedBudget": null,
-    "days": [],
-    "createdAt": "2026-08-18T10:00:00",
-    "updatedAt": "2026-08-18T10:00:00"
+  "plan_id": 1,
+  "company_info": {
+    "company_name": "Wordiga"
   },
+  "timetable": {
+    "total_days": 2,
+    "total_travel_time_min": 0,
+    "days": []
+  },
+  "estimated_budget": null,
+  "workshop_purpose": "팀 워크숍",
   "visit_month": 8,
-  "num_people": 4
+  "num_people": 10
 }
 
 # AiProposalRequest DTO 구조
 # {
-#   requestId: string,
-#   proposalTitle: string,
-#   organizationName: string,
-#   purpose: string,
-#   additionalRequest: string,
-#   plan: PlanDetailResponse,
+#   plan_id: long,
+#   company_info: { company_name: string },
+#   timetable: object,
+#   estimated_budget: { total, per_person, breakdown } | null,
+#   workshop_purpose: string | null,
 #   visit_month: int,
 #   num_people: int
 # }

@@ -7,12 +7,14 @@ import com.wordiga.global.config.TourismProperties;
 import com.wordiga.tourism.domain.TourismContentType;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class RegionalContentService {
 
     private static final int CATEGORY_CANDIDATE_LIMIT = 6; // 카테고리별 상위 5~8개 추리기
@@ -84,9 +86,17 @@ public class RegionalContentService {
         }
 
         // 5. 최종 추린 candidate 들에 대해서만 상세(getAiDetail) 호출해 반환
-        return finalCandidates.stream()
-                .map(c -> detailService.getAiDetail(c.item().getContentid(), request.getStartDate(), false))
-                .toList();
+        List<TourismContentDetailResponse> details = new ArrayList<>();
+        for (CandidateWithDistance candidate : finalCandidates) {
+            try {
+                details.add(detailService.getAiDetail(
+                        candidate.item().getContentid(), request.getStartDate(), false));
+            } catch (RuntimeException exception) {
+                log.warn("[AI 일정] 지역 후보 상세 조회 실패: contentId={}",
+                        candidate.item().getContentid(), exception);
+            }
+        }
+        return details;
     }
 
     // ─── 거리 연산 Helper ───

@@ -7,6 +7,7 @@ import com.wordiga.global.config.ProposalS3Properties;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.web.client.RestClient;
+import org.springframework.http.converter.json.MappingJackson2HttpMessageConverter;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
@@ -24,8 +25,10 @@ public class RestClientConfig {
     }
 
     @Bean
-    public RestClient.Builder restClientBuilder() {
-        return RestClient.builder();
+    @SuppressWarnings("removal")
+    public RestClient.Builder restClientBuilder(ObjectMapper objectMapper) {
+        return RestClient.builder().configureMessageConverters(converters ->
+                converters.withJsonConverter(new MappingJackson2HttpMessageConverter(objectMapper)));
     }
 
     @Bean

@@ -18,6 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.format.DateTimeFormatter;
+import java.time.LocalDateTime;
+import java.util.List;
 
 @Service
 @RequiredArgsConstructor
@@ -30,8 +32,26 @@ public class PlanWriter {
     @Transactional(timeout = 5)
     public PlanDetailResponse saveGenerated(Long memberId, PlanGenerateRequest request, AiPlanResponse ai,
                                             String sigunguName) {
+        return saveGenerated(memberId, request, ai, List.of(), sigunguName);
+    }
+
+    @Transactional(timeout = 5)
+    public PlanDetailResponse saveGenerated(Long memberId, PlanGenerateRequest request, AiPlanResponse ai,
+                                            List<com.wordiga.tourism.dto.detail.TourismContentDetailResponse> details,
+                                            String sigunguName) {
         Member member = memberRepository.findByIdForUpdate(memberId)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "회원을 찾을 수 없습니다."));
+
+        details.forEach(detail -> {
+            var common = detail.getCommon();
+            snapshotRepository.save(TourismContentSnapshot.builder()
+                    .contentId(common.getContentId()).contentTypeId(common.getContentTypeId())
+                    .title(common.getTitle()).firstimage(common.getFirstImage()).addr1(common.getAddr1())
+                    .mapx(common.getMapx()).mapy(common.getMapy()).sigunguCode(common.getLDongSignguCd())
+                    .sigunguName(sigunguName).lclsSystem1Code(common.getLclsSystm1())
+                    .lclsSystem2Code(common.getLclsSystm2()).lclsSystem3Code(common.getLclsSystm3())
+                    .updatedAt(LocalDateTime.now()).build());
+        });
 
         Plan plan = Plan.create(member, title(memberId, request, sigunguName),
                 request.getStartDate(), request.getEndDate(), request.getParticipantCount());

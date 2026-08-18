@@ -39,8 +39,7 @@ public class ProposalService {
         Plan plan = snapshot.plan();
         if (plan.getPlanContents().isEmpty())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "일정 콘텐츠가 필요합니다.");
-        byte[] bytes = aiServerClient.generateProposal(AiProposalRequest.from(UUID.randomUUID().toString(), request,
-                snapshot.response()));
+        byte[] bytes = aiServerClient.generateProposal(AiProposalRequest.from(request, snapshot.response()));
         validateDocx(bytes);
         String fileName = fileName(request.getProposalTitle(), plan.getTitle());
         String key = "proposals/%d/%d/%s.docx".formatted(memberId, planId, UUID.randomUUID());

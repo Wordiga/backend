@@ -51,13 +51,14 @@ class PlanGenerationServiceUnitTest {
         when(tourismApiClient.fetchClassificationNames("AC", "AC01", null))
                 .thenReturn(List.of("숙박", "호텔"));
         when(aiServerClient.generatePlan(any())).thenReturn(response);
-        when(planWriter.saveGenerated(1L, request, response, null)).thenReturn(PlanDetailResponse.builder().planId(9L).build());
+        when(planWriter.saveGenerated(eq(1L), eq(request), eq(response), anyList(), isNull()))
+                .thenReturn(PlanDetailResponse.builder().planId(9L).build());
 
         assertThat(service.generate(1L, request).getPlanId()).isEqualTo(9L);
         var captor = org.mockito.ArgumentCaptor.forClass(AiPlanRequest.class);
         verify(aiServerClient).generatePlan(captor.capture());
         assertThat(captor.getValue().savedContents().get(0).tags()).containsExactly("숙박", "호텔");
-        verify(planWriter).saveGenerated(1L, request, response, null);
+        verify(planWriter).saveGenerated(eq(1L), eq(request), eq(response), anyList(), isNull());
     }
 
     @Test

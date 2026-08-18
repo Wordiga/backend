@@ -117,7 +117,7 @@ class TourismContentServiceUnitTest {
                 .thenReturn(wrap(new AreaTarExpDsResponse(), List.of(expenditure)));
         when(tourismApiClient.fetchStayIntensity(
                 org.mockito.ArgumentMatchers.anyString(), org.mockito.ArgumentMatchers.eq("44"),
-                org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.eq("2101")))
+                org.mockito.ArgumentMatchers.isNull(), org.mockito.ArgumentMatchers.eq("2103")))
                 .thenReturn(wrap(new AreaTarSjrnDsResponse(), List.of(stay)));
         AreaBasedItem nullType = item(null);
         nullType.setContentid("null-type");

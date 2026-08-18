@@ -12,6 +12,7 @@ import java.util.Map;
 
 @JsonInclude(JsonInclude.Include.ALWAYS)
 public record AiPlanRequest(
+        @JsonProperty("plan_id") long planId,
         @JsonProperty("visit_month") int visitMonth,
         @JsonProperty("num_people") int numPeople,
         @JsonProperty("num_days") int numDays,
@@ -32,6 +33,7 @@ public record AiPlanRequest(
                                      List<TourismContentDetailResponse> regionalDetails,
                                      Map<String, List<String>> tagsByContentId) {
         return new AiPlanRequest(
+                System.currentTimeMillis(),
                 request.getVisitMonth() == null ? request.getStartDate().getMonthValue() : request.getVisitMonth(),
                 request.getParticipantCount(),
                 (int) ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1,

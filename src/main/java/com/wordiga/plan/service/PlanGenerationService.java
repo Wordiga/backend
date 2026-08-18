@@ -42,7 +42,7 @@ public class PlanGenerationService {
         validateResponse(request, regional, response);
         String sigunguCode = details.getFirst().getCommon().getLDongSignguCd();
         String sigunguName = resolveSigunguName(sigunguCode);
-        return planWriter.saveGenerated(memberId, request, response, sigunguName);
+        return planWriter.saveGenerated(memberId, request, response, all, sigunguName);
     }
 
     private String resolveSigunguName(String sigunguCode) {
@@ -111,8 +111,7 @@ public class PlanGenerationService {
         Set<String> scheduled = new HashSet<>();
         int expectedDay = 1;
         for (AiPlanResponse.Day day : response.getDays()) {
-            if (day.getDayNumber() == null || day.getDayNumber() != expectedDay++ || day.getDate() == null
-                    || !day.getDate().equals(r.getStartDate().plusDays(day.getDayNumber() - 1L)) || day.getContents() == null)
+            if (day.getDayNumber() == null || day.getDayNumber() != expectedDay++ || day.getContents() == null)
                 invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 날짜가 올바르지 않습니다.");
             int sequence = 1;
             for (AiPlanResponse.Content c : day.getContents())
