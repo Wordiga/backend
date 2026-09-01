@@ -1,5 +1,7 @@
 ## Wordiga Backend API 명세
 
+이 문서는 현재 `main` 브랜치에 구현된 소비자 API 계약을 기준으로 합니다. 구현 예정 기능은 포함하지 않습니다.
+
 ### 전체 API Path
 
 | Method | Path | Auth | 설명 |
@@ -52,7 +54,7 @@ GET /api/v1/tourism/contents
 
 관련 기능:
 
-* 인기·계절·위시 기반 개인화·연관 콘텐츠를 조회합니다.
+* 인기·계절·위시 기반 개인화 콘텐츠를 조회합니다.
 * 검색어와 지역·관광타입 필터를 적용합니다.
 
 인증: 불필요
@@ -61,15 +63,14 @@ GET /api/v1/tourism/contents
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `type` | Enum | N | `POPULAR`, `SEASONAL`, `PERSONALIZED`, `RELATED`; 기본값은 `POPULAR` | `POPULAR` |
+| `type` | Enum | N | `POPULAR`, `SEASONAL`, `PERSONALIZED`; 기본값은 `POPULAR` | `POPULAR` |
 | `visitDate` | LocalDate | N | 계절 정렬 기준일, 미입력 시 오늘 | `2026-08-20` |
 | `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
-| `contentTypeId` | Integer | N | 관광타입 ID | `12` |
+| `contentTypeId` | String | N | 관광타입 ID | `12` |
 | `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드 | `200` |
-| `referenceContentId` | String | 조건부 | `RELATED`의 기준 콘텐츠 ID | `126508` |
 | `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
-| `participantCount` | Integer | 조건부 | `capacitySatisfied=true`일 때 필수 | `25` |
-| `ageGroups` | String[] | N | `RELATED` 만족도 산출에 사용할 연령대 | `30S,40S` |
+| `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `25` |
+| `ageGroups` | String[] | N | 로그인 회원의 목록 만족도 산출에 사용할 연령대 | `30S,40S` |
 | `page` | Integer | N | 0부터 시작하는 페이지 기본값은 `0` | `0` |
 | `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
 
@@ -92,7 +93,9 @@ GET /api/v1/tourism/contents
 | `items[].mapx` | BigDecimal | N | 경도 |
 | `items[].mapy` | BigDecimal | N | 위도 |
 | `items[].firstImage` | String | N | 대표 이미지 URL |
+| `items[].categoryName` | String | N | 관광타입 한글명 |
 | `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수 |
+| `items[].satisfaction` | Satisfaction | N | 로그인 회원 기준 만족도. 원천 데이터가 모두 없으면 `null` |
 | `items[].isWished` | Boolean | Y | 현재 로그인 회원의 위시 등록 여부이며 비회원은 `false` |
 | `page` | Integer | Y | 현재 페이지 |
 | `size` | Integer | Y | 페이지 크기 |
@@ -112,7 +115,9 @@ GET /api/v1/tourism/contents
       "mapx": 126.9891281,
       "mapy": 36.8051452,
       "firstImage": "https://example.com/main.jpg",
+      "categoryName": "관광지",
       "recommendationScore": 88.3,
+      "satisfaction": null,
       "isWished": true
     }
   ],
@@ -132,21 +137,18 @@ GET /api/v1/tourism/contents
 
 ### Validation
 
-- `keyword`는 공백 제거 후 1~100자여야 합니다.
 - `size`는 1~50이어야 합니다.
-- `lDongSignguCd`는 충청남도 시군구 코드여야 합니다.
-- `RELATED`는 `referenceContentId`가 필요합니다.
-- `capacitySatisfied=true`는 `participantCount`가 필요합니다.
+- `participantCount`는 1~50이어야 합니다.
+- `PERSONALIZED`는 로그인이 필요합니다.
 
-### 정렬 및 구현 계획
+### 동작 및 정렬 기준
 
 - 검색어가 있으면 한국관광공사 `searchKeyword2`, 없으면 `areaBasedList2`로 후보를 조회합니다.
 - `POPULAR` 기본 점수는 소비 강도 60%, 체류 강도 40%로 계산합니다.
 - `SEASONAL` 기본 점수는 방문 예정 월의 관광 서비스 수요를 사용합니다.
 - `PERSONALIZED`는 위시에 저장된 상위 3개 시군구와 관광 분류 테마를 후보 조건으로 사용하고, 활동로그는 수집하지 않습니다. 만족도는 조회 시 계산하며 저장하지 않습니다.
-- `RELATED`는 한국관광공사 연관 관광지 후보를 실제 콘텐츠 ID로 매칭한 후 조회 시 만족도를 계산하며 저장하지 않습니다.
 - 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
-- 최종 정렬은 `recommendationScore DESC, contentId ASC`입니다.
+- `POPULAR`, `SEASONAL`은 원천 API 순위를 유지하고 `PERSONALIZED`는 `recommendationScore DESC`로 정렬합니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.
 - 로그인 회원은 각 콘텐츠의 위시 등록 여부를 `isWished`로 반환하며 비회원은 `false`로 반환합니다.
 
@@ -197,8 +199,8 @@ GET /api/v1/tourism/contents/{contentId}
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `visitDate` | LocalDate | N | 집중률·계절 사진 판단 기준일, 미입력 시 오늘 | `2026-08-20` |
-| `participantCount` | Integer | N | 만족도 산출에 참고할 인원 | `8` |
+| `visitDate` | LocalDate | N | 쾌적도와 월 기후 판단 기준일, 미입력 시 오늘 | `2026-08-20` |
+| `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `8` |
 | `ageGroups` | String[] | N | 연령대 코드 `10S`~`70S` | `20S,30S` |
 
 ### Request Body
@@ -492,6 +494,12 @@ GET /api/v1/tourism/contents/{contentId}
 | `satisfaction.ageFitScore` | ScoreComponent | Y | 연령 적합도 |
 | `satisfaction.stayFitScore` | ScoreComponent | Y | 체류 적합도 |
 | `satisfaction.comfortScore` | ScoreComponent | Y | 쾌적도 점수 |
+| `satisfaction.calculatedAt` | OffsetDateTime | Y | 만족도 계산 시각 |
+| `satisfaction.*Score.score` | BigDecimal | Y | 구성요소 점수 |
+| `satisfaction.*Score.weight` | BigDecimal | Y | 구성요소 가중치 |
+| `satisfaction.*Score.imputed` | Boolean | Y | 원천 데이터 누락으로 중립값을 적용했는지 여부 |
+| `satisfaction.*Score.reason` | String | N | 중립값 적용 사유 |
+| `satisfaction.*Score.source` | String | N | 점수 산출에 사용한 관광공사 operation |
 
 ### Response Example
 
@@ -624,7 +632,7 @@ GET /api/v1/tourism/contents/{contentId}
 - 숙박 콘텐츠는 객실별 최대 인원과 객실 수, 또는 전체 수용 인원으로 `capacitySatisfied`를 계산합니다.
 - 충청남도 콘텐츠가 아니면 404를 반환합니다.
 
-### 산출식 및 구현 계획
+### 산출식 및 데이터 기준
 
 ```text
 totalScore = popularityScore × 0.30
@@ -638,11 +646,15 @@ comfortScore = 100 - concentrationRate
 - `detailCommon2`, `detailIntro2`, `detailInfo2`, `detailImage2`를 호출하여 하나의 응답으로 조합합니다.
 - 소개정보는 `contentTypeId`에 해당하는 모든 필드를 전달합니다.
 - `contentTypeId`에 따라 해당 관광타입의 `IntroDetail`과 `DetailInfo` 구조를 반환합니다.
-- 숙박 수용 가능 여부를 별도로 계산하지 않고 관광공사 `accomCount`와 객실별 `roomCount`를 전달합니다.
+- 숙박 수용 가능 여부는 객실별 `roomMaxCount × roomCount`의 합을 우선 사용하고, 계산할 수 없으면 전체 수용 인원을 사용합니다.
 - 숙박 객실과 여행코스 하위 콘텐츠는 `detailInfo2`의 전체 반복 결과를 전달합니다.
 - 계절 사진은 대한민국 관광사진 API의 촬영일을 사용합니다.
 - 촬영일이 없으면 `season=UNKNOWN`으로 제공합니다.
 - 만족도 구성요소 하나가 누락되면 중립값 50과 `imputed=true`를 제공합니다. 모든 구성요소가 누락되면 `satisfaction=null`로 제공합니다.
+- `ageGroups`를 보내지 않으면 연령 적합도는 원천값 없음으로 처리되어 중립값 50을 적용합니다.
+- 상세 API는 숙박일 수를 입력받지 않으므로 체류 적합도는 전체 체류 유형 코드로 계산합니다.
+- `participantCount`는 만족도 점수에 반영되지 않고 숙박 콘텐츠의 `capacitySatisfied`에만 반영됩니다.
+- `visitDate`가 관광 집중도 30일 자료의 날짜와 정확히 일치하면 해당 날짜의 집중률을 사용합니다. 일치하지 않으면 조회된 30일 집중률 평균을 사용하며, 자료가 없으면 중립값 50을 적용합니다.
 
 ## 3. 위시 등록
 
@@ -705,7 +717,6 @@ POST /api/v1/wishes
 |---|---|---:|---|
 | `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
 | `CONTENT_NOT_FOUND` | 콘텐츠 없음 | 404 | 관광 콘텐츠를 찾을 수 없습니다. |
-| `CONTENT_OUT_OF_REGION` | 서비스 지역 아님 | 422 | 충청남도 관광 콘텐츠만 저장할 수 있습니다. |
 | `TOURISM_API_UNAVAILABLE` | 관광 API 장애 | 503 | 잠시 후 다시 시도해 주세요. |
 
 ### Validation
@@ -714,7 +725,7 @@ POST /api/v1/wishes
 - 중복 요청이면 새 행을 만들지 않고 기존 위시를 반환합니다.
 - 콘텐츠 정보는 요청에서 받지 않고 서버가 관광공사에서 조회합니다.
 
-### 구현 계획
+### 처리 기준
 
 - 서버가 통합 관광 상세 서비스를 호출해 콘텐츠를 검증하고 저장용 스냅샷을 생성합니다.
 - 시군구 코드는 천안시 동남구·서북구를 포함한 16개 코드로 폴더명을 결정합니다.
@@ -764,7 +775,7 @@ HTTP/1.1 200 OK
 
 - 회원 ID와 콘텐츠 ID가 모두 일치하는 위시만 삭제합니다.
 
-### 구현 계획
+### 처리 기준
 
 - 회원·콘텐츠 ID 조건으로 삭제하며 대상이 없어도 `200 OK`를 반환합니다.
 
@@ -945,7 +956,7 @@ POST /api/v1/plans/generate
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `planId` | Long | Y | 저장된 일정 ID |
-| `scheduleId` | String | N | AI 서버 일정 식별자 |
+| `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
 | `startDate` | LocalDate | Y | 시작일 |
 | `endDate` | LocalDate | Y | 종료일 |
@@ -973,18 +984,19 @@ POST /api/v1/plans/generate
 | `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m) |
 | `days[].contents[].estimatedCost` | Long | N | 예상 비용 |
 | `days[].contents[].memo` | String | N | 일정 메모 |
-| `createdAt` | OffsetDateTime | Y | 저장 시각 |
+| `createdAt` | LocalDateTime | Y | 저장 시각 |
+| `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
 ### Response Example
 
 ```json
 {
   "planId": 77,
-  "scheduleId": "ai-schedule-20260728-001",
+  "scheduleId": 1001,
   "title": "아산 역사 워크숍",
   "startDate": "2026-08-20",
   "endDate": "2026-08-21",
-  "participantCount": 8,
+  "participantCount": 10,
   "estimatedBudget": {
     "totalAmount": 640000,
     "perPersonAmount": 80000,
@@ -1014,12 +1026,13 @@ POST /api/v1/plans/generate
           "travelTimeMinutes": null,
           "travelDistanceMeters": null,
           "estimatedCost": 0,
-          "memo": "오전 방문을 권장합니다."
+          "memo": null
         }
       ]
     }
   ],
-  "createdAt": "2026-07-28T15:40:00+09:00"
+  "createdAt": "2026-07-28T15:40:00",
+  "updatedAt": "2026-07-28T15:40:00"
 }
 ```
 
@@ -1037,45 +1050,29 @@ POST /api/v1/plans/generate
 
 - 시작일은 종료일보다 늦을 수 없습니다.
 - 일정 기간은 최대 3일입니다.
-- 참가 인원은 1~50명입니다.
+- 참가 인원은 10~50명입니다.
 - `visitMonth`는 `startDate`의 월과 같아야 합니다.
 - `stayNights`는 전체 일정의 날짜 차이보다 클 수 없습니다.
 - AI 요청 JSON만 snake_case를 사용합니다. 애플리케이션 요청·응답 DTO는 lowerCamelCase를 유지합니다.
 - AI 요청에는 `num_nights`, 월 기후 예상치 `monthly_weather`, 콘텐츠별 `is_outdoor`, 보충 후보 `regional_contents`를 전달합니다.
 - 분류 코드는 관광공사 `lclsSystmCode2` 변환 API의 한글 분류명으로 바꿔 `tags`에 전달합니다. 변환 실패 시 로그를 기록하고 `tags: null`로 전달합니다.
 - `selectedContentIds`는 중복 없이 1~10개입니다.
-- AI 응답의 날짜는 요청 기간 안에 있어야 합니다.
+- AI 응답의 일차는 1부터 중복 없이 이어져야 합니다.
 - 일자별 `sequence`는 1부터 중복 없이 이어져야 합니다.
 - AI 응답에는 사용자가 선택한 `saved_contents`가 모두 포함되어야 하며, 전달된 `regional_contents`도 일정에 포함할 수 있습니다.
 
-### 구현 계획
+### AI 연동 계약
 
 - AI 서버에는 `visit_month`, `num_people`, `num_days`, `saved_content_ids`, `saved_contents`,
   `regional_contents`, `age_groups`, `gender_ratio`, `preferences` snake_case 필드로 전달합니다.
 - `saved_contents`는 콘텐츠 ID·제목·카테고리·주소·좌표·시군구·운영정보·분류 태그·연락처·개요·이미지·평균 체류시간·행사기간을 포함합니다.
-- `regional_contents`는 관광공사 `TarRlteTarService1/searchKeyword1`의 연관 관광지명을 `KorService2/searchKeyword2`로 콘텐츠 ID와 매칭하고 상세정보로 보강해 최대 15개 전달합니다.
+- `regional_contents`는 선택 콘텐츠의 시군구에서 관광타입별 가까운 후보를 조회하고 상세정보로 보강해 최대 15개 전달합니다.
 - 사용자가 선택한 `saved_contents`는 모두 유지하며, 동일 콘텐츠가 연관 후보에도 있으면 `regional_contents`에서만 제외합니다.
 - 백엔드는 선택 콘텐츠의 타입별 상세정보, 좌표와 운영정보를 AI 서버에 HTTP POST로 전달합니다.
 - 사용자 입력 예산은 받지 않습니다.
-- 백엔드는 콘텐츠별 `useFee`, 축제 이용요금, 숙박 객실 최소요금, 입장료·관람료·이용료 반복정보를 비용 원문과 함께 AI 서버에 전달합니다.
-- 콘텐츠 비용은 `amount`, `unit`, `quantity`, `calculatedAmount`, 원천 필드·원문과 평균가격 대체 여부를 포함합니다.
-- 인당 요금은 참가 인원, 숙박은 객실 최대 인원으로 계산한 객실 수를 반영합니다.
-- `totalCostRange.minimumAmount`는 실제 수집 비용만 합산하고 계산 불가능한 콘텐츠는 제외합니다.
-- `totalCostRange.maximumAmount`는 비용 미상 콘텐츠에 관광타입별 기본 평균가격을 적용해 합산합니다.
-
-| contentTypeId | 유형 | 기본 평균가격 | 단위 |
-|---:|---|---:|---|
-| `12` | 관광지 | 10,000원 | 1인 |
-| `14` | 문화시설 | 10,000원 | 1인 |
-| `15` | 행사·축제 | 20,000원 | 1인 |
-| `25` | 여행코스 | 0원 | 전체 |
-| `28` | 레포츠 | 30,000원 | 1인 |
-| `32` | 숙박 | 100,000원 | 객실 1박 |
-| `38` | 쇼핑 | 0원 | 전체 |
-| `39` | 음식점 | 15,000원 | 1인 |
 - AI 서버 호출은 DB 트랜잭션 밖에서 수행하고 연결 2초·응답 45초 타임아웃을 적용합니다.
 - AI 응답의 날짜·순서·콘텐츠 ID를 검증한 뒤 일정과 예산 항목을 구조화된 테이블에 5초 제한의 단일 트랜잭션으로 저장합니다. AI 원문 JSON은 중복 저장하지 않습니다.
-- `memo`는 AI 서버 생성값이며 콘텐츠별 운영 안내를 저장합니다.
+- 현재 AI 응답의 `memo`는 일정 콘텐츠에 저장하지 않으므로 응답에서 `null`입니다.
 
 ## 8. 내 일정 목록 조회
 
@@ -1109,7 +1106,7 @@ GET /api/v1/plans
 |---|---|---|---|
 | `items` | PlanSummary[] | Y | 일정 목록 |
 | `items[].planId` | Long | Y | 일정 ID |
-| `items[].scheduleId` | String | N | AI 서버 일정 식별자 |
+| `items[].scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `items[].title` | String | Y | 일정 제목 |
 | `items[].startDate` | LocalDate | Y | 시작일 |
 | `items[].endDate` | LocalDate | Y | 종료일 |
@@ -1129,15 +1126,15 @@ GET /api/v1/plans
   "items": [
     {
       "planId": 77,
-      "scheduleId": "ai-schedule-20260728-001",
+      "scheduleId": 1001,
       "title": "아산 역사 워크숍",
       "startDate": "2026-08-20",
       "endDate": "2026-08-21",
-      "participantCount": 8,
+      "participantCount": 10,
       "thumbnailUrl": "https://example.com/main.jpg",
       "contentCount": 5,
-      "createdAt": "2026-07-28T15:40:00+09:00",
-      "updatedAt": "2026-07-28T15:40:00+09:00"
+      "createdAt": "2026-07-28T15:40:00",
+      "updatedAt": "2026-07-28T15:40:00"
     }
   ],
   "page": 0,
@@ -1196,7 +1193,7 @@ GET /api/v1/plans/{planId}
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `planId` | Long | Y | 일정 ID |
-| `scheduleId` | String | N | AI 서버 일정 식별자 |
+| `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
 | `startDate` | LocalDate | Y | 시작일 |
 | `endDate` | LocalDate | Y | 종료일 |
@@ -1228,11 +1225,11 @@ GET /api/v1/plans/{planId}
 ```json
 {
   "planId": 77,
-  "scheduleId": "ai-schedule-20260728-001",
+  "scheduleId": 1001,
   "title": "아산 역사 워크숍",
   "startDate": "2026-08-20",
   "endDate": "2026-08-21",
-  "participantCount": 8,
+  "participantCount": 10,
   "estimatedBudget": null,
   "days": [
     {
@@ -1258,8 +1255,8 @@ GET /api/v1/plans/{planId}
       ]
     }
   ],
-  "createdAt": "2026-07-28T15:40:00+09:00",
-  "updatedAt": "2026-07-28T15:40:00+09:00"
+  "createdAt": "2026-07-28T15:40:00",
+  "updatedAt": "2026-07-28T15:40:00"
 }
 ```
 
@@ -1299,6 +1296,8 @@ PATCH /api/v1/plans/{planId}
 
 ### Response Body
 
+응답 형식은 [9. 내 일정 상세 조회](#9-내-일정-상세-조회)의 `PlanDetailResponse`와 동일하며, 아래는 수정과 직접 관련된 주요 필드입니다.
+
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `planId` | Long | Y | 일정 ID |
@@ -1324,7 +1323,7 @@ PATCH /api/v1/plans/{planId}
       "activity": 100000
     }
   },
-  "updatedAt": "2026-07-28T16:00:00+09:00"
+  "updatedAt": "2026-07-28T16:00:00"
 }
 ```
 
@@ -1368,7 +1367,7 @@ PUT /api/v1/plans/{planId}/contents
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `planId` | Long | Y | 일정 ID |
-| `scheduleId` | String | N | AI 서버 일정 식별자 |
+| `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
 | `startDate` | LocalDate | Y | 시작일 |
 | `endDate` | LocalDate | Y | 종료일 |
@@ -1447,7 +1446,7 @@ PUT /api/v1/plans/{planId}/contents
       ]
     }
   ],
-  "updatedAt": "2026-07-28T16:10:00+09:00"
+  "updatedAt": "2026-07-28T16:10:00"
 }
 ```
 
@@ -1466,7 +1465,7 @@ PUT /api/v1/plans/{planId}/contents
 - 모든 `contentIds`를 합친 결과는 중복 없이 1~10개여야 합니다.
 - 모든 콘텐츠는 충청남도 범위여야 합니다.
 
-### 구현 계획
+### 처리 기준
 
 - 서버가 `startDate + dayNumber - 1`로 날짜를 계산하고 `contentIds` 배열 순서를 `sequence`로 저장합니다.
 - 콘텐츠가 변경되면 기존 일자·시각·이동시간 배치는 더 이상 유효하지 않습니다.
@@ -1558,8 +1557,8 @@ POST /api/v1/plans/{planId}/proposals
   "fileSize": 152340,
   "previewUrl": "https://presigned.example.com/proposal.docx",
   "downloadUrl": "https://presigned.example.com/proposal.docx",
-  "createdAt": "2026-08-04T10:00:00+09:00",
-  "expiresAt": "2026-09-03T10:00:00+09:00"
+  "createdAt": "2026-08-04T10:00:00",
+  "expiresAt": "2026-09-03T10:00:00"
 }
 ```
 
@@ -1576,11 +1575,11 @@ POST /api/v1/plans/{planId}/proposals
 ### Validation
 
 - 일정에는 콘텐츠가 1개 이상 있어야 합니다.
-- 제목과 조직명은 각각 1~100자여야 합니다.
-- 추가 요청은 최대 1000자입니다.
-- 응답 파일은 DOCX signature와 크기를 검증해야 합니다.
+- 제목과 조직명은 각각 최대 100자입니다. 제목이 비어 있으면 일정 제목 뒤에 `제안서`를 붙이고, 조직명이 비어 있으면 `Wordiga`를 사용합니다.
+- 목적과 추가 요청은 각각 최대 1000자입니다.
+- 응답 파일은 20 MiB 이하여야 하며 ZIP 내부에 `[Content_Types].xml`과 `word/document.xml`이 있어야 합니다.
 
-### 구현 계획
+### AI 및 저장소 연동 계약
 
 - 백엔드는 저장된 일정 전체를 AI 제안서 서버에 전달합니다.
 - AI 서버에서 받은 DOCX bytes를 검증한 뒤 비공개 S3에 저장합니다.
@@ -1634,8 +1633,8 @@ GET /api/v1/plans/{planId}/proposals
     "fileSize": 152340,
     "previewUrl": "https://presigned.example.com/proposal.docx",
     "downloadUrl": "https://presigned.example.com/proposal.docx",
-    "createdAt": "2026-08-04T10:00:00+09:00",
-    "expiresAt": "2026-09-03T10:00:00+09:00"
+    "createdAt": "2026-08-04T10:00:00",
+    "expiresAt": "2026-09-03T10:00:00"
   }
 ]
 ```
@@ -1670,7 +1669,7 @@ DELETE /api/v1/plans/{planId}/proposals/{proposalId}
 | code | name | http code | description |
 |---|---|---:|---|
 | `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
-| `PROPOSAL_NOT_FOUND` | 제안서 없음 | 404 | 제안서를 찾을 수 없습니다. |
+| `CONTENT_NOT_FOUND` | 제안서 없음 | 404 | 제안서를 찾을 수 없습니다. |
 | `PROPOSAL_STORAGE_UNAVAILABLE` | 저장소 장애 | 503 | 제안서를 삭제할 수 없습니다. |
 
 ## 16. 내 소셜 프로필 조회
@@ -1710,7 +1709,7 @@ GET /api/v1/me
 | code | name | http code | description |
 |---|---|---:|---|
 | `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
-| `MEMBER_NOT_FOUND` | 회원 없음 | 404 | 회원을 찾을 수 없습니다. |
+| `CONTENT_NOT_FOUND` | 회원 없음 | 404 | 회원을 찾을 수 없습니다. |
 
 ## 17. 회원탈퇴
 
@@ -1737,8 +1736,8 @@ DELETE /api/v1/me
 | code | name | http code | description |
 |---|---|---:|---|
 | `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
-| `MEMBER_NOT_FOUND` | 회원 없음 | 404 | 회원을 찾을 수 없습니다. |
-| `SOCIAL_UNLINK_UNAVAILABLE` | 소셜 연결 해제 실패 | 503 | 소셜 연결을 해제할 수 없습니다. |
+| `CONTENT_NOT_FOUND` | 회원 없음 | 404 | 회원을 찾을 수 없습니다. |
+| `AI_SERVER_UNAVAILABLE` | 외부 서비스 실패 | 503 | 소셜 연결을 해제하거나 외부 저장소를 처리할 수 없습니다. |
 | `PROPOSAL_STORAGE_UNAVAILABLE` | 저장소 장애 | 503 | 제안서 파일을 삭제할 수 없습니다. |
 
 ### 외부 API
