@@ -74,7 +74,7 @@ class PlanGenerationServiceUnitTest {
 
         var captor = org.mockito.ArgumentCaptor.forClass(AiPlanRequest.class);
         verify(aiServerClient).generatePlan(captor.capture());
-        assertThat(captor.getValue().savedContents().get(0).tags()).isNull();
+        assertThat(captor.getValue().savedContents().get(0).tags()).isEmpty();
     }
 
     @Test
@@ -116,6 +116,48 @@ class PlanGenerationServiceUnitTest {
     }
 
     @Test
+    void rejectsWrongDayCountButAllowsSameContentOnDifferentDays() {
+        PlanGenerateRequest request = request("126508");
+        request.setEndDate(request.getStartDate().plusDays(1));
+        request.setStayDays(2);
+        when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
+        when(aiServerClient.generatePlan(any())).thenReturn(response("126508"));
+
+        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("502");
+
+        AiPlanResponse response = new AiPlanResponse();
+        response.setScheduleId(1L);
+        response.setDays(List.of(day(1, "126508"), day(2, "126508")));
+        when(aiServerClient.generatePlan(any())).thenReturn(response);
+
+        service.generate(1L, request);
+        verify(planWriter).saveGenerated(eq(1L), eq(request), eq(response), anyList(), isNull());
+    }
+
+    @Test
+    void normalizesAiSequenceAndDropsDuplicatesOnlyWithinEachDay() {
+        PlanGenerateRequest request = request("126508");
+        request.setEndDate(request.getStartDate().plusDays(1));
+        request.setStayDays(2);
+        AiPlanResponse response = new AiPlanResponse();
+        AiPlanResponse.Day first = day(1, "126508", "126508");
+        first.getContents().get(0).setSequence(7);
+        first.getContents().get(1).setSequence(9);
+        AiPlanResponse.Day second = day(2, "126508");
+        second.getContents().get(0).setSequence(4);
+        response.setDays(List.of(first, second));
+        when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
+        when(aiServerClient.generatePlan(any())).thenReturn(response);
+
+        service.generate(1L, request);
+
+        assertThat(first.getContents()).hasSize(1);
+        assertThat(first.getContents().getFirst().getSequence()).isEqualTo(1);
+        assertThat(second.getContents().getFirst().getSequence()).isEqualTo(1);
+        verify(planWriter).saveGenerated(eq(1L), eq(request), eq(response), anyList(), isNull());
+    }
+
+    @Test
     void fetchesMonthlyWeatherOnlyForTheFirstSelectedContent() {
         PlanGenerateRequest request = request("A", "B");
         when(tourismContentDetailService.getAiDetail("A", request.getStartDate(), true))
@@ -134,6 +176,7 @@ class PlanGenerationServiceUnitTest {
         PlanGenerateRequest r = new PlanGenerateRequest();
         r.setStartDate(LocalDate.of(2026, 8, 20));
         r.setEndDate(r.getStartDate());
+        r.setStayDays(1);
         r.setParticipantCount(2);
         r.setSelectedContentIds(List.of(ids));
         return r;
@@ -162,6 +205,20 @@ class PlanGenerationServiceUnitTest {
         return r;
     }
 
+    private AiPlanResponse.Day day(int dayNumber, String... ids) {
+        java.util.ArrayList<AiPlanResponse.Content> contents = new java.util.ArrayList<>();
+        for (int i = 0; i < ids.length; i++) {
+            AiPlanResponse.Content content = new AiPlanResponse.Content();
+            content.setSequence(i + 1);
+            content.setContentId(ids[i]);
+            contents.add(content);
+        }
+        AiPlanResponse.Day day = new AiPlanResponse.Day();
+        day.setDayNumber(dayNumber);
+        day.setContents(contents);
+        return day;
+    }
+
     private TourismContentDetailResponse detail() {
         return detail("126508", "현충사");
     }
@@ -170,6 +227,8 @@ class PlanGenerationServiceUnitTest {
         return TourismContentDetailResponse.builder().common(
                 com.wordiga.tourism.dto.detail.TourismCommonDetailDto.builder()
                         .contentId(id).contentTypeId("12").title(title)
+                        .mapx(java.math.BigDecimal.valueOf(127.1)).mapy(java.math.BigDecimal.valueOf(36.8))
+                        .lDongSignguCd("131")
                         .lclsSystm1("AC").lclsSystm2("AC01").build()).build();
     }
 }

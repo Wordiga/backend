@@ -34,11 +34,14 @@ public class PlanGenerationService {
         for (int index = 0; index < request.getSelectedContentIds().size(); index++)
             details.add(tourismContentDetailService.getAiDetail(
                     request.getSelectedContentIds().get(index), request.getStartDate(), index == 0));
+        if (details.stream().anyMatch(detail -> !hasRequiredAiFields(detail)))
+            invalid(HttpStatus.BAD_REQUEST, "선택 콘텐츠에 AI 일정 생성에 필요한 좌표 또는 지역 정보가 없습니다.");
         var regional = regionalContentService.find(request, details);
         List<TourismContentDetailResponse> all = new ArrayList<>(details);
         all.addAll(regional);
         AiPlanResponse response = aiServerClient.generatePlan(
                 AiPlanRequest.from(request, details, regional, resolveTags(all)));
+        normalizeResponse(response);
         validateResponse(request, regional, response);
         String sigunguCode = details.getFirst().getCommon().getLDongSignguCd();
         String sigunguName = resolveSigunguName(sigunguCode);
@@ -52,6 +55,13 @@ public class PlanGenerationService {
                 .map(com.wordiga.global.client.dto.SigunguItem::getName)
                 .findFirst()
                 .orElse(null);
+    }
+
+    private boolean hasRequiredAiFields(TourismContentDetailResponse detail) {
+        if (detail == null || detail.getCommon() == null) return false;
+        var common = detail.getCommon();
+        return common.getContentId() != null && common.getTitle() != null && common.getContentTypeId() != null
+                && common.getMapx() != null && common.getMapy() != null && common.getLDongSignguCd() != null;
     }
 
     private Map<String, List<String>> resolveTags(List<TourismContentDetailResponse> details) {
@@ -96,15 +106,18 @@ public class PlanGenerationService {
             invalid(HttpStatus.BAD_REQUEST, "콘텐츠 ID는 중복될 수 없습니다.");
         if (r.getVisitMonth() != null && r.getVisitMonth() != r.getStartDate().getMonthValue())
             invalid(HttpStatus.BAD_REQUEST, "방문 월은 시작일의 월과 같아야 합니다.");
-        long maximumNights = ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate());
-        if (r.getStayNights() != null && r.getStayNights() > maximumNights)
-            invalid(HttpStatus.BAD_REQUEST, "숙박 수는 일정 기간보다 클 수 없습니다.");
+        long dateDays = ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) + 1;
+        if (r.getStayDays() != dateDays)
+            invalid(HttpStatus.BAD_REQUEST, "체류 일수는 시작일과 종료일을 포함한 기간과 같아야 합니다.");
     }
 
     private void validateResponse(PlanGenerateRequest r, List<TourismContentDetailResponse> regional,
                                   AiPlanResponse response) {
         if (response.getDays() == null || response.getDays().isEmpty())
             invalid(HttpStatus.BAD_GATEWAY, "AI 일정이 비어 있습니다.");
+        long requestedDays = ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) + 1;
+        if (response.getDays().size() != requestedDays)
+            invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 일수가 요청과 다릅니다.");
         Set<String> selected = new HashSet<>(r.getSelectedContentIds());
         Set<String> allowed = new HashSet<>(selected);
         regional.forEach(detail -> allowed.add(detail.getCommon().getContentId()));
@@ -113,13 +126,34 @@ public class PlanGenerationService {
         for (AiPlanResponse.Day day : response.getDays()) {
             if (day.getDayNumber() == null || day.getDayNumber() != expectedDay++ || day.getContents() == null)
                 invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 날짜가 올바르지 않습니다.");
+            Set<String> scheduledToday = new HashSet<>();
             int sequence = 1;
             for (AiPlanResponse.Content c : day.getContents())
                 if (c.getSequence() == null || c.getSequence() != sequence++ || c.getContentId() == null
-                        || !allowed.contains(c.getContentId()) || !scheduled.add(c.getContentId()))
+                        || !allowed.contains(c.getContentId()) || !scheduledToday.add(c.getContentId()))
                     invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 콘텐츠 순서가 올바르지 않습니다.");
+                else scheduled.add(c.getContentId());
         }
         if (!scheduled.containsAll(selected)) invalid(HttpStatus.BAD_GATEWAY, "AI 일정에 선택 콘텐츠가 모두 포함되어야 합니다.");
+    }
+
+    private void normalizeResponse(AiPlanResponse response) {
+        if (response == null || response.getDays() == null) return;
+        for (AiPlanResponse.Day day : response.getDays()) {
+            if (day == null || day.getContents() == null) continue;
+            Set<String> seen = new HashSet<>();
+            List<AiPlanResponse.Content> normalized = new ArrayList<>();
+            for (AiPlanResponse.Content content : day.getContents()) {
+                if (content != null && content.getContentId() != null && !seen.add(content.getContentId())) {
+                    log.warn("[AI 일정] 같은 날짜의 중복 콘텐츠 제외: day={}, contentId={}",
+                            day.getDayNumber(), content.getContentId());
+                    continue;
+                }
+                if (content != null) content.setSequence(normalized.size() + 1);
+                normalized.add(content);
+            }
+            day.setContents(normalized);
+        }
     }
 
     private void invalid(HttpStatus status, String message) {

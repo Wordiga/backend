@@ -23,7 +23,7 @@ class AiPlanRequestTest {
         request.setEndDate(LocalDate.of(2026, 9, 2));
         request.setParticipantCount(25);
         request.setVisitMonth(9);
-        request.setStayNights(1);
+        request.setStayDays(2);
         request.setAgeGroups(List.of("30대", "40대"));
         request.setSelectedContentIds(List.of("CT001"));
         TourismContentDetailResponse detail = TourismContentDetailResponse.builder()
@@ -45,7 +45,7 @@ class AiPlanRequestTest {
         assertThat(json.get("visit_month").asInt()).isEqualTo(9);
         assertThat(json.get("num_people").asInt()).isEqualTo(25);
         assertThat(json.get("num_days").asInt()).isEqualTo(2);
-        assertThat(json.get("num_nights").asInt()).isEqualTo(1);
+        assertThat(json.has("num_nights")).isFalse();
         assertThat(json.get("saved_content_ids").get(0).asText()).isEqualTo("CT001");
         assertThat(json.get("saved_contents").get(0).get("category").asText()).isEqualTo("accommodation");
         assertThat(json.get("saved_contents").get(0).get("latitude").decimalValue()).isEqualByComparingTo("36.4");

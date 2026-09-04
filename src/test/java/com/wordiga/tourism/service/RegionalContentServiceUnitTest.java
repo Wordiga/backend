@@ -51,10 +51,25 @@ class RegionalContentServiceUnitTest {
         verify(detailService, never()).getAiDetail(eq("126508"), any(), anyBoolean());
     }
 
+    @Test
+    void excludesRegionalContentMissingAiRequiredFields() {
+        PlanGenerateRequest request = request();
+        AreaBasedItem candidate = candidate("regional-1", "외암민속마을");
+        when(tourismApiClient.fetchAreaBasedContent("44", "460", 100)).thenReturn(List.of(candidate));
+        when(detailService.getAiDetail("regional-1", request.getStartDate(), false))
+                .thenReturn(TourismContentDetailResponse.builder().common(TourismCommonDetailDto.builder()
+                        .contentId("regional-1").title("외암민속마을").lDongSignguCd("460")
+                        .mapx(java.math.BigDecimal.valueOf(126.9))
+                        .mapy(java.math.BigDecimal.valueOf(36.8)).build()).build());
+
+        assertThat(service.find(request, List.of(detail("126508", "현충사")))).isEmpty();
+    }
+
     private PlanGenerateRequest request() {
         PlanGenerateRequest request = new PlanGenerateRequest();
         request.setStartDate(LocalDate.of(2026, 8, 20));
         request.setEndDate(request.getStartDate());
+        request.setStayDays(1);
         request.setParticipantCount(20);
         request.setSelectedContentIds(List.of("126508"));
         return request;
@@ -62,7 +77,7 @@ class RegionalContentServiceUnitTest {
 
     private TourismContentDetailResponse detail(String id, String title) {
         return TourismContentDetailResponse.builder().common(TourismCommonDetailDto.builder()
-                .contentId(id).title(title).lDongSignguCd("460")
+                .contentId(id).title(title).contentTypeId("12").lDongSignguCd("460")
                 .mapx(java.math.BigDecimal.valueOf(126.9))
                 .mapy(java.math.BigDecimal.valueOf(36.8)).build()).build();
     }

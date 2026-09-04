@@ -73,7 +73,7 @@ class TourismContentDetailServiceUnitTest {
                 .thenReturn(List.of(image));
         when(tourismApiClient.searchPhotos("현충사")).thenReturn(photoResponse("202606"));
 
-        TourismContentDetailResponse result = service.getDetail("126508", null, List.of("20S"), null, 8);
+        TourismContentDetailResponse result = service.getDetail("126508", null, List.of("20S", "50s-plus"), null, 8);
 
         assertThat(result.getCommon().getTitle()).isEqualTo("현충사");
         assertThat(result.getIntro().getUseTime()).isEqualTo("09:00~18:00");
@@ -86,6 +86,12 @@ class TourismContentDetailServiceUnitTest {
                     assertThat(item.getSeason()).isEqualTo(SeasonalImageDto.Season.SUMMER);
                     assertThat(item.getShootingDate()).isNull();
                 });
+        var requestCaptor = org.mockito.ArgumentCaptor.forClass(com.wordiga.tourism.dto.SatisfactionRequestDto.class);
+        verify(satisfactionService).calculate(requestCaptor.capture(), any());
+        assertThat(requestCaptor.getValue().ageGroupRatios())
+                .containsEntry("20S", new java.math.BigDecimal("0.50"))
+                .containsEntry("50S", new java.math.BigDecimal("0.25"))
+                .containsEntry("60S", new java.math.BigDecimal("0.25"));
     }
 
     @Test

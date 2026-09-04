@@ -107,7 +107,7 @@ Content-Type: application/json
   "endDate": "2026-08-21",
   "participantCount": 8,
   "visitMonth": 8,
-  "stayNights": 1,
+  "stayDays": 2,
   "ageGroups": ["20S", "30S"],
   "selectedContentIds": ["{{contentId}}", "{{secondContentId}}"]
 }

@@ -70,7 +70,7 @@ ai:
   server:
     base-url: ${AI_SERVER_BASE_URL:http://127.0.0.1:8000}
     connect-timeout: ${AI_SERVER_CONNECT_TIMEOUT:2s}
-    read-timeout: ${AI_SERVER_READ_TIMEOUT:45s}
+    read-timeout: ${AI_SERVER_READ_TIMEOUT:100s}
 
 proposal:
   s3:

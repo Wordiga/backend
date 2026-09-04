@@ -54,7 +54,7 @@ GET /api/v1/tourism/contents
 
 관련 기능:
 
-* 인기·계절·위시 기반 개인화 콘텐츠를 조회합니다.
+* 인기·계절·연관 관광지·위시 기반 개인화 콘텐츠를 조회합니다.
 * 검색어와 지역·관광타입 필터를 적용합니다.
 
 인증: 불필요
@@ -63,11 +63,12 @@ GET /api/v1/tourism/contents
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `type` | Enum | N | `POPULAR`, `SEASONAL`, `PERSONALIZED`; 기본값은 `POPULAR` | `POPULAR` |
+| `type` | Enum | N | `POPULAR`, `SEASONAL`, `RELATED`, `PERSONALIZED`; 기본값은 `POPULAR` | `POPULAR` |
 | `visitDate` | LocalDate | N | 계절 정렬 기준일, 미입력 시 오늘 | `2026-08-20` |
 | `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
 | `contentTypeId` | String | N | 관광타입 ID | `12` |
 | `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드 | `200` |
+| `referenceContentId` | String | C | `type=RELATED`일 때 필수인 기준 관광 콘텐츠 ID | `2717354` |
 | `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `25` |
 | `ageGroups` | String[] | N | 로그인 회원의 목록 만족도 산출에 사용할 연령대 | `30S,40S` |
@@ -140,6 +141,7 @@ GET /api/v1/tourism/contents
 - `size`는 1~50이어야 합니다.
 - `participantCount`는 1~50이어야 합니다.
 - `PERSONALIZED`는 로그인이 필요합니다.
+- `RELATED`는 `referenceContentId`가 필요합니다.
 
 ### 동작 및 정렬 기준
 
@@ -147,6 +149,7 @@ GET /api/v1/tourism/contents
 - `POPULAR` 기본 점수는 소비 강도 60%, 체류 강도 40%로 계산합니다.
 - `SEASONAL` 기본 점수는 방문 예정 월의 관광 서비스 수요를 사용합니다.
 - `PERSONALIZED`는 위시에 저장된 상위 3개 시군구와 관광 분류 테마를 후보 조건으로 사용하고, 활동로그는 수집하지 않습니다. 만족도는 조회 시 계산하며 저장하지 않습니다.
+- `RELATED`는 기준 콘텐츠명과 지역으로 한국관광공사 연관 관광지를 조회한 뒤 충청남도 콘텐츠 ID로 매칭하며, 기준 콘텐츠와 중복 결과를 제외하고 원천 순위를 유지합니다.
 - 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
 - `POPULAR`, `SEASONAL`은 원천 API 순위를 유지하고 `PERSONALIZED`는 `recommendationScore DESC`로 정렬합니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.
@@ -202,6 +205,7 @@ GET /api/v1/tourism/contents/{contentId}
 | `visitDate` | LocalDate | N | 쾌적도와 월 기후 판단 기준일, 미입력 시 오늘 | `2026-08-20` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `8` |
 | `ageGroups` | String[] | N | 연령대 코드 `10S`~`70S` | `20S,30S` |
+| `stayDays` | Integer | N | 체류 일수 `1`~`3`; 체류 적합도 계산 시 숙박 일수 `stayDays-1`로 변환 | `2` |
 
 ### Request Body
 
@@ -947,7 +951,7 @@ POST /api/v1/plans/generate
 | `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
 | `visitMonth` | Integer | N | 방문 월(1~12), 미입력 시 `startDate`의 월 사용 |
-| `stayNights` | Integer | N | 숙박 수(0~2), 미입력 시 시작일·종료일의 날짜 차이 사용 |
+| `stayDays` | Integer | Y | 체류 일수 `1`~`3`; 시작일과 종료일을 포함한 기간과 일치해야 함 |
 | `ageGroups` | String[] | N | 참가자 연령대 |
 | `selectedContentIds` | String[] | Y | 선택 콘텐츠 ID, 배열 순서가 사용자 우선순위 |
 
@@ -1044,7 +1048,9 @@ POST /api/v1/plans/generate
 | `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
 | `CONTENT_NOT_FOUND` | 콘텐츠 없음 | 404 | 선택한 콘텐츠를 찾을 수 없습니다. |
 | `AI_RESPONSE_INVALID` | AI 응답 오류 | 502 | AI 일정 응답 형식을 확인해 주세요. |
+| `AI_UPSTREAM_ERROR` | AI 처리 오류 | 502 | AI 서버가 요청을 받았지만 일정 생성에 실패했습니다. |
 | `AI_SERVER_UNAVAILABLE` | AI 서버 장애 | 503 | 잠시 후 다시 생성해 주세요. |
+| `AI_SERVER_TIMEOUT` | AI 처리 시간 초과 | 504 | AI 서버 처리 제한 시간을 초과했습니다. |
 
 ### Validation
 
@@ -1052,13 +1058,15 @@ POST /api/v1/plans/generate
 - 일정 기간은 최대 3일입니다.
 - 참가 인원은 10~50명입니다.
 - `visitMonth`는 `startDate`의 월과 같아야 합니다.
-- `stayNights`는 전체 일정의 날짜 차이보다 클 수 없습니다.
+- `stayDays`는 1~3이며 `endDate - startDate + 1`과 같아야 합니다.
 - AI 요청 JSON만 snake_case를 사용합니다. 애플리케이션 요청·응답 DTO는 lowerCamelCase를 유지합니다.
-- AI 요청에는 `num_nights`, 월 기후 예상치 `monthly_weather`, 콘텐츠별 `is_outdoor`, 보충 후보 `regional_contents`를 전달합니다.
-- 분류 코드는 관광공사 `lclsSystmCode2` 변환 API의 한글 분류명으로 바꿔 `tags`에 전달합니다. 변환 실패 시 로그를 기록하고 `tags: null`로 전달합니다.
+- AI 요청에는 월 기후 예상치 `monthly_weather`, 콘텐츠별 `is_outdoor`, 보충 후보 `regional_contents`를 전달합니다. 체류 기간은 `num_days` 하나로 전달합니다.
+- 분류 코드는 관광공사 `lclsSystmCode2` 변환 API의 한글 분류명으로 바꿔 `tags`에 전달합니다. 변환 실패 시 로그를 기록하고 AI 계약에 맞게 `tags: []`로 전달합니다.
 - `selectedContentIds`는 중복 없이 1~10개입니다.
 - AI 응답의 일차는 1부터 중복 없이 이어져야 합니다.
+- AI 응답의 일수는 요청한 `stayDays`와 같아야 합니다.
 - 일자별 `sequence`는 1부터 중복 없이 이어져야 합니다.
+- 같은 날짜 안에서는 같은 콘텐츠를 중복 배치할 수 없고, 서로 다른 날짜에는 동일 숙소 등 같은 콘텐츠를 다시 배치할 수 있습니다.
 - AI 응답에는 사용자가 선택한 `saved_contents`가 모두 포함되어야 하며, 전달된 `regional_contents`도 일정에 포함할 수 있습니다.
 
 ### AI 연동 계약

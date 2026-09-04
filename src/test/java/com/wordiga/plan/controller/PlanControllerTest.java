@@ -84,7 +84,7 @@ class PlanControllerTest {
         when(proposalService.list(1L, 9L)).thenReturn(List.of());
 
         mockMvc.perform(post("/api/v1/plans/generate").contentType("application/json").content("""
-                {"startDate":"2026-08-20","endDate":"2026-08-21","participantCount":10,
+                {"startDate":"2026-08-20","endDate":"2026-08-21","stayDays":2,"participantCount":10,
                  "selectedContentIds":["126508"]}
                 """)).andExpect(status().isOk()).andExpect(jsonPath("$.planId").value(9));
         mockMvc.perform(post("/api/v1/plans/9/proposals").contentType("application/json").content("{}"))

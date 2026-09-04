@@ -53,17 +53,25 @@ public class TourismSatisfactionService {
                 k -> calculateStayFit(baseYm, request.areaCode(), signguCode, request.stayNights()));
 
         // 4. 쾌적도 계산 (30일 관측 데이터)
-        OptionalDouble comfort = calculateComfort(request.areaCode(), signguCode, request.title(), request.visitDate());
+        ScoreResult comfort = calculateComfort(request.areaCode(), signguCode, request.title(), request.visitDate());
 
         // 모두 데이터가 없으면 null 반환
-        if (popularity.isEmpty() && ageFit.isEmpty() && stayFit.isEmpty() && comfort.isEmpty()) {
+        if (popularity.isEmpty() && ageFit.isEmpty() && stayFit.isEmpty() && comfort.score().isEmpty()) {
             return null;
         }
 
-        ScoreComponentDto popularityComponent = buildComponent(popularity, POPULARITY_WEIGHT, "areaCulResDemList, areaTarSvcDemList");
-        ScoreComponentDto ageFitComponent = buildComponent(ageFit, AGE_FIT_WEIGHT, "areaTouDivList, areaExpDivList");
-        ScoreComponentDto stayFitComponent = buildComponent(stayFit, STAY_FIT_WEIGHT, "areaTarSjrnDsList, areaTarExpDsList");
-        ScoreComponentDto comfortComponent = buildComponent(comfort, COMFORT_WEIGHT, "tatsCnctrRatedList");
+        ScoreComponentDto popularityComponent = buildComponent(popularity, POPULARITY_WEIGHT,
+                "areaCulResDemList, areaTarSvcDemList", "인기도 원천 데이터가 없어 중립값 50을 적용했습니다.");
+        ScoreComponentDto ageFitComponent = buildComponent(ageFit, AGE_FIT_WEIGHT,
+                "areaTouDivList, areaExpDivList", CollectionUtils.isEmpty(request.ageGroupRatios())
+                        ? "연령대가 입력되지 않아 중립값 50을 적용했습니다."
+                        : "선택한 연령대의 원천 데이터가 없어 중립값 50을 적용했습니다.");
+        ScoreComponentDto stayFitComponent = buildComponent(stayFit, STAY_FIT_WEIGHT,
+                "areaTarSjrnDsList, areaTarExpDsList", request.stayNights() == null
+                        ? "체류 일수가 입력되지 않았고 전체 체류 유형 원천 데이터도 없어 중립값 50을 적용했습니다."
+                        : "선택한 체류 일수의 원천 데이터가 없어 중립값 50을 적용했습니다.");
+        ScoreComponentDto comfortComponent = buildComponent(comfort.score(), COMFORT_WEIGHT,
+                "tatsCnctrRatedList", comfort.missingReason());
 
         BigDecimal totalScore = calculateWeightedTotal(popularityComponent, ageFitComponent, stayFitComponent, comfortComponent);
 
@@ -138,10 +146,10 @@ public class TourismSatisfactionService {
     }
 
     // ─── 4. 쾌적도 연산 ───
-    private OptionalDouble calculateComfort(String areaCode, String signguCode, String title, LocalDate visitDate) {
+    private ScoreResult calculateComfort(String areaCode, String signguCode, String title, LocalDate visitDate) {
         List<TatsCnctrRateItem> items = extractItems(tourismApiClient.fetchConcentrationRate(areaCode, signguCode, title));
         if (items.isEmpty()) {
-            return OptionalDouble.empty();
+            return new ScoreResult(OptionalDouble.empty(), "관광지 집중률 원천 데이터가 없어 중립값 50을 적용했습니다.");
         }
 
         // 1. visitDate가 유효하고 30일 관측 목록 내에 존재하는지 확인
@@ -154,8 +162,10 @@ public class TourismSatisfactionService {
                     .findFirst();
 
             if (exactMatch.isPresent()) {
-                return OptionalDouble.of(clamp(100.0 - exactMatch.getAsDouble()));
+                return new ScoreResult(OptionalDouble.of(clamp(100.0 - exactMatch.getAsDouble())), null);
             }
+            return new ScoreResult(OptionalDouble.empty(),
+                    "요청일이 관광지 집중률 예측 제공 범위를 벗어나 중립값 50을 적용했습니다.");
         }
 
         // 2. visitDate가 범위를 벗어났거나 지정되지 않은 경우 -> 향후 30일 전체 평균 집중률 적용
@@ -166,8 +176,8 @@ public class TourismSatisfactionService {
                 .orElse(Double.NaN);
 
         return Double.isNaN(avgConcentration)
-                ? OptionalDouble.empty()
-                : OptionalDouble.of(clamp(100.0 - avgConcentration));
+                ? new ScoreResult(OptionalDouble.empty(), "관광지 집중률 원천 데이터가 없어 중립값 50을 적용했습니다.")
+                : new ScoreResult(OptionalDouble.of(clamp(100.0 - avgConcentration)), null);
     }
 
     // ─── Helper Methods ───
@@ -182,13 +192,13 @@ public class TourismSatisfactionService {
         };
     }
 
-    private ScoreComponentDto buildComponent(OptionalDouble score, BigDecimal weight, String source) {
+    private ScoreComponentDto buildComponent(OptionalDouble score, BigDecimal weight, String source, String missingReason) {
         boolean imputed = score.isEmpty();
         return ScoreComponentDto.builder()
                 .score(imputed ? NEUTRAL_SCORE : BigDecimal.valueOf(clamp(score.getAsDouble())).setScale(1, RoundingMode.HALF_UP))
                 .weight(weight)
                 .imputed(imputed)
-                .reason(imputed ? "원천 데이터가 없어 중립값 50을 적용했습니다." : null)
+                .reason(imputed ? missingReason : null)
                 .source(imputed ? null : source)
                 .build();
     }
@@ -237,5 +247,8 @@ public class TourismSatisfactionService {
     }
 
     private record StayKey(RegionKey region, Integer stayNights) {
+    }
+
+    private record ScoreResult(OptionalDouble score, String missingReason) {
     }
 }

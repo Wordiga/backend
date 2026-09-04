@@ -45,10 +45,13 @@ public class TourismContentService {
 
     public TourismContentListResponse getContentList(
             Long memberId, ListType type, LocalDate visitDate, String keyword, String contentTypeId,
-            String lDongSignguCd, Boolean capacitySatisfied,
+            String lDongSignguCd, String referenceContentId, Boolean capacitySatisfied,
             Integer participantCount, List<String> ageGroups, int page, int size) {
         if (type == ListType.PERSONALIZED)
             return personalizedTourismContentService.get(memberId, visitDate, ageGroups, null, page, size);
+        if (type == ListType.RELATED)
+            return enrichMemberData(memberId, visitDate, ageGroups,
+                    related(referenceContentId, page, size));
         if (keyword != null && !keyword.isBlank()) {
             return enrichMemberData(memberId, visitDate, ageGroups,
                     filterCapacity(search(keyword.trim(), contentTypeId, lDongSignguCd, page, size),
@@ -77,6 +80,49 @@ public class TourismContentService {
         return enrichMemberData(memberId, visitDate, ageGroups,
                 filterCapacity(page(filtered, type, page, size), capacitySatisfied, participantCount,
                         visitDate, ageGroups));
+    }
+
+    public TourismContentListResponse getContentList(
+            Long memberId, ListType type, LocalDate visitDate, String keyword, String contentTypeId,
+            String lDongSignguCd, Boolean capacitySatisfied,
+            Integer participantCount, List<String> ageGroups, int page, int size) {
+        return getContentList(memberId, type, visitDate, keyword, contentTypeId, lDongSignguCd,
+                null, capacitySatisfied, participantCount, ageGroups, page, size);
+    }
+
+    private TourismContentListResponse related(String referenceContentId, int page, int size) {
+        if (referenceContentId == null || referenceContentId.isBlank())
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "연관 관광지 조회에는 기준 콘텐츠 ID가 필요합니다.");
+        ContentDetailDto reference = tourismApiClient.fetchCommonDetail(referenceContentId);
+        if (reference == null || !tourismProperties.getRegion().getChungnamCode().equals(reference.getLDongRegnCd()))
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.NOT_FOUND, "기준 관광 콘텐츠를 찾을 수 없습니다.");
+
+        String areaCode = tourismProperties.getRegion().getChungnamCode();
+        String signguCode = reference.getLDongSignguCd() == null ? null : areaCode + reference.getLDongSignguCd();
+        String baseYm = LocalDate.now().minusMonths(2).format(DateTimeFormatter.ofPattern("yyyyMM"));
+        List<RelatedTourismItem> related = tourismApiClient.fetchRelatedTourism(
+                baseYm, areaCode, signguCode, reference.getTitle(), 50);
+
+        LinkedHashMap<String, TourismContentDto> resolved = new LinkedHashMap<>();
+        for (RelatedTourismItem item : related) {
+            if (item.getRlteTatsNm() == null || resolved.size() >= (page + 1) * size + 1) continue;
+            AreaBasedResponse search = tourismApiClient.searchContent(
+                    item.getRlteTatsNm(), null, areaCode, null, 1, 10);
+            extractItems(search).stream()
+                    .filter(candidate -> item.getRlteTatsNm().equals(candidate.getTitle()))
+                    .filter(candidate -> !referenceContentId.equals(candidate.getContentid()))
+                    .findFirst()
+                    .ifPresent(candidate -> resolved.putIfAbsent(candidate.getContentid(),
+                            toDto(candidate, rankScore(item.getRlteRank() == null ? resolved.size() : item.getRlteRank() - 1))));
+        }
+
+        List<TourismContentDto> items = new ArrayList<>(resolved.values());
+        int from = Math.min(page * size, items.size());
+        int to = Math.min(from + size, items.size());
+        return TourismContentListResponse.builder().items(items.subList(from, to)).page(page).size(size)
+                .hasNext(to < items.size() || related.size() == 50).build();
     }
 
     private TourismContentListResponse enrichMemberData(

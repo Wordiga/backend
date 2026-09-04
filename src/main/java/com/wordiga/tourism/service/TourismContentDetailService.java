@@ -17,8 +17,9 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Locale;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.wordiga.global.util.KtoUtils.extractItems;
 
@@ -120,6 +121,16 @@ public class TourismContentDetailService {
     private Map<String, BigDecimal> parseAgeRatios(List<String> ageGroups) {
         if (ageGroups == null || ageGroups.isEmpty()) return Map.of();
         BigDecimal ratio = BigDecimal.ONE.divide(BigDecimal.valueOf(ageGroups.size()), 2, RoundingMode.HALF_UP);
-        return ageGroups.stream().collect(Collectors.toMap(age -> age, age -> ratio, (a, b) -> a));
+        Map<String, BigDecimal> ratios = new LinkedHashMap<>();
+        for (String age : ageGroups) {
+            if (age != null && age.toLowerCase(Locale.ROOT).replace("_", "-").equals("50s-plus")) {
+                BigDecimal half = ratio.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
+                ratios.merge("50S", half, BigDecimal::add);
+                ratios.merge("60S", half, BigDecimal::add);
+            } else if (age != null) {
+                ratios.merge(age, ratio, BigDecimal::add);
+            }
+        }
+        return ratios;
     }
 }

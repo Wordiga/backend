@@ -47,12 +47,10 @@ public class RegionalContentService {
         );
 
         Map<String, List<CandidateWithDistance>> categoryCandidatesMap = new LinkedHashMap<>();
+        List<AreaBasedItem> areaItems = tourismApiClient.fetchAreaBasedContent(regionCode, sigunguCode, 100);
 
         for (String contentTypeId : targetCategoryCodes) {
-            // 시군 전체 범위 조회 (100개 수집)
-            List<AreaBasedItem> items = tourismApiClient.fetchAreaBasedContent(regionCode, sigunguCode, 100);
-
-            List<CandidateWithDistance> candidates = items.stream()
+            List<CandidateWithDistance> candidates = areaItems.stream()
                     .filter(item -> contentTypeId.equals(item.getContenttypeid()))
                     .filter(item -> !savedContentIds.contains(item.getContentid()))
                     .map(item -> new CandidateWithDistance(item, calculateDistance(centroid, item.getMapx(), item.getMapy())))
@@ -63,8 +61,8 @@ public class RegionalContentService {
             categoryCandidatesMap.put(contentTypeId, candidates);
         }
 
-        // 3. 숙박 보장 조건 처리 (stayNights >= 1 일 때 숙박 후보 최소 1개 이상 포함)
-        boolean needLodging = request.getStayNights() != null && request.getStayNights() >= 1;
+        // 3. 숙박 보장 조건 처리 (2일 이상 체류할 때 숙박 후보 최소 1개 이상 포함)
+        boolean needLodging = request.getStayDays() >= 2;
         List<CandidateWithDistance> finalCandidates = new ArrayList<>();
 
         if (needLodging) {
@@ -89,14 +87,23 @@ public class RegionalContentService {
         List<TourismContentDetailResponse> details = new ArrayList<>();
         for (CandidateWithDistance candidate : finalCandidates) {
             try {
-                details.add(detailService.getAiDetail(
-                        candidate.item().getContentid(), request.getStartDate(), false));
+                TourismContentDetailResponse detail = detailService.getAiDetail(
+                        candidate.item().getContentid(), request.getStartDate(), false);
+                if (hasRequiredAiFields(detail))
+                    details.add(detail);
             } catch (RuntimeException exception) {
                 log.warn("[AI 일정] 지역 후보 상세 조회 실패: contentId={}",
                         candidate.item().getContentid(), exception);
             }
         }
         return details;
+    }
+
+    private boolean hasRequiredAiFields(TourismContentDetailResponse detail) {
+        if (detail == null || detail.getCommon() == null) return false;
+        var common = detail.getCommon();
+        return common.getContentId() != null && common.getTitle() != null && common.getContentTypeId() != null
+                && common.getMapx() != null && common.getMapy() != null && common.getLDongSignguCd() != null;
     }
 
     // ─── 거리 연산 Helper ───
