@@ -104,7 +104,7 @@ class TourismContentServiceUnitTest {
     }
 
     @Test
-    void ranksPopularRegionsAndMapsAllContentCategories() {
+    void ranksPopularRegions() {
         AreaTarExpDsItem expenditure = new AreaTarExpDsItem();
         expenditure.setSignguCd("44200");
         expenditure.setTarExpDsIxVal("90");
@@ -131,9 +131,32 @@ class TourismContentServiceUnitTest {
 
         assertThat(result.getItems()).hasSize(10);
         assertThat(result.getItems().getFirst().getRecommendationScore()).isEqualByComparingTo("86");
-        assertThat(result.getItems()).extracting("categoryName")
-                .containsExactly("관광지", "문화시설", "행사/공연/축제", "여행코스", "레포츠",
-                        "숙박", "쇼핑", "음식점", "기타", "기타");
+    }
+
+    @Test
+    void mapsPolicyThemeAndCategoryAndProvidesMetadata() {
+        AreaBasedItem festival = item("15");
+        festival.setLclsSystm1("EV");
+        AreaBasedItem condominium = item("32");
+        condominium.setLclsSystm1("AC");
+        condominium.setLclsSystm2("AC02");
+        AreaBasedItem western = item("39");
+        western.setLclsSystm1("FD");
+        western.setLclsSystm2("FD02");
+        western.setLclsSystm3("FD020300");
+        when(tourismApiClient.searchContent("분류", null, "44", null, 1, 20))
+                .thenReturn(response(List.of(festival, condominium, western), 3));
+
+        TourismContentListResponse result = tourismContentService.getContentList(null, ListType.POPULAR,
+                null, "분류", null, null, null, null, null, null, 0, 20);
+
+        assertThat(result.getItems()).extracting(item -> item.getTheme().name())
+                .containsExactly("관광지/체험", "숙소", "맛집/카페");
+        assertThat(result.getItems()).extracting(item -> item.getCategory().name())
+                .containsExactly("축제/공연/행사", "콘도미니엄", "양식");
+        assertThat(tourismContentService.getCategories()).hasSize(3)
+                .extracting(group -> group.categories().size())
+                .containsExactly(7, 6, 9);
     }
 
     @Test
