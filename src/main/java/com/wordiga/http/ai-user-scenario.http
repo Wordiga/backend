@@ -55,7 +55,8 @@ GET {{baseUrl}}/api/v1/tourism/contents?type=POPULAR&page=0&size=10
 #     "lDongSignguCd": "200",
 #     "mapx": 126.9891281,
 #     "mapy": 36.8051452,
-#     "categoryName": "관광지",
+#     "theme": {"code": "ATTRACTION_EXPERIENCE", "name": "관광지/체험"},
+#     "category": {"code": "HS", "name": "역사관광"},
 #     "recommendationScore": 0.0,
 #     "satisfaction": null,
 #     "isWished": false

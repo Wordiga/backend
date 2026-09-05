@@ -39,8 +39,11 @@ public class TourismContentDto {
     @Schema(description = "위도")
     private BigDecimal mapy;
 
-    @Schema(description = "콘텐츠 카테고리명", example = "관광지")
-    private String categoryName;
+    @Schema(description = "화면 대분류 테마")
+    private CodeNameDto theme;
+
+    @Schema(description = "화면 세부 카테고리")
+    private CodeNameDto category;
 
     @Schema(description = "추천 점수")
     private BigDecimal recommendationScore;

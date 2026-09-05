@@ -5,9 +5,13 @@ import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
 import com.wordiga.wish.repository.WishRepository;
 import com.wordiga.tourism.domain.TourismContentType;
+import com.wordiga.tourism.domain.TourismCategory;
+import com.wordiga.tourism.domain.TourismTheme;
 import com.wordiga.tourism.dto.ListType;
+import com.wordiga.tourism.dto.CodeNameDto;
 import com.wordiga.tourism.dto.SatisfactionRequestDto;
 import com.wordiga.tourism.dto.SigunguResponse;
+import com.wordiga.tourism.dto.TourismCategoryGroupDto;
 import com.wordiga.tourism.dto.TourismContentDto;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.wish.Wish;
@@ -80,6 +84,15 @@ public class TourismContentService {
         return enrichMemberData(memberId, visitDate, ageGroups,
                 filterCapacity(page(filtered, type, page, size), capacitySatisfied, participantCount,
                         visitDate, ageGroups));
+    }
+
+    public List<TourismCategoryGroupDto> getCategories() {
+        return Arrays.stream(TourismTheme.values())
+                .map(theme -> new TourismCategoryGroupDto(codeName(theme), Arrays.stream(TourismCategory.values())
+                        .filter(category -> category.getTheme() == theme)
+                        .map(this::codeName)
+                        .toList()))
+                .toList();
     }
 
     public TourismContentListResponse getContentList(
@@ -252,6 +265,8 @@ public class TourismContentService {
 
     private TourismContentDto toDto(
             AreaBasedItem item, BigDecimal recommendationScore) {
+        TourismCategory category = TourismCategory.resolve(
+                item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
         return TourismContentDto.builder()
                 .contentId(item.getContentid())
                 .contentTypeId(item.getContenttypeid())
@@ -261,7 +276,8 @@ public class TourismContentService {
                 .mapx(parseBigDecimal(item.getMapx()))
                 .mapy(parseBigDecimal(item.getMapy()))
                 .firstImage(item.getFirstimage())
-                .categoryName(mapCategoryName(item.getContenttypeid()))
+                .theme(category == null ? null : codeName(category.getTheme()))
+                .category(category == null ? null : codeName(category))
                 .recommendationScore(recommendationScore)
                 .build();
     }
@@ -274,8 +290,12 @@ public class TourismContentService {
         return BigDecimal.valueOf(Math.max(1, 100 - index));
     }
 
-    private String mapCategoryName(String contentTypeId) {
-        return TourismContentType.fromCode(contentTypeId).getDisplayName();
+    private CodeNameDto codeName(TourismTheme theme) {
+        return new CodeNameDto(theme.getCode(), theme.getDisplayName());
+    }
+
+    private CodeNameDto codeName(TourismCategory category) {
+        return new CodeNameDto(category.getCode(), category.getDisplayName());
     }
 
     private String getCurrentYm() {

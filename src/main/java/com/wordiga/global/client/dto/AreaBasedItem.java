@@ -1,6 +1,7 @@
 package com.wordiga.global.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -24,7 +25,9 @@ public class AreaBasedItem {
     private String tel;
     private String zipcode;
 
+    @JsonProperty("lDongRegnCd")
     private String lDongRegnCd;
+    @JsonProperty("lDongSignguCd")
     private String lDongSignguCd;
     private String lclsSystm1;
     private String lclsSystm2;

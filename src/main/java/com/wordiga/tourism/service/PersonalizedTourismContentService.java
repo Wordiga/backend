@@ -7,6 +7,8 @@ import com.wordiga.tourism.dto.SatisfactionRequestDto;
 import com.wordiga.tourism.dto.TourismContentDto;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.dto.detail.SatisfactionDto;
+import com.wordiga.tourism.domain.TourismCategory;
+import com.wordiga.tourism.dto.CodeNameDto;
 import com.wordiga.wish.service.WishPreferenceCacheService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -114,6 +116,8 @@ public class PersonalizedTourismContentService {
     // ─── Helper Methods ───
 
     private TourismContentDto buildContentDto(AreaBasedItem item, BigDecimal score, SatisfactionDto satisfaction) {
+        TourismCategory category = TourismCategory.resolve(
+                item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
         return TourismContentDto.builder()
                 .contentId(item.getContentid())
                 .contentTypeId(item.getContenttypeid())
@@ -123,6 +127,9 @@ public class PersonalizedTourismContentService {
                 .lDongSignguCd(item.getLDongSignguCd())
                 .mapx(parseBigDecimal(item.getMapx()))
                 .mapy(parseBigDecimal(item.getMapy()))
+                .theme(category == null ? null : new CodeNameDto(
+                        category.getTheme().getCode(), category.getTheme().getDisplayName()))
+                .category(category == null ? null : new CodeNameDto(category.getCode(), category.getDisplayName()))
                 .recommendationScore(score)
                 .satisfaction(satisfaction)
                 .build();

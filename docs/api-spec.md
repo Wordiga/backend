@@ -94,7 +94,12 @@ GET /api/v1/tourism/contents
 | `items[].mapx` | BigDecimal | N | 경도 |
 | `items[].mapy` | BigDecimal | N | 위도 |
 | `items[].firstImage` | String | N | 대표 이미지 URL |
-| `items[].categoryName` | String | N | 관광타입 한글명 |
+| `items[].theme` | CodeName | N | 화면 대분류 테마. 정책에 없는 분류는 `null` |
+| `items[].theme.code` | String | Y | `ATTRACTION_EXPERIENCE`, `LODGING`, `FOOD_CAFE` 중 하나 |
+| `items[].theme.name` | String | Y | `관광지/체험`, `숙소`, `맛집/카페` 중 하나 |
+| `items[].category` | CodeName | N | 신분류체계 기반 세부 카테고리. 정책에 없는 분류는 `null` |
+| `items[].category.code` | String | Y | 필터와 선택 상태에 사용하는 분류 코드 |
+| `items[].category.name` | String | Y | 화면 표시용 분류명 |
 | `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수 |
 | `items[].satisfaction` | Satisfaction | N | 로그인 회원 기준 만족도. 원천 데이터가 모두 없으면 `null` |
 | `items[].isWished` | Boolean | Y | 현재 로그인 회원의 위시 등록 여부이며 비회원은 `false` |
@@ -116,7 +121,8 @@ GET /api/v1/tourism/contents
       "mapx": 126.9891281,
       "mapy": 36.8051452,
       "firstImage": "https://example.com/main.jpg",
-      "categoryName": "관광지",
+      "theme": {"code": "ATTRACTION_EXPERIENCE", "name": "관광지/체험"},
+      "category": {"code": "HS", "name": "역사관광"},
       "recommendationScore": 88.3,
       "satisfaction": null,
       "isWished": true
@@ -154,6 +160,67 @@ GET /api/v1/tourism/contents
 - `POPULAR`, `SEASONAL`은 원천 API 순위를 유지하고 `PERSONALIZED`는 `recommendationScore DESC`로 정렬합니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.
 - 로그인 회원은 각 콘텐츠의 위시 등록 여부를 `isWished`로 반환하며 비회원은 `false`로 반환합니다.
+
+### 관광 테마·카테고리 목록 조회
+
+```http
+GET /api/v1/tourism/categories
+```
+
+관련 기능: 일정 설계 화면의 테마 탭과 세부 카테고리 필터 옵션 조회
+
+인증: 불필요
+
+### Response Body
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `[].theme` | CodeName | Y | 화면 대분류 테마 |
+| `[].theme.code` | String | Y | API 전용 고정 테마 코드 |
+| `[].theme.name` | String | Y | 화면 표시용 테마명 |
+| `[].categories` | CodeName[] | Y | 해당 테마의 세부 카테고리 |
+
+```json
+[
+  {
+    "theme": {"code": "ATTRACTION_EXPERIENCE", "name": "관광지/체험"},
+    "categories": [
+      {"code": "EV", "name": "축제/공연/행사"},
+      {"code": "EX", "name": "체험관광"},
+      {"code": "HS", "name": "역사관광"},
+      {"code": "LS", "name": "레저스포츠"},
+      {"code": "NA", "name": "자연관광"},
+      {"code": "SH", "name": "쇼핑"},
+      {"code": "VE", "name": "문화관광"}
+    ]
+  },
+  {
+    "theme": {"code": "LODGING", "name": "숙소"},
+    "categories": [
+      {"code": "AC01", "name": "호텔"},
+      {"code": "AC02", "name": "콘도미니엄"},
+      {"code": "AC03", "name": "펜션/민박"},
+      {"code": "AC04", "name": "모텔"},
+      {"code": "AC05", "name": "캠핑"},
+      {"code": "AC06", "name": "호스텔"}
+    ]
+  },
+  {
+    "theme": {"code": "FOOD_CAFE", "name": "맛집/카페"},
+    "categories": [
+      {"code": "FD01", "name": "한식"},
+      {"code": "FD020100", "name": "중식"},
+      {"code": "FD020200", "name": "일식"},
+      {"code": "FD020300", "name": "양식"},
+      {"code": "FD020400", "name": "기타외국식"},
+      {"code": "FD020500", "name": "퓨전음식"},
+      {"code": "FD03", "name": "간이음식"},
+      {"code": "FD04", "name": "주점"},
+      {"code": "FD05", "name": "카페"}
+    ]
+  }
+]
+```
 
 ### 충청남도 시군구 목록 조회
 

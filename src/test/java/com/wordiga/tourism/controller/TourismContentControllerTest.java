@@ -28,7 +28,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@WebMvcTest(TourismContentController.class)
+@WebMvcTest({TourismContentController.class, TourismCategoryController.class})
 @AutoConfigureMockMvc(addFilters = false)
 class TourismContentControllerTest {
 
@@ -88,6 +88,20 @@ class TourismContentControllerTest {
                 .andExpect(jsonPath("$.length()").value(16))
                 .andExpect(jsonPath("$[0].name").value("천안시 동남구"))
                 .andExpect(jsonPath("$[1].name").value("천안시 서북구"));
+    }
+
+    @Test
+    void returnsCategoryGroups() throws Exception {
+        when(tourismContentService.getCategories()).thenReturn(List.of(
+                new com.wordiga.tourism.dto.TourismCategoryGroupDto(
+                        new com.wordiga.tourism.dto.CodeNameDto("ATTRACTION_EXPERIENCE", "관광지/체험"),
+                        List.of(new com.wordiga.tourism.dto.CodeNameDto("EV", "축제/공연/행사")))));
+
+        mockMvc.perform(get("/api/v1/tourism/categories"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].theme.code").value("ATTRACTION_EXPERIENCE"))
+                .andExpect(jsonPath("$[0].theme.name").value("관광지/체험"))
+                .andExpect(jsonPath("$[0].categories[0].code").value("EV"));
     }
 
     @Test
