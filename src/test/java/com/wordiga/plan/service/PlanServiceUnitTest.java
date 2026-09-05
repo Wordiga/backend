@@ -1,6 +1,7 @@
 package com.wordiga.plan.service;
 
 import com.wordiga.tourism.service.TourismContentDetailService;
+import com.wordiga.tourism.service.TourismContentSnapshotService;
 
 import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.plan.dto.PlanContentsUpdateRequest;
@@ -35,12 +36,14 @@ class PlanServiceUnitTest {
     TourismContentDetailService tourismContentDetailService;
     @Mock
     TourismContentSnapshotRepository snapshotRepository;
+    @Mock
+    TourismContentSnapshotService snapshotService;
     PlanService service;
     Plan plan;
 
     @BeforeEach
     void setUp() {
-        service = new PlanService(planRepository, tourismContentDetailService, snapshotRepository);
+        service = new PlanService(planRepository, tourismContentDetailService, snapshotRepository, snapshotService);
         plan = Plan.create(null, "충남 여행", LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 21), 2);
     }
 

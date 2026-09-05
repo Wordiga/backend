@@ -8,6 +8,7 @@ import com.wordiga.plan.repository.PlanRepository;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
 import com.wordiga.tourism.service.TourismContentDetailService;
+import com.wordiga.tourism.service.TourismContentSnapshotService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -25,6 +26,7 @@ import java.util.List;
 import java.util.Set;
 
 import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
+import static com.wordiga.global.util.KtoUtils.parseKtoDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -33,17 +35,23 @@ public class PlanService {
     private final PlanRepository planRepository;
     private final TourismContentDetailService tourismContentDetailService;
     private final TourismContentSnapshotRepository snapshotRepository;
+    private final TourismContentSnapshotService snapshotService;
 
+    @Transactional
     public PlanListResponse getPlans(Long memberId, int page, int size, PlanSort sort) {
         Sort order = sort == PlanSort.START_DATE_ASC ? Sort.by("startDate", "id").ascending()
                 : Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         Page<Plan> result = planRepository.findByMemberId(memberId, PageRequest.of(page, size, order));
+        synchronize(result.getContent());
         return PlanListResponse.builder().items(result.map(PlanSummaryResponse::from).getContent())
                 .page(page).size(size).hasNext(result.hasNext()).build();
     }
 
+    @Transactional
     public PlanDetailResponse getPlan(Long memberId, Long planId) {
-        return detail(owned(memberId, planId));
+        Plan plan = owned(memberId, planId);
+        synchronize(List.of(plan));
+        return detail(plan);
     }
 
     @Transactional
@@ -52,6 +60,7 @@ public class PlanService {
                 || (request.getTitle() != null && request.getTitle().isBlank())) invalid("수정할 값을 확인해 주세요.");
         Plan plan = owned(memberId, planId);
         plan.update(request.getTitle(), request.getParticipantCount());
+        synchronize(List.of(plan));
         return detail(plan);
     }
 
@@ -81,6 +90,7 @@ public class PlanService {
                         .lclsSystem1Code(c.getLclsSystm1())
                         .lclsSystem2Code(c.getLclsSystm2())
                         .lclsSystem3Code(c.getLclsSystm3())
+                        .sourceModifiedAt(parseKtoDateTime(c.getModifiedtime()))
                         .updatedAt(LocalDateTime.now())
                         .build());
 
@@ -106,6 +116,13 @@ public class PlanService {
 
     private PlanDetailResponse detail(Plan p) {
         return PlanDetailResponse.from(p);
+    }
+
+    private void synchronize(List<Plan> plans) {
+        snapshotService.synchronizeReferenced(plans.stream()
+                .flatMap(plan -> plan.getPlanContents().stream())
+                .map(content -> content.getContent().getContentId())
+                .toList());
     }
 
     private void validateDays(Plan p, List<PlanContentsUpdateRequest.Day> days) {

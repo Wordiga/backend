@@ -21,6 +21,8 @@ import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import static com.wordiga.global.util.KtoUtils.parseKtoDateTime;
+
 @Service
 @RequiredArgsConstructor
 public class PlanWriter {
@@ -50,6 +52,7 @@ public class PlanWriter {
                     .mapx(common.getMapx()).mapy(common.getMapy()).sigunguCode(common.getLDongSignguCd())
                     .sigunguName(sigunguName).lclsSystem1Code(common.getLclsSystm1())
                     .lclsSystem2Code(common.getLclsSystm2()).lclsSystem3Code(common.getLclsSystm3())
+                    .sourceModifiedAt(parseKtoDateTime(common.getModifiedTime()))
                     .updatedAt(LocalDateTime.now()).build());
         });
 

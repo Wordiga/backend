@@ -4,10 +4,15 @@ import com.wordiga.global.client.dto.KtoApiResponse;
 import org.springframework.util.StringUtils;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
 import java.util.Collections;
 import java.util.List;
 
 public abstract class KtoUtils {
+
+    private static final DateTimeFormatter KTO_DATE_TIME = DateTimeFormatter.ofPattern("yyyyMMddHHmmss");
 
     public static <T> List<T> extractItems(KtoApiResponse<T> response) {
         if (response == null || response.getResponse() == null
@@ -34,6 +39,15 @@ public abstract class KtoUtils {
         try {
             return new BigDecimal(value.trim());
         } catch (NumberFormatException e) {
+            return null;
+        }
+    }
+
+    public static LocalDateTime parseKtoDateTime(String value) {
+        if (!StringUtils.hasText(value)) return null;
+        try {
+            return LocalDateTime.parse(value, KTO_DATE_TIME);
+        } catch (DateTimeParseException e) {
             return null;
         }
     }

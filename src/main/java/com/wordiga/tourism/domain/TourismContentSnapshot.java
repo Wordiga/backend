@@ -8,6 +8,7 @@ import lombok.*;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Objects;
 
 @Entity
 @Table(name = "tourism_content_snapshots")
@@ -57,10 +58,67 @@ public class TourismContentSnapshot {
     @Column(nullable = false)
     private LocalDateTime updatedAt;
 
+    private LocalDateTime sourceModifiedAt;
+
+    private LocalDateTime lastSyncedAt;
+
+    public boolean update(ContentSnapshotValues values, LocalDateTime syncedAt) {
+        boolean changed = !Objects.equals(contentTypeId, values.contentTypeId())
+                || !Objects.equals(title, values.title())
+                || !Objects.equals(firstimage, values.firstimage())
+                || !Objects.equals(addr1, values.addr1())
+                || !Objects.equals(mapx, values.mapx())
+                || !Objects.equals(mapy, values.mapy())
+                || !Objects.equals(sigunguCode, values.sigunguCode())
+                || !Objects.equals(sigunguName, values.sigunguName())
+                || !Objects.equals(lclsSystem1Code, values.lclsSystem1Code())
+                || !Objects.equals(lclsSystem2Code, values.lclsSystem2Code())
+                || !Objects.equals(lclsSystem3Code, values.lclsSystem3Code())
+                || !Objects.equals(sourceModifiedAt, values.sourceModifiedAt());
+
+        if (changed) {
+            contentTypeId = values.contentTypeId();
+            title = values.title();
+            firstimage = values.firstimage();
+            addr1 = values.addr1();
+            mapx = values.mapx();
+            mapy = values.mapy();
+            sigunguCode = values.sigunguCode();
+            sigunguName = values.sigunguName();
+            lclsSystem1Code = values.lclsSystem1Code();
+            lclsSystem2Code = values.lclsSystem2Code();
+            lclsSystem3Code = values.lclsSystem3Code();
+            sourceModifiedAt = values.sourceModifiedAt();
+            updatedAt = syncedAt;
+        }
+        lastSyncedAt = syncedAt;
+        return changed;
+    }
+
+    public void markSynchronized(LocalDateTime syncedAt) {
+        lastSyncedAt = syncedAt;
+    }
+
     public String getLclsSystemCode() {
         if (lclsSystem3Code != null) return lclsSystem3Code;
         if (lclsSystem2Code != null) return lclsSystem2Code;
         if (lclsSystem1Code != null) return lclsSystem1Code;
         return contentTypeId;
+    }
+
+    public record ContentSnapshotValues(
+            String contentTypeId,
+            String title,
+            String firstimage,
+            String addr1,
+            BigDecimal mapx,
+            BigDecimal mapy,
+            String sigunguCode,
+            String sigunguName,
+            String lclsSystem1Code,
+            String lclsSystem2Code,
+            String lclsSystem3Code,
+            LocalDateTime sourceModifiedAt
+    ) {
     }
 }

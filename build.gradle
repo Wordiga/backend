@@ -69,6 +69,7 @@ def coverageIncludes = [
         '**/controller/WishController.class',
         '**/service/TourismContentService.class',
         '**/service/TourismContentDetailService.class',
+        '**/service/TourismContentSnapshotService.class',
         '**/service/TourismDetailMapper.class',
         '**/service/TourismSatisfactionService.class',
         '**/service/WishService.class'
