@@ -198,6 +198,34 @@ class TourismContentServiceUnitTest {
     }
 
     @Test
+    void resolvesRelatedTourismNamesToChungnamContentIds() {
+        ContentDetailDto reference = new ContentDetailDto();
+        reference.setContentid("2717354");
+        reference.setTitle("신라스테이 천안");
+        reference.setLDongRegnCd("44");
+        reference.setLDongSignguCd("133");
+        when(tourismApiClient.fetchCommonDetail("2717354")).thenReturn(reference);
+        RelatedTourismItem related = new RelatedTourismItem();
+        related.setRlteTatsNm("독립기념관");
+        related.setRlteRank(1);
+        when(tourismApiClient.fetchRelatedTourism(org.mockito.ArgumentMatchers.anyString(),
+                org.mockito.ArgumentMatchers.eq("44"), org.mockito.ArgumentMatchers.eq("44133"),
+                org.mockito.ArgumentMatchers.eq("신라스테이 천안"), org.mockito.ArgumentMatchers.eq(50)))
+                .thenReturn(List.of(related));
+        AreaBasedItem matched = item("14");
+        matched.setContentid("129790");
+        matched.setTitle("독립기념관");
+        when(tourismApiClient.searchContent("독립기념관", null, "44", null, 1, 10))
+                .thenReturn(response(List.of(matched), 1));
+
+        TourismContentListResponse result = tourismContentService.getContentList(null, ListType.RELATED, null,
+                null, null, null, "2717354", null, null, null, 0, 20);
+
+        assertThat(result.getItems()).singleElement()
+                .satisfies(item -> assertThat(item.getContentId()).isEqualTo("129790"));
+    }
+
+    @Test
     void filtersSearchResultsToLodgingThatCanAccommodateParticipants() {
         AreaBasedItem lodging = item("32");
         lodging.setContentid("lodging");

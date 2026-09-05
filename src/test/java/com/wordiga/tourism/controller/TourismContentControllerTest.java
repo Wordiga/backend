@@ -16,12 +16,14 @@ import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
+import java.time.LocalDate;
 import java.util.List;
 import java.util.stream.IntStream;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -53,7 +55,7 @@ class TourismContentControllerTest {
                 .isWished(true)
                 .build();
         when(tourismContentService.getContentList(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
                 .thenReturn(TourismContentListResponse.builder()
                         .items(List.of(item))
                         .page(0)
@@ -104,10 +106,13 @@ class TourismContentControllerTest {
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
                         .param("visitDate", "2026-08-20")
-                        .param("ageGroups", "20S,30S"))
+                        .param("ageGroups", "20S,30S")
+                        .param("stayDays", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.common.contentId").value("126508"))
                 .andExpect(jsonPath("$.common.title").value("현충사"));
+        verify(tourismContentDetailService).getDetail("126508", LocalDate.of(2026, 8, 20),
+                List.of("20S", "30S"), 1, 10);
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508"))
                 .andExpect(status().isOk());

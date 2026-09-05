@@ -61,6 +61,19 @@ class TourismSatisfactionServiceUnitTest {
     }
 
     @Test
+    void explainsWhenVisitDateIsOutsideConcentrationForecastRange() {
+        mockPopularity();
+        mockStayFit();
+        mockComfort(LocalDate.of(2026, 8, 21));
+
+        SatisfactionDto result = service.calculate(
+                request("현충사", Map.of()), new TourismSatisfactionService.CalculationCache());
+
+        assertThat(result.getComfortScore().isImputed()).isTrue();
+        assertThat(result.getComfortScore().getReason()).contains("예측 제공 범위");
+    }
+
+    @Test
     void reusesRegionalSourcesWithinOneRecommendationRequest() {
         mockPopularity();
         mockStayFit();

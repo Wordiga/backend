@@ -29,6 +29,7 @@ public interface TourismContentApi {
             String keyword,
             String contentTypeId,
             String lDongSignguCd,
+            String referenceContentId,
             Boolean capacitySatisfied,
             @Min(1) @Max(50) Integer participantCount,
             List<String> ageGroups,
@@ -42,6 +43,7 @@ public interface TourismContentApi {
             @Parameter(description = "관광 콘텐츠 ID") String contentId,
             LocalDate visitDate,
             List<String> ageGroups,
+            @Min(1) @Max(3) Integer stayDays,
             @Min(1) @Max(50) Integer participantCount
     );
 }

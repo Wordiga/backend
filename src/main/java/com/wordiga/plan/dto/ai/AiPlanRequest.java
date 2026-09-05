@@ -16,7 +16,6 @@ public record AiPlanRequest(
         @JsonProperty("visit_month") int visitMonth,
         @JsonProperty("num_people") int numPeople,
         @JsonProperty("num_days") int numDays,
-        @JsonProperty("num_nights") int numNights,
         @JsonProperty("saved_content_ids") List<String> savedContentIds,
         @JsonProperty("saved_contents") List<Content> savedContents,
         @JsonProperty("regional_contents") List<Content> regionalContents,
@@ -37,9 +36,6 @@ public record AiPlanRequest(
                 request.getVisitMonth() == null ? request.getStartDate().getMonthValue() : request.getVisitMonth(),
                 request.getParticipantCount(),
                 (int) ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1,
-                request.getStayNights() == null
-                        ? (int) ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate())
-                        : request.getStayNights(),
                 request.getSelectedContentIds(),
                 savedDetails.stream().map(detail -> Content.from(
                         detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
@@ -77,7 +73,7 @@ public record AiPlanRequest(
             return new Content(
                     common.getContentId(), common.getTitle(), category(common.getContentTypeId()),
                     join(common.getAddr1(), common.getAddr2()), common.getMapy(), common.getMapx(),
-                    common.getLDongSignguCd(), operatingHours(intro), tags,
+                    common.getLDongSignguCd(), operatingHours(intro), tags == null ? List.of() : tags,
                     common.getTel(), truncate(common.getOverview()), common.getFirstImage(), duration(intro), null,
                     intro == null ? null : intro.getEventStartDate(), intro == null ? null : intro.getEventEndDate(),
                     outdoor(tags));
