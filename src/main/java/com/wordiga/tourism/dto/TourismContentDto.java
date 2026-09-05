@@ -6,6 +6,7 @@ import com.wordiga.tourism.dto.detail.SatisfactionDto;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 import lombok.Data;
+import lombok.Getter;
 
 import java.math.BigDecimal;
 
@@ -53,6 +54,7 @@ public class TourismContentDto {
 
     @Schema(description = "현재 로그인 회원의 위시 등록 여부")
     @JsonProperty("isWished")
+    @Getter(onMethod_ = @JsonProperty("isWished"))
     private boolean isWished;
 
 }

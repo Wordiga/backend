@@ -71,6 +71,7 @@ class TourismContentControllerTest {
                 .andExpect(jsonPath("$.items[0].contentId").value("126508"))
                 .andExpect(jsonPath("$.items[0].title").value("현충사"))
                 .andExpect(jsonPath("$.items[0].isWished").value(true))
+                .andExpect(jsonPath("$.items[0].wished").doesNotExist())
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
