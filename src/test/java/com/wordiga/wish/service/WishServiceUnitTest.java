@@ -1,6 +1,7 @@
 package com.wordiga.wish.service;
 
 import com.wordiga.tourism.service.TourismContentDetailService;
+import com.wordiga.tourism.service.TourismContentSnapshotService;
 
 import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.global.client.TourismApiClient;
@@ -46,6 +47,9 @@ class WishServiceUnitTest {
 
     @Mock
     private WishPreferenceCacheService preferenceCacheService;
+
+    @Mock
+    private TourismContentSnapshotService snapshotService;
 
     @InjectMocks
     private WishService wishService;

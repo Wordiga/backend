@@ -36,6 +36,8 @@ CREATE TABLE tourism_content_snapshots
     lcls_system2_code VARCHAR(20)     NULL,
     lcls_system3_code VARCHAR(20)     NULL,
     updated_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    source_modified_at TIMESTAMP      NULL,
+    last_synced_at     TIMESTAMP      NULL,
     CONSTRAINT pk_tourism_content_snapshots PRIMARY KEY (content_id)
 );
 

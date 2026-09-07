@@ -3,10 +3,19 @@ package com.wordiga.tourism.domain;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import jakarta.persistence.LockModeType;
+import java.util.Optional;
+
 public interface TourismContentSnapshotRepository extends JpaRepository<TourismContentSnapshot, String> {
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT s FROM TourismContentSnapshot s WHERE s.contentId = :contentId")
+    Optional<TourismContentSnapshot> findByContentIdForUpdate(@Param("contentId") String contentId);
+
     /**
      * 유저 선호 시군구 및 선호 테마 조건에 맞는 후보 관광지 스냅샷 목록 조회 (페이징 지원)
      *

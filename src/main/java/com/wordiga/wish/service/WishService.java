@@ -7,6 +7,7 @@ import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.wish.repository.WishRepository;
 import com.wordiga.tourism.service.TourismContentDetailService;
+import com.wordiga.tourism.service.TourismContentSnapshotService;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
 import com.wordiga.wish.Wish;
@@ -20,6 +21,7 @@ import java.util.Map;
 import java.util.stream.Collectors;
 
 import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
+import static com.wordiga.global.util.KtoUtils.parseKtoDateTime;
 
 @Service
 @RequiredArgsConstructor
@@ -31,6 +33,7 @@ public class WishService {
     private final TourismContentDetailService tourismContentDetailService;
     private final TourismApiClient tourismApiClient;
     private final TourismContentSnapshotRepository snapshotRepository;
+    private final TourismContentSnapshotService snapshotService;
 
     /**
      * 위시 등록
@@ -44,6 +47,7 @@ public class WishService {
             // 이미 존재하면 기존 것 반환
             Wish existing = wishRepository.findByMemberIdAndContent_ContentId(memberId, request.getContentId())
                     .orElseThrow();
+            snapshotService.synchronizeReferenced(List.of(request.getContentId()));
             return WishResponse.from(existing);
         }
 
@@ -65,6 +69,7 @@ public class WishService {
                 .lclsSystem1Code(content.getLclsSystm1())
                 .lclsSystem2Code(content.getLclsSystm2())
                 .lclsSystem3Code(content.getLclsSystm3())
+                .sourceModifiedAt(parseKtoDateTime(content.getModifiedtime()))
                 .updatedAt(java.time.LocalDateTime.now())
                 .build());
 
@@ -93,21 +98,26 @@ public class WishService {
      * 위시 폴더 목록 조회
      * - 충남 16개 시군구 자동 폴더 + 기본 위시리스트
      */
+    @Transactional
     public List<WishFolderResponse> getWishFolders(Long memberId) {
-        Map<String, List<Wish>> folders = wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(memberId).stream()
+        List<Wish> wishes = wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(memberId);
+        snapshotService.synchronizeReferenced(wishes.stream().map(wish -> wish.getContent().getContentId()).toList());
+        Map<String, List<Wish>> folders = wishes.stream()
                 .collect(Collectors.groupingBy(Wish::getFolderName, LinkedHashMap::new, Collectors.toList()));
-        return folders.values().stream().sorted(java.util.Comparator.comparing(wishes -> wishes.getFirst().getFolderName()))
-                .map(wishes -> WishFolderResponse.builder()
-                        .folderName(wishes.getFirst().getFolderName()).lDongSignguCd(wishes.getFirst().getSigunguCode())
-                        .count((long) wishes.size())
-                        .thumbnailUrl(wishes.getFirst().getContent().getFirstimage()).build()).toList();
+        return folders.values().stream().sorted(java.util.Comparator.comparing(folder -> folder.getFirst().getFolderName()))
+                .map(folder -> WishFolderResponse.builder()
+                        .folderName(folder.getFirst().getFolderName()).lDongSignguCd(folder.getFirst().getSigunguCode())
+                        .count((long) folder.size())
+                        .thumbnailUrl(folder.getFirst().getContent().getFirstimage()).build()).toList();
     }
 
     /**
      * 특정 폴더(지역) 내 위시 목록 조회
      */
+    @Transactional
     public List<WishResponse> getWishesByFolder(Long memberId, String folderName) {
         List<Wish> wishes = wishRepository.findByMemberIdAndFolderNameOrderByCreatedAtDescIdDesc(memberId, folderName);
+        snapshotService.synchronizeReferenced(wishes.stream().map(wish -> wish.getContent().getContentId()).toList());
         return wishes.stream()
                 .map(WishResponse::from)
                 .collect(Collectors.toList());
