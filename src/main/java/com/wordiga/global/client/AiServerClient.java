@@ -91,8 +91,7 @@ public class AiServerClient {
 
     private ResponseStatusException upstream(RestClientResponseException exception, String operation) {
         int upstreamStatus = exception.getStatusCode().value();
-        log.error("[AiServerClient] AI 서버 {} 실패: status={}, body={}",
-                operation, upstreamStatus, exception.getResponseBodyAsString(), exception);
+        log.error("[AiServerClient] AI 서버 {} 실패: status={}", operation, upstreamStatus);
         if (upstreamStatus == HttpStatus.GATEWAY_TIMEOUT.value())
             return new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "AI 서버의 처리 시간이 초과되었습니다.", exception);
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 서버가 " + operation + "에 실패했습니다.", exception);

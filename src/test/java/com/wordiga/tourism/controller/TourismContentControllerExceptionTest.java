@@ -41,6 +41,13 @@ class TourismContentControllerExceptionTest {
     }
 
     @Test
+    void rejectsUnknownAgeGroup() throws Exception {
+        mockMvc.perform(get("/api/v1/tourism/contents")
+                        .param("ageGroups", "TEENS"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void rejectsParticipantCountOverFifty() throws Exception {
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
                         .param("participantCount", "51"))

@@ -24,7 +24,7 @@ class JwtAuthenticationFilterUnitTest {
     void authenticatesOnlyExistingMember() throws Exception {
         JwtTokenProvider tokens = mock(JwtTokenProvider.class);
         MemberRepository members = mock(MemberRepository.class);
-        when(tokens.isValid("token")).thenReturn(true);
+        when(tokens.isValidAccess("token")).thenReturn(true);
         when(tokens.getMemberId("token")).thenReturn(1L);
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.addHeader("Authorization", "Bearer token");
