@@ -15,20 +15,32 @@ import java.util.Date;
 public class JwtTokenProvider {
 
     private final SecretKey key;
-    private final long expiration;
+    private final long accessExpiration;
+    private final long refreshExpiration;
     private final JwtParser parser;
 
     public JwtTokenProvider(
             @Value("${jwt.secret}") String secret,
-            @Value("${jwt.expiration:86400000}") long expiration) {
+            @Value("${jwt.access-expiration:3600000}") long accessExpiration,
+            @Value("${jwt.refresh-expiration:2592000000}") long refreshExpiration) {
         this.key = Keys.hmacShaKeyFor(secret.getBytes(StandardCharsets.UTF_8));
-        this.expiration = expiration;
+        this.accessExpiration = accessExpiration;
+        this.refreshExpiration = refreshExpiration;
         this.parser = Jwts.parser().verifyWith(key).build();
     }
 
     public String create(Long memberId) {
+        return create(memberId, "access", accessExpiration);
+    }
+
+    public String createRefresh(Long memberId) {
+        return create(memberId, "refresh", refreshExpiration);
+    }
+
+    private String create(Long memberId, String type, long expiration) {
         return Jwts.builder()
                 .subject(memberId.toString())
+                .claim("type", type)
                 .issuedAt(new Date())
                 .expiration(new Date(System.currentTimeMillis() + expiration))
                 .signWith(key)
@@ -41,12 +53,23 @@ public class JwtTokenProvider {
         );
     }
 
-    public boolean isValid(String token) {
+    public boolean isValidAccess(String token) {
+        return isValid(token, "access");
+    }
+
+    public boolean isValidRefresh(String token) {
+        return isValid(token, "refresh");
+    }
+
+    private boolean isValid(String token, String type) {
         try {
-            parser.parseSignedClaims(token);
-            return true;
+            return type.equals(parser.parseSignedClaims(token).getPayload().get("type", String.class));
         } catch (JwtException | IllegalArgumentException e) {
             return false;
         }
+    }
+
+    public long getRefreshExpiration() {
+        return refreshExpiration;
     }
 }

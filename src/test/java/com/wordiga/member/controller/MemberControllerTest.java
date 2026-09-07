@@ -55,7 +55,11 @@ class MemberControllerTest {
 
         mockMvc.perform(get("/api/v1/me")).andExpect(status().isOk())
                 .andExpect(jsonPath("$.email").value("user@example.com"))
-                .andExpect(jsonPath("$.provider").value("GOOGLE"));
+                .andExpect(jsonPath("$.provider").value("GOOGLE"))
+                .andExpect(jsonPath("$.providerId").doesNotExist())
+                .andExpect(jsonPath("$.accessToken").doesNotExist())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andExpect(jsonPath("$.s3Key").doesNotExist());
         mockMvc.perform(delete("/api/v1/me")).andExpect(status().isNoContent());
 
         verify(memberService).withdraw(1L);

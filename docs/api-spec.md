@@ -6,6 +6,8 @@
 
 | Method | Path | Auth | 설명 |
 |---|---|---|---|
+| POST | `/api/v1/auth/refresh` | Refresh Cookie | Access Token 재발급 |
+| DELETE | `/api/v1/auth/session` | X | Refresh Cookie 삭제 |
 | GET | `/api/v1/tourism/contents` | X | 관광 콘텐츠 목록 조회 |
 | GET | `/api/v1/tourism/contents/sigungu` | X | 충청남도 시군구 목록 조회 |
 | GET | `/api/v1/tourism/contents/{contentId}` | X | 관광 콘텐츠 통합 상세 조회 |
@@ -29,7 +31,9 @@
 
 - 인증이 필요한 API는 HTTP `Authorization` 헤더에 `Bearer {accessToken}`을 전달합니다.
 - 비회원 위시리스트 저장은 제공하지 않습니다.
-- Stateless JWT를 사용하므로 로그아웃은 프론트엔드가 저장한 토큰을 삭제하는 방식으로 처리합니다.
+- Access Token 유효기간은 1시간입니다.
+- OAuth 로그인 성공 시 30일 유효한 Wordiga Refresh Token을 `Secure`, `HttpOnly`, `SameSite=Lax` 쿠키로 함께 발급합니다.
+- Refresh Token은 Google/Kakao 토큰이 아니라 Wordiga가 자체 발급하며 JavaScript 응답에 노출하지 않습니다.
 
 ### 공통 오류 응답
 
@@ -71,7 +75,7 @@ GET /api/v1/tourism/contents
 | `referenceContentId` | String | C | `type=RELATED`일 때 필수인 기준 관광 콘텐츠 ID | `2717354` |
 | `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `25` |
-| `ageGroups` | String[] | N | 로그인 회원의 목록 만족도 산출에 사용할 연령대 | `30S,40S` |
+| `ageGroups` | Enum[] | N | `20S`, `30S`, `40S`, `50S_PLUS`만 허용 | `30S,40S` |
 | `page` | Integer | N | 0부터 시작하는 페이지 기본값은 `0` | `0` |
 | `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
 
@@ -271,7 +275,7 @@ GET /api/v1/tourism/contents/{contentId}
 |---|---|---|---|---|
 | `visitDate` | LocalDate | N | 쾌적도와 월 기후 판단 기준일, 미입력 시 오늘 | `2026-08-20` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `8` |
-| `ageGroups` | String[] | N | 연령대 코드 `10S`~`70S` | `20S,30S` |
+| `ageGroups` | Enum[] | N | `20S`, `30S`, `40S`, `50S_PLUS`만 허용 | `20S,30S` |
 | `stayDays` | Integer | N | 체류 일수 `1`~`3`; 체류 적합도 계산 시 숙박 일수 `stayDays-1`로 변환 | `2` |
 
 ### Request Body
@@ -1018,8 +1022,8 @@ POST /api/v1/plans/generate
 | `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
 | `visitMonth` | Integer | N | 방문 월(1~12), 미입력 시 `startDate`의 월 사용 |
-| `stayDays` | Integer | Y | 체류 일수 `1`~`3`; 시작일과 종료일을 포함한 기간과 일치해야 함 |
-| `ageGroups` | String[] | N | 참가자 연령대 |
+| `stayDays` | Integer | Y | 체류 일수 `1`~`PLAN_MAX_STAY_DAYS`(기본 3); 시작일과 종료일을 포함한 기간과 일치해야 함 |
+| `ageGroups` | Enum[] | N | `20S`, `30S`, `40S`, `50S_PLUS`만 허용 |
 | `selectedContentIds` | String[] | Y | 선택 콘텐츠 ID, 배열 순서가 사용자 우선순위 |
 
 ### Response Body
@@ -1122,10 +1126,10 @@ POST /api/v1/plans/generate
 ### Validation
 
 - 시작일은 종료일보다 늦을 수 없습니다.
-- 일정 기간은 최대 3일입니다.
+- 일정 기간은 `PLAN_MAX_STAY_DAYS`(기본 3)까지입니다.
 - 참가 인원은 10~50명입니다.
 - `visitMonth`는 `startDate`의 월과 같아야 합니다.
-- `stayDays`는 1~3이며 `endDate - startDate + 1`과 같아야 합니다.
+- `stayDays`는 1~`PLAN_MAX_STAY_DAYS`(기본 3)이며 `endDate - startDate + 1`과 같아야 합니다.
 - AI 요청 JSON만 snake_case를 사용합니다. 애플리케이션 요청·응답 DTO는 lowerCamelCase를 유지합니다.
 - AI 요청에는 월 기후 예상치 `monthly_weather`, 콘텐츠별 `is_outdoor`, 보충 후보 `regional_contents`를 전달합니다. 체류 기간은 `num_days` 하나로 전달합니다.
 - 분류 코드는 관광공사 `lclsSystmCode2` 변환 API의 한글 분류명으로 바꿔 `tags`에 전달합니다. 변환 실패 시 로그를 기록하고 AI 계약에 맞게 `tags: []`로 전달합니다.
@@ -1819,3 +1823,32 @@ DELETE /api/v1/me
 
 - Kakao `POST https://kapi.kakao.com/v1/user/unlink`를 사용합니다.
 - 인증은 `KAKAO_ADMIN_KEY`와 회원의 Kakao `providerId`를 사용합니다.
+
+## 18. Access Token 재발급
+
+```http
+POST /api/v1/auth/refresh
+Cookie: refreshToken={wordigaRefreshToken}
+```
+
+인증: Wordiga Refresh Token 쿠키 필수
+
+유효한 Refresh Token의 회원이 현재 존재할 때 1시간 유효한 새 Access Token을 반환합니다. 응답에는 `Cache-Control: no-store`를 적용합니다.
+
+```json
+{
+  "accessToken": "eyJ..."
+}
+```
+
+Refresh Token이 없거나, 만료·위조되었거나, 탈퇴한 회원의 토큰이면 `401 Unauthorized`를 반환합니다.
+
+## 19. 로그아웃
+
+```http
+DELETE /api/v1/auth/session
+```
+
+브라우저의 `refreshToken` 쿠키를 즉시 만료시킵니다. FE는 함께 보관 중인 Access Token도 삭제해야 합니다.
+
+현재 Refresh Token은 서버 저장소에 보관하지 않는 stateless JWT이므로, 이미 탈취된 Refresh Token의 개별 폐기는 지원하지 않습니다. 회원탈퇴 또는 `JWT_SECRET` 교체 시에는 더 이상 사용할 수 없습니다.

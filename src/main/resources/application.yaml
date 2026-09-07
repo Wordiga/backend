@@ -28,8 +28,12 @@ server:
 
 jwt:
   secret: ${JWT_SECRET}
-  expiration-time: 3600000
-  refresh-expiration: 604800000
+  access-expiration: 3600000
+  refresh-expiration: 2592000000
+  cookie-secure: ${JWT_COOKIE_SECURE:true}
+
+plan:
+  max-stay-days: ${PLAN_MAX_STAY_DAYS:3}
 
 kakao:
   admin-key: ${KAKAO_ADMIN_KEY:}
