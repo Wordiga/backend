@@ -17,8 +17,13 @@ import java.util.*;
 @Slf4j
 public class RegionalContentService {
 
-    private static final int CATEGORY_CANDIDATE_LIMIT = 6; // 카테고리별 상위 5~8개 추리기
-    private static final int TOTAL_REGIONAL_LIMIT = 15;
+    private static final int SEARCH_LIMIT = 1000;
+    private static final List<CategoryTarget> CATEGORY_TARGETS = List.of(
+            new CategoryTarget(Category.LODGING, 2),
+            new CategoryTarget(Category.ATTRACTION, 5),
+            new CategoryTarget(Category.RESTAURANT, 4),
+            new CategoryTarget(Category.CAFE, 4)
+    );
 
     private final TourismApiClient tourismApiClient;
     private final TourismProperties tourismProperties;
@@ -36,67 +41,58 @@ public class RegionalContentService {
         // 1. Saved 콘텐츠들의 중심점(Centroid) 계산
         Coordinate centroid = calculateCentroid(savedDetails);
 
-        // 2. 카테고리별 후보군 수집 (관광지, 음식점, 숙박, 레포츠, 쇼핑 등)
-        List<String> targetCategoryCodes = List.of(
-                TourismContentType.TOURIST_ATTRACTION.getCode(), // 12
-                TourismContentType.CULTURAL_FACILITY.getCode(),  // 14
-                TourismContentType.LEPORTS.getCode(),            // 28
-                TourismContentType.SHOPPING.getCode(),           // 38
-                TourismContentType.RESTAURANT.getCode(),         // 39
-                TourismContentType.LODGING.getCode()             // 32
-        );
-
-        Map<String, List<CandidateWithDistance>> categoryCandidatesMap = new LinkedHashMap<>();
-        List<AreaBasedItem> areaItems = tourismApiClient.fetchAreaBasedContent(regionCode, sigunguCode, 100);
-
-        for (String contentTypeId : targetCategoryCodes) {
-            List<CandidateWithDistance> candidates = areaItems.stream()
-                    .filter(item -> contentTypeId.equals(item.getContenttypeid()))
-                    .filter(item -> !savedContentIds.contains(item.getContentid()))
-                    .map(item -> new CandidateWithDistance(item, calculateDistance(centroid, item.getMapx(), item.getMapy())))
-                    .sorted(Comparator.comparingDouble(CandidateWithDistance::distance)) // 중심점 기준 거리순 정렬
-                    .limit(CATEGORY_CANDIDATE_LIMIT) // 카테고리별 5~8개로 추림
-                    .toList();
-
-            categoryCandidatesMap.put(contentTypeId, candidates);
-        }
-
-        // 3. 숙박 보장 조건 처리 (2일 이상 체류할 때 숙박 후보 최소 1개 이상 포함)
-        boolean needLodging = request.getStayDays() >= 2;
-        List<CandidateWithDistance> finalCandidates = new ArrayList<>();
-
-        if (needLodging) {
-            List<CandidateWithDistance> lodgings = categoryCandidatesMap.getOrDefault(TourismContentType.LODGING.getCode(), List.of());
-            if (!lodgings.isEmpty()) {
-                finalCandidates.add(lodgings.getFirst()); // 가장 가까운 숙박 1개 필수 포함
-            }
-        }
-
-        // 4. 나머지 카테고리별 후보들 순차 수집 (최대 15개)
-        for (List<CandidateWithDistance> list : categoryCandidatesMap.values()) {
-            for (CandidateWithDistance candidate : list) {
-                if (finalCandidates.size() >= TOTAL_REGIONAL_LIMIT) break;
-                if (!finalCandidates.contains(candidate)) {
-                    finalCandidates.add(candidate);
-                }
-            }
-            if (finalCandidates.size() >= TOTAL_REGIONAL_LIMIT) break;
-        }
-
-        // 5. 최종 추린 candidate 들에 대해서만 상세(getAiDetail) 호출해 반환
+        List<AreaBasedItem> localItems = tourismApiClient.fetchAreaBasedContent(regionCode, sigunguCode, SEARCH_LIMIT);
+        List<AreaBasedItem> regionalItems = tourismApiClient.fetchAreaBasedContent(regionCode, null, SEARCH_LIMIT);
         List<TourismContentDetailResponse> details = new ArrayList<>();
-        for (CandidateWithDistance candidate : finalCandidates) {
-            try {
-                TourismContentDetailResponse detail = detailService.getAiDetail(
-                        candidate.item().getContentid(), request.getStartDate(), false);
-                if (hasRequiredAiFields(detail))
-                    details.add(detail);
-            } catch (RuntimeException exception) {
-                log.warn("[AI 일정] 지역 후보 상세 조회 실패: contentId={}",
-                        candidate.item().getContentid(), exception);
+        Set<String> includedIds = new HashSet<>(savedContentIds);
+        for (CategoryTarget target : CATEGORY_TARGETS) {
+            List<CandidateWithDistance> candidates = candidates(
+                    localItems, regionalItems, target.category(), includedIds, centroid);
+            int added = 0;
+            for (CandidateWithDistance candidate : candidates) {
+                if (added >= target.limit()) break;
+                try {
+                    TourismContentDetailResponse detail = detailService.getAiDetail(
+                            candidate.item().getContentid(), request.getStartDate());
+                    if (hasRequiredAiFields(detail)) {
+                        details.add(detail);
+                        includedIds.add(candidate.item().getContentid());
+                        added++;
+                    }
+                } catch (RuntimeException exception) {
+                    log.warn("[AI 일정] 지역 후보 상세 조회 실패: contentId={}",
+                            candidate.item().getContentid(), exception);
+                }
             }
         }
         return details;
+    }
+
+    private List<CandidateWithDistance> candidates(
+            List<AreaBasedItem> localItems, List<AreaBasedItem> regionalItems, Category category,
+            Set<String> excludedIds, Coordinate centroid) {
+        List<CandidateWithDistance> local = sortedCandidates(
+                localItems, category, excludedIds, centroid);
+        Set<String> localIds = local.stream().map(candidate -> candidate.item().getContentid())
+                .collect(java.util.stream.Collectors.toSet());
+        localIds.addAll(excludedIds);
+        List<CandidateWithDistance> regional = sortedCandidates(
+                regionalItems, category, localIds, centroid);
+        return java.util.stream.Stream.concat(local.stream(), regional.stream()).toList();
+    }
+
+    private List<CandidateWithDistance> sortedCandidates(
+            List<AreaBasedItem> items, Category category, Set<String> excludedIds, Coordinate centroid) {
+        return items.stream()
+                .filter(category::matches)
+                .filter(item -> item.getContentid() != null && !excludedIds.contains(item.getContentid()))
+                .collect(LinkedHashMap<String, AreaBasedItem>::new,
+                        (unique, item) -> unique.putIfAbsent(item.getContentid(), item), LinkedHashMap::putAll)
+                .values().stream()
+                .map(item -> new CandidateWithDistance(item,
+                        calculateDistance(centroid, item.getMapx(), item.getMapy())))
+                .sorted(Comparator.comparingDouble(CandidateWithDistance::distance))
+                .toList();
     }
 
     private boolean hasRequiredAiFields(TourismContentDetailResponse detail) {
@@ -152,5 +148,39 @@ public class RegionalContentService {
     }
 
     private record CandidateWithDistance(AreaBasedItem item, double distance) {
+    }
+
+    private record CategoryTarget(Category category, int limit) {
+    }
+
+    private enum Category {
+        LODGING {
+            boolean matches(AreaBasedItem item) {
+                return TourismContentType.LODGING.getCode().equals(item.getContenttypeid());
+            }
+        },
+        ATTRACTION {
+            boolean matches(AreaBasedItem item) {
+                return Set.of("12", "14", "15", "25", "28", "38").contains(item.getContenttypeid());
+            }
+        },
+        RESTAURANT {
+            boolean matches(AreaBasedItem item) {
+                return TourismContentType.RESTAURANT.getCode().equals(item.getContenttypeid())
+                        && !isCafe(item);
+            }
+        },
+        CAFE {
+            boolean matches(AreaBasedItem item) {
+                return TourismContentType.RESTAURANT.getCode().equals(item.getContenttypeid())
+                        && isCafe(item);
+            }
+        };
+
+        abstract boolean matches(AreaBasedItem item);
+
+        static boolean isCafe(AreaBasedItem item) {
+            return item.getLclsSystm2() != null && item.getLclsSystm2().startsWith("FD05");
+        }
     }
 }

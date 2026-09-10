@@ -1,6 +1,7 @@
 package com.wordiga.plan.dto;
 
 import com.wordiga.plan.Plan;
+import com.wordiga.plan.PlanBudgetBreakdown;
 import com.wordiga.plan.PlanContent;
 import lombok.Builder;
 import lombok.Data;
@@ -21,31 +22,40 @@ public class PlanDetailResponse {
     private LocalDate startDate;
     private LocalDate endDate;
     private Integer participantCount;
-    private EstimatedBudget estimatedBudget;
+    private EstimatedCost estimatedCost;
     private List<Day> days;
+    private ProposalInfo proposal;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
 
     public static PlanDetailResponse from(Plan p) {
+        return from(p, null);
+    }
+
+    public static PlanDetailResponse from(Plan p, ProposalInfo proposalInfo) {
         List<Day> days = p.getPlanContents().stream().collect(Collectors.groupingBy(PlanContent::getDayNumber,
                 TreeMap::new, Collectors.toList())).entrySet().stream().map(e -> Day.builder().dayNumber(e.getKey())
                 .date(p.getStartDate().plusDays(e.getKey() - 1L)).contents(e.getValue().stream()
                         .sorted(Comparator.comparing(PlanContent::getSequence)).map(Content::from).toList()).build()).toList();
-        EstimatedBudget budget = null;
+        EstimatedCost budget = null;
         if (p.getEstimatedTotalAmount() != null || p.getEstimatedPerPersonAmount() != null) {
-            java.util.Map<String, Long> breakdown = p.getBudgetBreakdowns().stream().collect(Collectors.toMap(
-                    com.wordiga.plan.PlanBudgetBreakdown::getCategory, com.wordiga.plan.PlanBudgetBreakdown::getAmount,
+            Map<String, Long> breakdown = p.getBudgetBreakdowns().stream().collect(Collectors.toMap(
+                    PlanBudgetBreakdown::getCategory, PlanBudgetBreakdown::getAmount,
                     (first, ignored) -> first, LinkedHashMap::new));
-            budget = new EstimatedBudget(p.getEstimatedTotalAmount(), p.getEstimatedPerPersonAmount(),
+            budget = new EstimatedCost(p.getEstimatedTotalAmount(), p.getEstimatedPerPersonAmount(),
                     "KRW", breakdown);
         }
         return builder().planId(p.getId()).scheduleId(p.getScheduleId()).title(p.getTitle()).startDate(p.getStartDate()).endDate(p.getEndDate())
-                .participantCount(p.getParticipantCount()).estimatedBudget(budget).days(days)
+                .participantCount(p.getParticipantCount()).estimatedCost(budget).days(days)
+                .proposal(proposalInfo)
                 .createdAt(p.getCreatedAt()).updatedAt(p.getUpdatedAt()).build();
     }
 
-    public record EstimatedBudget(Long totalAmount, Long perPersonAmount, String currency,
-                                  Map<String, Long> breakdown) {
+    public record EstimatedCost(Long totalAmount, Long perPersonAmount, String currency,
+                                Map<String, Long> breakdown) {
+    }
+
+    public record ProposalInfo(String fileName, String pdfUrl, String docxUrl, LocalDateTime createdAt) {
     }
 
     @Data

@@ -16,8 +16,8 @@ import org.springframework.web.server.ResponseStatusException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.util.List;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 
@@ -31,7 +31,6 @@ public class TourismContentDetailService {
     private final TourismApiClient tourismApiClient;
     private final TourismDetailMapper detailMapper;
     private final TourismSatisfactionService satisfactionService;
-    private final MonthlyWeatherService monthlyWeatherService;
 
     public TourismContentDetailResponse getDetail(
             String contentId, LocalDate visitDate, List<String> ageGroups, Integer stayNights, Integer participantCount) {
@@ -60,8 +59,6 @@ public class TourismContentDetailService {
                 .seasonalImages(seasonalImages)
                 .satisfaction(satisfactionService.calculate(satisfactionRequest, null))
                 .capacitySatisfied(capacitySatisfied(common.getContenttypeid(), intro, details, participantCount))
-                .monthlyWeather(monthlyWeatherService.estimate(
-                        common.getLDongSignguCd(), visitDate == null ? LocalDate.now() : visitDate))
                 .build();
     }
 
@@ -73,7 +70,7 @@ public class TourismContentDetailService {
         return common;
     }
 
-    public TourismContentDetailResponse getAiDetail(String contentId, LocalDate visitDate, boolean includeWeather) {
+    public TourismContentDetailResponse getAiDetail(String contentId, LocalDate visitDate) {
         ContentDetailDto common = getCommonDetail(contentId);
         DetailIntroDto intro = tourismApiClient.fetchIntroDetail(contentId, common.getContenttypeid());
 
@@ -83,7 +80,6 @@ public class TourismContentDetailService {
                 .details(List.of())
                 .images(List.of())
                 .seasonalImages(List.of())
-                .monthlyWeather(includeWeather ? monthlyWeatherService.estimate(common.getLDongSignguCd(), visitDate) : null)
                 .build();
     }
 

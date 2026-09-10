@@ -2,10 +2,10 @@ package com.wordiga.global.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordiga.global.config.AiServerProperties;
 import com.wordiga.plan.dto.ai.AiPlanRequest;
 import com.wordiga.plan.dto.ai.AiPlanResponse;
 import com.wordiga.proposal.dto.AiProposalRequest;
-import com.wordiga.global.config.AiServerProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -66,9 +66,20 @@ public class AiServerClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .contentLength(body.length)
                     .body(outputStream -> outputStream.write(body))
-                    .retrieve()
-                    .body(byte[].class);
-            if (response == null) throw invalid("제안서 문서 응답이 비어 있습니다.");
+                    .exchange((req, res) -> {
+                        if (res.getStatusCode().isError()) {
+                            throw new RestClientResponseException(
+                                    "AI 서버 제안서 생성 실패",
+                                    res.getStatusCode().value(),
+                                    res.getStatusText(),
+                                    res.getHeaders(),
+                                    res.getBody().readAllBytes(),
+                                    null
+                            );
+                        }
+                        return res.getBody().readAllBytes();
+                    });
+            if (response == null || response.length == 0) throw invalid("제안서 문서 응답이 비어 있습니다.");
             return response;
         } catch (ResponseStatusException e) {
             throw e;
@@ -91,7 +102,8 @@ public class AiServerClient {
 
     private ResponseStatusException upstream(RestClientResponseException exception, String operation) {
         int upstreamStatus = exception.getStatusCode().value();
-        log.error("[AiServerClient] AI 서버 {} 실패: status={}", operation, upstreamStatus);
+        log.error("[AiServerClient] AI 서버 {} 실패: status={}, body={}",
+                operation, upstreamStatus, exception.getResponseBodyAsString(), exception);
         if (upstreamStatus == HttpStatus.GATEWAY_TIMEOUT.value())
             return new ResponseStatusException(HttpStatus.GATEWAY_TIMEOUT, "AI 서버의 처리 시간이 초과되었습니다.", exception);
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 서버가 " + operation + "에 실패했습니다.", exception);

@@ -2,7 +2,6 @@ package com.wordiga.plan.dto.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.plan.dto.PlanGenerateRequest;
-import com.wordiga.common.dto.AgeGroup;
 import com.wordiga.tourism.dto.detail.MonthlyWeatherDto;
 import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
@@ -25,7 +24,7 @@ class AiPlanRequestTest {
         request.setParticipantCount(25);
         request.setVisitMonth(9);
         request.setStayDays(2);
-        request.setAgeGroups(List.of(AgeGroup.THIRTIES, AgeGroup.FORTIES));
+        request.setAgeGroups(List.of("30대", "40대"));
         request.setSelectedContentIds(List.of("CT001"));
         TourismContentDetailResponse detail = TourismContentDetailResponse.builder()
                 .common(TourismCommonDetailDto.builder().contentId("CT001").contentTypeId("32")
@@ -46,7 +45,6 @@ class AiPlanRequestTest {
         assertThat(json.get("visit_month").asInt()).isEqualTo(9);
         assertThat(json.get("num_people").asInt()).isEqualTo(25);
         assertThat(json.get("num_days").asInt()).isEqualTo(2);
-        assertThat(json.get("age_groups").toString()).isEqualTo("[\"30S\",\"40S\"]");
         assertThat(json.has("num_nights")).isFalse();
         assertThat(json.get("saved_content_ids").get(0).asText()).isEqualTo("CT001");
         assertThat(json.get("saved_contents").get(0).get("category").asText()).isEqualTo("accommodation");

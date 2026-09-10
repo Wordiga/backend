@@ -50,8 +50,7 @@ public class KakaoUnlinkClient {
     }
 
     private void unavailable(Exception cause) {
-        log.error("[KakaoUnlinkClient] 카카오 연동 해제 실패: type={}",
-                cause == null ? "MISSING_ADMIN_KEY" : cause.getClass().getSimpleName());
+        log.error("[KakaoUnlinkClient] 카카오 연동 해제 중 오류 발생: {}", cause != null ? cause.getMessage() : "AdminKey 누락", cause);
         throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "카카오 연결을 해제할 수 없습니다.", cause);
     }
 }

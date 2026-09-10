@@ -1,14 +1,17 @@
 package com.wordiga.plan.service;
 
-import com.wordiga.plan.dto.*;
 import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.plan.Plan;
 import com.wordiga.plan.PlanContent;
+import com.wordiga.plan.dto.*;
 import com.wordiga.plan.repository.PlanRepository;
+import com.wordiga.proposal.repository.ProposalRepository;
+import com.wordiga.proposal.service.ProposalStorage;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
 import com.wordiga.tourism.service.TourismContentDetailService;
 import com.wordiga.tourism.service.TourismContentSnapshotService;
+import com.wordiga.tourism.service.MonthlyWeatherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -18,7 +21,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -36,6 +38,9 @@ public class PlanService {
     private final TourismContentDetailService tourismContentDetailService;
     private final TourismContentSnapshotRepository snapshotRepository;
     private final TourismContentSnapshotService snapshotService;
+    private final ProposalRepository proposalRepository;
+    private final ProposalStorage proposalStorage;
+    private final MonthlyWeatherService monthlyWeatherService;
 
     @Transactional
     public PlanListResponse getPlans(Long memberId, int page, int size, PlanSort sort) {
@@ -44,7 +49,7 @@ public class PlanService {
         Page<Plan> result = planRepository.findByMemberId(memberId, PageRequest.of(page, size, order));
         synchronize(result.getContent());
         return PlanListResponse.builder().items(result.map(PlanSummaryResponse::from).getContent())
-                .page(page).size(size).hasNext(result.hasNext()).build();
+                .page(page).size(size).totalPages(result.getTotalPages()).hasNext(result.hasNext()).build();
     }
 
     @Transactional
@@ -52,6 +57,21 @@ public class PlanService {
         Plan plan = owned(memberId, planId);
         synchronize(List.of(plan));
         return detail(plan);
+    }
+
+    public PlanWeatherResponse getWeather(Long memberId, Long planId, int month) {
+        Plan plan = owned(memberId, planId);
+        TourismContentSnapshot representative = plan.getPlanContents().stream()
+                .sorted(java.util.Comparator.comparing(PlanContent::getDayNumber)
+                        .thenComparing(PlanContent::getSequence))
+                .map(PlanContent::getContent)
+                .findFirst()
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.BAD_REQUEST, "날씨를 조회할 일정 콘텐츠가 없습니다."));
+        var weather = monthlyWeatherService.estimate(representative.getSigunguCode(), month);
+        if (weather == null)
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "일정 지역의 날씨를 조회할 수 없습니다.");
+        return PlanWeatherResponse.from(representative.getSigunguName(), weather);
     }
 
     @Transactional
@@ -74,10 +94,8 @@ public class PlanService {
             int sequence = 1;
             for (String contentId : day.getContentIds()) {
                 if (!ids.add(contentId)) invalid("콘텐츠 ID는 중복될 수 없습니다.");
-                // 1. 공통 상세 정보 조회
                 ContentDetailDto c = tourismContentDetailService.getCommonDetail(contentId);
 
-                // 2. DTO -> TourismContentSnapshot 엔티티 변환 (또는 DB 조회/저장 처리)
                 TourismContentSnapshot snapshot = snapshotRepository.save(TourismContentSnapshot.builder()
                         .contentId(c.getContentid())
                         .contentTypeId(c.getContenttypeid())
@@ -94,7 +112,6 @@ public class PlanService {
                         .updatedAt(LocalDateTime.now())
                         .build());
 
-                // 3. PlanContent 엔티티 생성
                 PlanContent planContent = PlanContent.create(plan, sequence++, day.getDayNumber(), snapshot);
                 contents.add(planContent);
             }
@@ -115,7 +132,17 @@ public class PlanService {
     }
 
     private PlanDetailResponse detail(Plan p) {
-        return PlanDetailResponse.from(p);
+        PlanDetailResponse.ProposalInfo proposalInfo = proposalRepository
+                .findByPlanIdAndExpiresAtAfter(p.getId(), LocalDateTime.now())
+                .map(proposal -> {
+                    String docxUrl = proposalStorage.url(proposal.getS3Key(), proposal.getFileName(), true);
+                    String pdfUrl = proposal.getS3KeyPdf() != null
+                            ? proposalStorage.url(proposal.getS3KeyPdf(), proposal.getFileName().replace(".docx", ".pdf"), false)
+                            : null;
+                    return new PlanDetailResponse.ProposalInfo(
+                            proposal.getFileName(), pdfUrl, docxUrl, proposal.getCreatedAt());
+                }).orElse(null);
+        return PlanDetailResponse.from(p, proposalInfo);
     }
 
     private void synchronize(List<Plan> plans) {

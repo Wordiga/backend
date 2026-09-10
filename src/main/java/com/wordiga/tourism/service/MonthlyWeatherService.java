@@ -50,6 +50,10 @@ public class MonthlyWeatherService {
      *  5개년 평균 기온/강수량 계산
      */
     public MonthlyWeatherDto estimate(String sigunguCode, LocalDate visitDate) {
+        return estimate(sigunguCode, visitDate.getMonthValue());
+    }
+
+    public MonthlyWeatherDto estimate(String sigunguCode, int month) {
         AsosStation station = ASOS_STATION_BY_SIGUNGU_CODE.get(sigunguCode);
         if (station == null) return null;
 
@@ -58,7 +62,7 @@ public class MonthlyWeatherService {
         List<AsosDailyResponse.Item> observations = new ArrayList<>();
 
         for (int offset = 1; offset <= years; offset++) {
-            YearMonth target = YearMonth.of(currentYear - offset, visitDate.getMonthValue());
+            YearMonth target = YearMonth.of(currentYear - offset, month);
             observations.addAll(weatherApiClient.daily(station.id(), target.atDay(1), target.atEndOfMonth()));
         }
         if (observations.isEmpty()) return null;
@@ -89,7 +93,7 @@ public class MonthlyWeatherService {
                 BigDecimal.valueOf(years), 1, RoundingMode.HALF_UP);
 
         return MonthlyWeatherDto.builder()
-                .targetMonth(visitDate.getMonthValue())
+                .targetMonth(month)
                 .avgTemp(avgTemp)
                 .monthlyPrecipitation(avgMonthlyPrecipitation)
                 .historicalYears(years)

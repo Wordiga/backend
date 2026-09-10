@@ -19,8 +19,8 @@ public class Proposal extends BaseTimeEntity {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(nullable = false)
+    @OneToOne(fetch = FetchType.LAZY)
+    @JoinColumn(nullable = false, unique = true)
     private Plan plan;
 
     @Column(nullable = false, unique = true, length = 500)
@@ -32,18 +32,22 @@ public class Proposal extends BaseTimeEntity {
     @Column(nullable = false)
     private long fileSize;
 
+    @Column(length = 500)
+    private String s3KeyPdf;
+
     @Column(nullable = false)
     private LocalDateTime expiresAt;
 
-    private Proposal(Plan plan, String s3Key, String fileName, long fileSize, LocalDateTime expiresAt) {
+    private Proposal(Plan plan, String s3Key, String s3KeyPdf, String fileName, long fileSize, LocalDateTime expiresAt) {
         this.plan = plan;
         this.s3Key = s3Key;
+        this.s3KeyPdf = s3KeyPdf;
         this.fileName = fileName;
         this.fileSize = fileSize;
         this.expiresAt = expiresAt;
     }
 
-    public static Proposal create(Plan plan, String s3Key, String fileName, long fileSize, LocalDateTime expiresAt) {
-        return new Proposal(plan, s3Key, fileName, fileSize, expiresAt);
+    public static Proposal create(Plan plan, String s3Key, String s3KeyPdf, String fileName, long fileSize, LocalDateTime expiresAt) {
+        return new Proposal(plan, s3Key, s3KeyPdf, fileName, fileSize, expiresAt);
     }
 }

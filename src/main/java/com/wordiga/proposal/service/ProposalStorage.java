@@ -23,14 +23,25 @@ import java.nio.charset.StandardCharsets;
 @RequiredArgsConstructor
 public class ProposalStorage {
     private static final String DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    private static final String PDF = "application/pdf";
     private final S3Client s3Client;
     private final S3Presigner presigner;
     private final ProposalS3Properties properties;
 
     public void put(String key, byte[] bytes) {
+        putWithContentType(key, bytes, DOCX);
+    }
+
+    public void putPdf(String key, byte[] bytes) {
+        putWithContentType(key, bytes, PDF);
+    }
+
+    private void putWithContentType(String key, byte[] bytes, String contentType) {
         configured();
         try {
-            s3Client.putObject(PutObjectRequest.builder().bucket(properties.bucket()).key(key).contentType(DOCX).build(), RequestBody.fromBytes(bytes));
+            s3Client.putObject(
+                    PutObjectRequest.builder().bucket(properties.bucket()).key(key).contentType(contentType).build(),
+                    RequestBody.fromBytes(bytes));
         } catch (S3Exception e) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "제안서를 저장할 수 없습니다.", e);
         }

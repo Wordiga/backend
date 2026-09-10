@@ -4,9 +4,9 @@ import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
 
+import java.time.Duration;
 import java.time.LocalDate;
 import java.time.LocalTime;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,7 +17,7 @@ import java.util.Map;
 public class AiPlanResponse {
     @com.fasterxml.jackson.annotation.JsonProperty("plan_id")
     private Long scheduleId;
-    private EstimatedBudget estimatedBudget;
+    private EstimatedCost estimatedCost;
     private List<Day> days;
 
     @com.fasterxml.jackson.annotation.JsonProperty("timetable")
@@ -58,12 +58,17 @@ public class AiPlanResponse {
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-    public static class Timetable { private List<TimetableDay> days; }
+    public static class Timetable {
+        private List<TimetableDay> days;
+    }
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
-    public static class TimetableDay { private Integer day; private List<TimetableItem> items; }
+    public static class TimetableDay {
+        private Integer day;
+        private List<TimetableItem> items;
+    }
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -82,7 +87,7 @@ public class AiPlanResponse {
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public static class EstimatedBudget {
+    public static class EstimatedCost {
         private Long totalAmount;
         private Long perPersonAmount;
         private String currency;

@@ -41,8 +41,7 @@ public record AiPlanRequest(
                         detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
                 regionalDetails.stream().map(detail -> Content.from(
                         detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
-                request.getAgeGroups() == null ? null : request.getAgeGroups().stream()
-                        .map(com.wordiga.common.dto.AgeGroup::code).toList(),
+                request.getAgeGroups(),
                 null,
                 MonthlyWeather.from(savedDetails.getFirst().getMonthlyWeather()),
                 null);

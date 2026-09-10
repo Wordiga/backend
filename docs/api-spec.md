@@ -6,8 +6,6 @@
 
 | Method | Path | Auth | 설명 |
 |---|---|---|---|
-| POST | `/api/v1/auth/refresh` | Refresh Cookie | Access Token 재발급 |
-| DELETE | `/api/v1/auth/session` | X | Refresh Cookie 삭제 |
 | GET | `/api/v1/tourism/contents` | X | 관광 콘텐츠 목록 조회 |
 | GET | `/api/v1/tourism/contents/sigungu` | X | 충청남도 시군구 목록 조회 |
 | GET | `/api/v1/tourism/contents/{contentId}` | X | 관광 콘텐츠 통합 상세 조회 |
@@ -18,11 +16,11 @@
 | POST | `/api/v1/plans/generate` | O | AI 일정 생성 및 저장 |
 | GET | `/api/v1/plans` | O | 내 일정 목록 조회 |
 | GET | `/api/v1/plans/{planId}` | O | 내 일정 상세 조회 |
+| GET | `/api/v1/plans/{planId}/weather` | O | 일정 대표 지역의 월평균 기후 조회 |
 | PATCH | `/api/v1/plans/{planId}` | O | 내 일정 기본정보 수정 |
 | PUT | `/api/v1/plans/{planId}/contents` | O | 내 일정 콘텐츠 수정 |
 | DELETE | `/api/v1/plans/{planId}` | O | 내 일정 삭제 |
 | POST | `/api/v1/plans/{planId}/proposals` | O | AI 제안서 DOCX 생성 |
-| GET | `/api/v1/plans/{planId}/proposals` | O | 일정별 제안서 목록 조회 |
 | DELETE | `/api/v1/plans/{planId}/proposals/{proposalId}` | O | 제안서 영구 삭제 |
 | GET | `/api/v1/me` | O | 내 소셜 프로필 조회 |
 | DELETE | `/api/v1/me` | O | 소셜 연결 해제 및 회원탈퇴 |
@@ -31,9 +29,7 @@
 
 - 인증이 필요한 API는 HTTP `Authorization` 헤더에 `Bearer {accessToken}`을 전달합니다.
 - 비회원 위시리스트 저장은 제공하지 않습니다.
-- Access Token 유효기간은 1시간입니다.
-- OAuth 로그인 성공 시 30일 유효한 Wordiga Refresh Token을 `Secure`, `HttpOnly`, `SameSite=Lax` 쿠키로 함께 발급합니다.
-- Refresh Token은 Google/Kakao 토큰이 아니라 Wordiga가 자체 발급하며 JavaScript 응답에 노출하지 않습니다.
+- Stateless JWT를 사용하므로 로그아웃은 프론트엔드가 저장한 토큰을 삭제하는 방식으로 처리합니다.
 
 ### 공통 오류 응답
 
@@ -75,7 +71,7 @@ GET /api/v1/tourism/contents
 | `referenceContentId` | String | C | `type=RELATED`일 때 필수인 기준 관광 콘텐츠 ID | `2717354` |
 | `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `25` |
-| `ageGroups` | Enum[] | N | `20S`, `30S`, `40S`, `50S_PLUS`만 허용 | `30S,40S` |
+| `ageGroups` | String[] | N | 로그인 회원의 목록 만족도 산출에 사용할 연령대 | `30S,40S` |
 | `page` | Integer | N | 0부터 시작하는 페이지 기본값은 `0` | `0` |
 | `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
 
@@ -273,9 +269,9 @@ GET /api/v1/tourism/contents/{contentId}
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `visitDate` | LocalDate | N | 쾌적도와 월 기후 판단 기준일, 미입력 시 오늘 | `2026-08-20` |
+| `visitDate` | LocalDate | N | 쾌적도 판단 기준일, 미입력 시 오늘 | `2026-08-20` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `8` |
-| `ageGroups` | Enum[] | N | `20S`, `30S`, `40S`, `50S_PLUS`만 허용 | `20S,30S` |
+| `ageGroups` | String[] | N | 연령대 코드 `10S`~`70S` | `20S,30S` |
 | `stayDays` | Integer | N | 체류 일수 `1`~`3`; 체류 적합도 계산 시 숙박 일수 `stayDays-1`로 변환 | `2` |
 
 ### Request Body
@@ -295,13 +291,6 @@ GET /api/v1/tourism/contents/{contentId}
 | `seasonalImages` | SeasonalImage[] | Y | 촬영일을 기준으로 계절을 의미화한 사진 |
 | `satisfaction` | Satisfaction | N | 관광 수요 기반 예상 만족도 |
 | `capacitySatisfied` | Boolean | N | 숙박 콘텐츠가 참가 인원을 수용할 수 있는지 여부이며 원천 수용인원이 없으면 `null` |
-| `monthlyWeather` | MonthlyWeather | N | 방문 월의 최근 5개년 ASOS 동일 월 관측값으로 계산한 기후 예상치 |
-| `monthlyWeather.targetMonth` | Integer | Y | 대상 월 1~12 |
-| `monthlyWeather.avgTemp` | BigDecimal | N | ASOS 일평균기온의 5개년 동일 월 평균 |
-| `monthlyWeather.monthlyPrecipitation` | BigDecimal | N | 연도별 동일 월 누적강수량의 5개년 평균 |
-| `monthlyWeather.historicalYears` | Integer | Y | 산출에 사용한 연도 수, 기본 5 |
-| `monthlyWeather.stationName` | String | N | 시군구에 매핑한 인근 ASOS 관측소명 |
-| `monthlyWeather.basis` | String | Y | `ASOS_HISTORICAL_MONTHLY_AVERAGE` |
 
 ### Response Body - CommonDetail
 
@@ -1022,8 +1011,8 @@ POST /api/v1/plans/generate
 | `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
 | `visitMonth` | Integer | N | 방문 월(1~12), 미입력 시 `startDate`의 월 사용 |
-| `stayDays` | Integer | Y | 체류 일수 `1`~`PLAN_MAX_STAY_DAYS`(기본 3); 시작일과 종료일을 포함한 기간과 일치해야 함 |
-| `ageGroups` | Enum[] | N | `20S`, `30S`, `40S`, `50S_PLUS`만 허용 |
+| `stayDays` | Integer | Y | 체류 일수 `1`~`3`; 시작일과 종료일을 포함한 기간과 일치해야 함 |
+| `ageGroups` | String[] | N | 참가자 연령대 |
 | `selectedContentIds` | String[] | Y | 선택 콘텐츠 ID, 배열 순서가 사용자 우선순위 |
 
 ### Response Body
@@ -1036,11 +1025,11 @@ POST /api/v1/plans/generate
 | `startDate` | LocalDate | Y | 시작일 |
 | `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedBudget` | EstimatedBudget | N | 예상 예산 |
-| `estimatedBudget.totalAmount` | Long | N | 전체 예상 금액 |
-| `estimatedBudget.perPersonAmount` | Long | N | 1인당 예상 금액 |
-| `estimatedBudget.currency` | String | N | 통화 코드 |
-| `estimatedBudget.breakdown` | Map<String, Long> | N | AI 서버가 제공한 항목별 예상 금액. 항목명과 금액을 구조화해 저장 |
+| `estimatedCost` | EstimatedCost | N | 예상 예산 |
+| `estimatedCost.totalAmount` | Long | N | 전체 예상 금액 |
+| `estimatedCost.perPersonAmount` | Long | N | 1인당 예상 금액 |
+| `estimatedCost.currency` | String | N | 통화 코드 |
+| `estimatedCost.breakdown` | Map<String, Long> | N | AI 서버가 제공한 항목별 예상 금액. 항목명과 금액을 구조화해 저장 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1072,7 +1061,7 @@ POST /api/v1/plans/generate
   "startDate": "2026-08-20",
   "endDate": "2026-08-21",
   "participantCount": 10,
-  "estimatedBudget": {
+  "estimatedCost": {
     "totalAmount": 640000,
     "perPersonAmount": 80000,
     "currency": "KRW",
@@ -1126,26 +1115,27 @@ POST /api/v1/plans/generate
 ### Validation
 
 - 시작일은 종료일보다 늦을 수 없습니다.
-- 일정 기간은 `PLAN_MAX_STAY_DAYS`(기본 3)까지입니다.
+- 일정 기간은 최대 3일입니다.
 - 참가 인원은 10~50명입니다.
 - `visitMonth`는 `startDate`의 월과 같아야 합니다.
-- `stayDays`는 1~`PLAN_MAX_STAY_DAYS`(기본 3)이며 `endDate - startDate + 1`과 같아야 합니다.
+- `stayDays`는 1~3이며 `endDate - startDate + 1`과 같아야 합니다.
 - AI 요청 JSON만 snake_case를 사용합니다. 애플리케이션 요청·응답 DTO는 lowerCamelCase를 유지합니다.
-- AI 요청에는 월 기후 예상치 `monthly_weather`, 콘텐츠별 `is_outdoor`, 보충 후보 `regional_contents`를 전달합니다. 체류 기간은 `num_days` 하나로 전달합니다.
+- AI 요청에는 콘텐츠별 `is_outdoor`와 보충 후보 `regional_contents`를 전달합니다. 체류 기간은 `num_days` 하나로 전달합니다.
 - 분류 코드는 관광공사 `lclsSystmCode2` 변환 API의 한글 분류명으로 바꿔 `tags`에 전달합니다. 변환 실패 시 로그를 기록하고 AI 계약에 맞게 `tags: []`로 전달합니다.
 - `selectedContentIds`는 중복 없이 1~10개입니다.
 - AI 응답의 일차는 1부터 중복 없이 이어져야 합니다.
 - AI 응답의 일수는 요청한 `stayDays`와 같아야 합니다.
 - 일자별 `sequence`는 1부터 중복 없이 이어져야 합니다.
 - 같은 날짜 안에서는 같은 콘텐츠를 중복 배치할 수 없고, 서로 다른 날짜에는 동일 숙소 등 같은 콘텐츠를 다시 배치할 수 있습니다.
-- AI 응답에는 사용자가 선택한 `saved_contents`가 모두 포함되어야 하며, 전달된 `regional_contents`도 일정에 포함할 수 있습니다.
+- AI 응답에서 사용자가 선택한 `saved_contents`가 누락되면 오류 로그를 남기며, 전달된 `regional_contents`도 일정에 포함할 수 있습니다.
 
 ### AI 연동 계약
 
 - AI 서버에는 `visit_month`, `num_people`, `num_days`, `saved_content_ids`, `saved_contents`,
   `regional_contents`, `age_groups`, `gender_ratio`, `preferences` snake_case 필드로 전달합니다.
 - `saved_contents`는 콘텐츠 ID·제목·카테고리·주소·좌표·시군구·운영정보·분류 태그·연락처·개요·이미지·평균 체류시간·행사기간을 포함합니다.
-- `regional_contents`는 선택 콘텐츠의 시군구에서 관광타입별 가까운 후보를 조회하고 상세정보로 보강해 최대 15개 전달합니다.
+- `regional_contents`는 선택 콘텐츠와 같은 시군구의 가까운 후보를 우선하고 부족하면 충남 전체에서 보충합니다.
+- `regional_contents`는 숙소 2개, 관광지·체험 5개, 음식점 4개, 카페 4개 비율로 최대 15개 전달합니다. 카페는 관광공사 중분류 `FD05`로 구분하며, 검색 결과가 부족한 유형은 찾은 항목만 전달합니다.
 - 사용자가 선택한 `saved_contents`는 모두 유지하며, 동일 콘텐츠가 연관 후보에도 있으면 `regional_contents`에서만 제외합니다.
 - 백엔드는 선택 콘텐츠의 타입별 상세정보, 좌표와 운영정보를 AI 서버에 HTTP POST로 전달합니다.
 - 사용자 입력 예산은 받지 않습니다.
@@ -1196,6 +1186,7 @@ GET /api/v1/plans
 | `items[].updatedAt` | LocalDateTime | Y | 수정 시각 |
 | `page` | Integer | Y | 현재 페이지 번호 |
 | `size` | Integer | Y | 페이지 크기 |
+| `totalPages` | Integer | Y | 전체 페이지 수 |
 | `hasNext` | Boolean | Y | 다음 페이지 존재 여부 |
 
 ### Response Example
@@ -1218,6 +1209,7 @@ GET /api/v1/plans
   ],
   "page": 0,
   "size": 20,
+  "totalPages": 1,
   "hasNext": false
 }
 ```
@@ -1277,7 +1269,12 @@ GET /api/v1/plans/{planId}
 | `startDate` | LocalDate | Y | 시작일 |
 | `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedBudget` | EstimatedBudget | N | 예상 예산 |
+| `estimatedCost` | EstimatedCost | N | 예상 예산 |
+| `proposal` | ProposalInfo | N | 유효한 제안서가 없으면 `null` |
+| `proposal.fileName` | String | Y | `.docx` 확장자를 포함한 파일명 |
+| `proposal.pdfUrl` | String | N | PDF 미리보기 URL. 변환 실패 시 `null` |
+| `proposal.docxUrl` | String | Y | DOCX 다운로드 URL |
+| `proposal.createdAt` | LocalDateTime | Y | 제안서 생성 시각 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1309,7 +1306,13 @@ GET /api/v1/plans/{planId}
   "startDate": "2026-08-20",
   "endDate": "2026-08-21",
   "participantCount": 10,
-  "estimatedBudget": null,
+  "estimatedCost": null,
+  "proposal": {
+    "fileName": "아산 워크숍 제안서.docx",
+    "pdfUrl": "https://presigned.example.com/proposal.pdf",
+    "docxUrl": "https://presigned.example.com/proposal.docx",
+    "createdAt": "2026-08-04T10:00:00"
+  },
   "days": [
     {
       "dayNumber": 1,
@@ -1354,6 +1357,54 @@ GET /api/v1/plans/{planId}
 
 - 일자는 `date ASC`, 콘텐츠는 `sequence ASC`로 정렬합니다.
 
+## 9-1. 일정 대표 지역의 월평균 기후 조회
+
+```http
+GET /api/v1/plans/{planId}/weather?month=7
+```
+
+일정의 첫 번째 콘텐츠가 속한 시군구를 대표 지역으로 사용해 입력 월의 최근 5개년 ASOS 평균을 반환합니다.
+
+인증: 필수
+
+### Query Parameter
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `month` | Integer | Y | 조회 월 1~12 |
+
+### Response Body
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `locationName` | String | N | 일정 대표 시군구명 |
+| `targetMonth` | Integer | Y | 조회 월 |
+| `avgTemp` | BigDecimal | N | 최근 5개년 해당 월 일평균기온의 평균, 소수점 첫째 자리 반올림 |
+| `monthlyPrecipitation` | BigDecimal | N | 최근 5개년 해당 월 누적강수량의 연평균, 소수점 첫째 자리 반올림 |
+| `historicalYears` | Integer | Y | 집계 연도 수, 기본 5년 |
+| `stationName` | String | Y | 대표 시군구에 대응하는 ASOS 관측소명 |
+| `basis` | String | Y | `ASOS_HISTORICAL_MONTHLY_AVERAGE` |
+
+### Response Example
+
+```json
+{
+  "locationName": "부여군",
+  "targetMonth": 7,
+  "avgTemp": 25.5,
+  "monthlyPrecipitation": 210.0,
+  "historicalYears": 5,
+  "stationName": "부여",
+  "basis": "ASOS_HISTORICAL_MONTHLY_AVERAGE"
+}
+```
+
+### Validation
+
+- `month`는 1~12여야 합니다.
+- 본인 소유 일정만 조회합니다.
+- 일정 콘텐츠가 없으면 `400`, 지역 매핑 또는 기상 자료가 없으면 `503`을 반환합니다.
+
 ## 10. 내 일정 기본정보 수정
 
 ```http
@@ -1382,7 +1433,7 @@ PATCH /api/v1/plans/{planId}
 | `planId` | Long | Y | 일정 ID |
 | `title` | String | Y | 일정 제목 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedBudget` | EstimatedBudget | N | 예상 예산 |
+| `estimatedCost` | EstimatedCost | N | 예상 예산 |
 | `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
 ### Response Example
@@ -1392,7 +1443,7 @@ PATCH /api/v1/plans/{planId}
   "planId": 77,
   "title": "아산 역사 워크숍 수정",
   "participantCount": 10,
-  "estimatedBudget": {
+  "estimatedCost": {
     "totalAmount": 800000,
     "perPersonAmount": 80000,
     "currency": "KRW",
@@ -1451,7 +1502,7 @@ PUT /api/v1/plans/{planId}/contents
 | `startDate` | LocalDate | Y | 시작일 |
 | `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedBudget` | EstimatedBudget | N | 마지막 AI 생성 시 저장된 예상 예산이며 재생성 전까지 유지 |
+| `estimatedCost` | EstimatedCost | N | 마지막 AI 생성 시 저장된 예상 예산이며 재생성 전까지 유지 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1600,7 +1651,8 @@ POST /api/v1/plans/{planId}/proposals
 관련 기능:
 
 * 저장된 일정으로 외부 AI 서버에 제안서 생성을 요청합니다.
-* 생성된 DOCX를 비공개 S3에 30일 보관하고 미리보기·다운로드 URL을 응답합니다.
+* 생성된 DOCX와 변환된 PDF를 비공개 S3에 30일 보관하고 접근 URL을 응답합니다.
+* 일정 하나에는 제안서 하나만 유지하며 다시 생성하면 기존 제안서를 교체합니다.
 
 인증: 필수
 
@@ -1621,8 +1673,8 @@ POST /api/v1/plans/{planId}/proposals
 | `planId` | Long | Y | 제안서의 기준 일정 ID |
 | `fileName` | String | Y | `.docx` 확장자를 포함한 파일명 |
 | `fileSize` | Long | Y | DOCX 파일 크기이며 단위는 byte |
-| `previewUrl` | String | Y | 프론트 DOCX 뷰어용 1일 유효 presigned URL |
-| `downloadUrl` | String | Y | 다운로드용 1일 유효 presigned URL |
+| `pdfUrl` | String | N | PDF 미리보기용 1일 유효 presigned URL. 변환 실패 시 `null` |
+| `docxUrl` | String | Y | DOCX 다운로드용 1일 유효 presigned URL |
 | `createdAt` | LocalDateTime | Y | 제안서 생성 시각 |
 | `expiresAt` | LocalDateTime | Y | 제안서 보관 만료 시각 |
 
@@ -1634,8 +1686,8 @@ POST /api/v1/plans/{planId}/proposals
   "planId": 77,
   "fileName": "아산 워크숍 제안서.docx",
   "fileSize": 152340,
-  "previewUrl": "https://presigned.example.com/proposal.docx",
-  "downloadUrl": "https://presigned.example.com/proposal.docx",
+  "pdfUrl": "https://presigned.example.com/proposal.pdf",
+  "docxUrl": "https://presigned.example.com/proposal.docx",
   "createdAt": "2026-08-04T10:00:00",
   "expiresAt": "2026-09-03T10:00:00"
 }
@@ -1661,81 +1713,10 @@ POST /api/v1/plans/{planId}/proposals
 ### AI 및 저장소 연동 계약
 
 - 백엔드는 저장된 일정 전체를 AI 제안서 서버에 전달합니다.
-- AI 서버에서 받은 DOCX bytes를 검증한 뒤 비공개 S3에 저장합니다.
+- AI 서버에서 받은 DOCX bytes를 검증한 뒤 비공개 S3에 저장하고 PDF로 변환해 함께 저장합니다.
 - S3 객체는 Lifecycle 정책으로 30일 뒤 삭제하며 접근 URL은 1일 동안 유효합니다.
 
-## 14. 일정별 제안서 목록 조회
-
-```http
-GET /api/v1/plans/{planId}/proposals
-```
-
-인증: 필수
-
-### Path Parameter
-
-| 이름 | 타입 | 필수 | 설명 | 예시 |
-|---|---|---|---|---|
-| `planId` | Long | Y | 제안서를 조회할 일정 ID | `77` |
-
-### Query Parameter
-
-없습니다.
-
-### Request Body
-
-| 이름 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| - | - | - | 요청 본문 없음 |
-
-### Response Body
-
-| 이름 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `proposalId` | Long | Y | 저장된 제안서 ID |
-| `planId` | Long | Y | 제안서의 기준 일정 ID |
-| `fileName` | String | Y | `.docx` 확장자를 포함한 파일명 |
-| `fileSize` | Long | Y | DOCX 파일 크기이며 단위는 byte |
-| `previewUrl` | String | Y | 조회 시 새로 발급한 1일 유효 미리보기 URL |
-| `downloadUrl` | String | Y | 조회 시 새로 발급한 1일 유효 다운로드 URL |
-| `createdAt` | LocalDateTime | Y | 제안서 생성 시각 |
-| `expiresAt` | LocalDateTime | Y | 제안서 보관 만료 시각 |
-
-### Response Example
-
-```json
-[
-  {
-    "proposalId": 15,
-    "planId": 77,
-    "fileName": "아산 워크숍 제안서.docx",
-    "fileSize": 152340,
-    "previewUrl": "https://presigned.example.com/proposal.docx",
-    "downloadUrl": "https://presigned.example.com/proposal.docx",
-    "createdAt": "2026-08-04T10:00:00",
-    "expiresAt": "2026-09-03T10:00:00"
-  }
-]
-```
-
-### Error Code
-
-| code | name | http code | description |
-|---|---|---:|---|
-| `UNAUTHORIZED` | 인증 실패 | 401 | 로그인해 주세요. |
-| `PLAN_NOT_FOUND` | 일정 없음 | 404 | 일정을 찾을 수 없습니다. |
-| `PROPOSAL_STORAGE_UNAVAILABLE` | 저장소 장애 | 503 | 제안서 접근 URL을 발급할 수 없습니다. |
-
-### Validation
-
-- 본인 소유 일정의 제안서만 조회합니다.
-- 보관 만료 시각이 지나지 않은 제안서만 반환합니다.
-
-### 정렬 기준
-
-- `createdAt DESC, proposalId DESC`로 정렬합니다.
-
-## 15. 제안서 영구 삭제
+## 14. 제안서 영구 삭제
 
 ```http
 DELETE /api/v1/plans/{planId}/proposals/{proposalId}
@@ -1751,7 +1732,7 @@ DELETE /api/v1/plans/{planId}/proposals/{proposalId}
 | `CONTENT_NOT_FOUND` | 제안서 없음 | 404 | 제안서를 찾을 수 없습니다. |
 | `PROPOSAL_STORAGE_UNAVAILABLE` | 저장소 장애 | 503 | 제안서를 삭제할 수 없습니다. |
 
-## 16. 내 소셜 프로필 조회
+## 15. 내 소셜 프로필 조회
 
 ```http
 GET /api/v1/me
@@ -1823,32 +1804,3 @@ DELETE /api/v1/me
 
 - Kakao `POST https://kapi.kakao.com/v1/user/unlink`를 사용합니다.
 - 인증은 `KAKAO_ADMIN_KEY`와 회원의 Kakao `providerId`를 사용합니다.
-
-## 18. Access Token 재발급
-
-```http
-POST /api/v1/auth/refresh
-Cookie: refreshToken={wordigaRefreshToken}
-```
-
-인증: Wordiga Refresh Token 쿠키 필수
-
-유효한 Refresh Token의 회원이 현재 존재할 때 1시간 유효한 새 Access Token을 반환합니다. 응답에는 `Cache-Control: no-store`를 적용합니다.
-
-```json
-{
-  "accessToken": "eyJ..."
-}
-```
-
-Refresh Token이 없거나, 만료·위조되었거나, 탈퇴한 회원의 토큰이면 `401 Unauthorized`를 반환합니다.
-
-## 19. 로그아웃
-
-```http
-DELETE /api/v1/auth/session
-```
-
-브라우저의 `refreshToken` 쿠키를 즉시 만료시킵니다. FE는 함께 보관 중인 Access Token도 삭제해야 합니다.
-
-현재 Refresh Token은 서버 저장소에 보관하지 않는 stateless JWT이므로, 이미 탈취된 Refresh Token의 개별 폐기는 지원하지 않습니다. 회원탈퇴 또는 `JWT_SECRET` 교체 시에는 더 이상 사용할 수 없습니다.

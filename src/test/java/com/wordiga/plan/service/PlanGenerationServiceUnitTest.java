@@ -40,15 +40,14 @@ class PlanGenerationServiceUnitTest {
     @BeforeEach
     void setUp() {
         lenient().when(regionalContentService.find(any(), anyList())).thenReturn(List.of());
-        service = new PlanGenerationService(tourismContentDetailService, regionalContentService, tourismApiClient,
-                aiServerClient, planWriter, 3);
+        service = new PlanGenerationService(tourismContentDetailService, regionalContentService, tourismApiClient, aiServerClient, planWriter);
     }
 
     @Test
     void callsAiOutsideWriterAndPersistsValidatedResponse() {
         PlanGenerateRequest request = request("126508");
         AiPlanResponse response = response("126508");
-        when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
+        when(tourismContentDetailService.getAiDetail(eq("126508"), any())).thenReturn(detail());
         when(tourismApiClient.fetchClassificationNames("AC", "AC01", null))
                 .thenReturn(List.of("숙박", "호텔"));
         when(aiServerClient.generatePlan(any())).thenReturn(response);
@@ -66,7 +65,7 @@ class PlanGenerationServiceUnitTest {
     void sendsKoreanClassificationNamesAndFallsBackToNullOnFailure() {
         PlanGenerateRequest request = request("126508");
         AiPlanResponse response = response("126508");
-        when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
+        when(tourismContentDetailService.getAiDetail(eq("126508"), any())).thenReturn(detail());
         when(tourismApiClient.fetchClassificationNames("AC", "AC01", null))
                 .thenThrow(new RuntimeException("분류 API 장애"));
         when(aiServerClient.generatePlan(any())).thenReturn(response);
@@ -83,17 +82,17 @@ class PlanGenerationServiceUnitTest {
         assertThatThrownBy(() -> service.generate(1L, request("A", "A"))).hasMessageContaining("400");
         PlanGenerateRequest request = request("A");
         AiPlanResponse response = response("B");
-        when(tourismContentDetailService.getAiDetail(eq("A"), any(), eq(true))).thenReturn(detail());
+        when(tourismContentDetailService.getAiDetail(eq("A"), any())).thenReturn(detail());
         when(aiServerClient.generatePlan(any())).thenReturn(response);
         assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("502");
         verifyNoInteractions(planWriter);
     }
 
     @Test
-    void acceptsRegionalContentButStillRequiresEverySavedContent() {
+    void sendsSelectedAndRegionalContentSeparately() {
         PlanGenerateRequest request = request("126508");
         TourismContentDetailResponse regional = detail("regional-1", "외암민속마을");
-        when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
+        when(tourismContentDetailService.getAiDetail(eq("126508"), any())).thenReturn(detail());
         when(regionalContentService.find(eq(request), anyList())).thenReturn(List.of(regional));
         when(aiServerClient.generatePlan(any())).thenReturn(response("126508", "regional-1"));
 
@@ -108,6 +107,19 @@ class PlanGenerationServiceUnitTest {
     }
 
     @Test
+    void logsSelectedContentOmissionWithoutBlockingTestGeneration() {
+        PlanGenerateRequest request = request("126508");
+        TourismContentDetailResponse regional = detail("regional-1", "외암민속마을");
+        when(tourismContentDetailService.getAiDetail(eq("126508"), any())).thenReturn(detail());
+        when(regionalContentService.find(eq(request), anyList())).thenReturn(List.of(regional));
+        when(aiServerClient.generatePlan(any())).thenReturn(response("regional-1"));
+
+        service.generate(1L, request);
+
+        verify(planWriter).saveGenerated(eq(1L), eq(request), any(), anyList(), isNull());
+    }
+
+    @Test
     void rejectsPlanLongerThanThreeDays() {
         PlanGenerateRequest request = request("A");
         request.setEndDate(request.getStartDate().plusDays(3));
@@ -117,23 +129,11 @@ class PlanGenerationServiceUnitTest {
     }
 
     @Test
-    void respectsConfiguredMaximumStayDays() {
-        service = new PlanGenerationService(tourismContentDetailService, regionalContentService, tourismApiClient,
-                aiServerClient, planWriter, 2);
-        PlanGenerateRequest request = request("A");
-        request.setEndDate(request.getStartDate().plusDays(2));
-        request.setStayDays(3);
-
-        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("1~2일");
-        verifyNoInteractions(aiServerClient, planWriter);
-    }
-
-    @Test
     void rejectsWrongDayCountButAllowsSameContentOnDifferentDays() {
         PlanGenerateRequest request = request("126508");
         request.setEndDate(request.getStartDate().plusDays(1));
         request.setStayDays(2);
-        when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
+        when(tourismContentDetailService.getAiDetail(eq("126508"), any())).thenReturn(detail());
         when(aiServerClient.generatePlan(any())).thenReturn(response("126508"));
 
         assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("502");
@@ -159,7 +159,7 @@ class PlanGenerationServiceUnitTest {
         AiPlanResponse.Day second = day(2, "126508");
         second.getContents().get(0).setSequence(4);
         response.setDays(List.of(first, second));
-        when(tourismContentDetailService.getAiDetail(eq("126508"), any(), eq(true))).thenReturn(detail());
+        when(tourismContentDetailService.getAiDetail(eq("126508"), any())).thenReturn(detail());
         when(aiServerClient.generatePlan(any())).thenReturn(response);
 
         service.generate(1L, request);
@@ -171,18 +171,18 @@ class PlanGenerationServiceUnitTest {
     }
 
     @Test
-    void fetchesMonthlyWeatherOnlyForTheFirstSelectedContent() {
+    void leavesWeatherOutOfPlanGenerationContentCalls() {
         PlanGenerateRequest request = request("A", "B");
-        when(tourismContentDetailService.getAiDetail("A", request.getStartDate(), true))
+        when(tourismContentDetailService.getAiDetail("A", request.getStartDate()))
                 .thenReturn(detail("A", "A 관광지"));
-        when(tourismContentDetailService.getAiDetail("B", request.getStartDate(), false))
+        when(tourismContentDetailService.getAiDetail("B", request.getStartDate()))
                 .thenReturn(detail("B", "B 관광지"));
         when(aiServerClient.generatePlan(any())).thenReturn(response("A", "B"));
 
         service.generate(1L, request);
 
-        verify(tourismContentDetailService).getAiDetail("A", request.getStartDate(), true);
-        verify(tourismContentDetailService).getAiDetail("B", request.getStartDate(), false);
+        verify(tourismContentDetailService).getAiDetail("A", request.getStartDate());
+        verify(tourismContentDetailService).getAiDetail("B", request.getStartDate());
     }
 
     private PlanGenerateRequest request(String... ids) {

@@ -1,17 +1,17 @@
 package com.wordiga.plan.service;
 
-import com.wordiga.plan.dto.ai.AiPlanRequest;
-import com.wordiga.plan.dto.ai.AiPlanResponse;
-import com.wordiga.plan.dto.PlanDetailResponse;
-import com.wordiga.plan.dto.PlanGenerateRequest;
 import com.wordiga.global.client.AiServerClient;
 import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.plan.dto.PlanDetailResponse;
+import com.wordiga.plan.dto.PlanGenerateRequest;
+import com.wordiga.plan.dto.ai.AiPlanRequest;
+import com.wordiga.plan.dto.ai.AiPlanResponse;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.service.RegionalContentService;
 import com.wordiga.tourism.service.TourismContentDetailService;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -20,34 +20,20 @@ import java.util.*;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class PlanGenerationService {
     private final TourismContentDetailService tourismContentDetailService;
     private final RegionalContentService regionalContentService;
     private final TourismApiClient tourismApiClient;
     private final AiServerClient aiServerClient;
     private final PlanWriter planWriter;
-    private final int maxStayDays;
-
-    public PlanGenerationService(TourismContentDetailService tourismContentDetailService,
-                                 RegionalContentService regionalContentService,
-                                 TourismApiClient tourismApiClient,
-                                 AiServerClient aiServerClient,
-                                 PlanWriter planWriter,
-                                 @Value("${plan.max-stay-days:3}") int maxStayDays) {
-        this.tourismContentDetailService = tourismContentDetailService;
-        this.regionalContentService = regionalContentService;
-        this.tourismApiClient = tourismApiClient;
-        this.aiServerClient = aiServerClient;
-        this.planWriter = planWriter;
-        this.maxStayDays = maxStayDays;
-    }
 
     public PlanDetailResponse generate(Long memberId, PlanGenerateRequest request) {
         validateRequest(request);
         List<TourismContentDetailResponse> details = new ArrayList<>();
         for (int index = 0; index < request.getSelectedContentIds().size(); index++)
             details.add(tourismContentDetailService.getAiDetail(
-                    request.getSelectedContentIds().get(index), request.getStartDate(), index == 0));
+                    request.getSelectedContentIds().get(index), request.getStartDate()));
         if (details.stream().anyMatch(detail -> !hasRequiredAiFields(detail)))
             invalid(HttpStatus.BAD_REQUEST, "선택 콘텐츠에 AI 일정 생성에 필요한 좌표 또는 지역 정보가 없습니다.");
         var regional = regionalContentService.find(request, details);
@@ -114,9 +100,8 @@ public class PlanGenerationService {
     }
 
     private void validateRequest(PlanGenerateRequest r) {
-        if (r.getStartDate().isAfter(r.getEndDate())
-                || ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) >= maxStayDays)
-            invalid(HttpStatus.BAD_REQUEST, "일정 기간은 1~%d일이어야 합니다.".formatted(maxStayDays));
+        if (r.getStartDate().isAfter(r.getEndDate()) || ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) > 2)
+            invalid(HttpStatus.BAD_REQUEST, "일정 기간은 1~3일이어야 합니다.");
         if (new HashSet<>(r.getSelectedContentIds()).size() != r.getSelectedContentIds().size())
             invalid(HttpStatus.BAD_REQUEST, "콘텐츠 ID는 중복될 수 없습니다.");
         if (r.getVisitMonth() != null && r.getVisitMonth() != r.getStartDate().getMonthValue())
@@ -149,7 +134,7 @@ public class PlanGenerationService {
                     invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 콘텐츠 순서가 올바르지 않습니다.");
                 else scheduled.add(c.getContentId());
         }
-        if (!scheduled.containsAll(selected)) invalid(HttpStatus.BAD_GATEWAY, "AI 일정에 선택 콘텐츠가 모두 포함되어야 합니다.");
+        if (!scheduled.containsAll(selected)) log.error("AI 일정에 선택 콘텐츠가 모두 포함되어야 합니다.");
     }
 
     private void normalizeResponse(AiPlanResponse response) {

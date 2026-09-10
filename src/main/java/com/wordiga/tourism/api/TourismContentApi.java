@@ -1,6 +1,5 @@
 package com.wordiga.tourism.api;
 
-import com.wordiga.common.dto.AgeGroup;
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.dto.SigunguResponse;
@@ -33,7 +32,7 @@ public interface TourismContentApi {
             String referenceContentId,
             Boolean capacitySatisfied,
             @Min(1) @Max(50) Integer participantCount,
-            List<AgeGroup> ageGroups,
+            List<String> ageGroups,
             @Min(0) int page,
             @Min(1) @Max(50) int size
     );
@@ -43,7 +42,7 @@ public interface TourismContentApi {
     ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
             @Parameter(description = "관광 콘텐츠 ID") String contentId,
             LocalDate visitDate,
-            List<AgeGroup> ageGroups,
+            List<String> ageGroups,
             @Min(1) @Max(3) Integer stayDays,
             @Min(1) @Max(50) Integer participantCount
     );

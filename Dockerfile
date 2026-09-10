@@ -18,6 +18,8 @@ RUN ./gradlew bootJar --no-daemon -x test
 FROM eclipse-temurin:25-jre
 WORKDIR /app
 
+RUN apt-get update && apt-get install -y fonts-nanum && fc-cache -fv && rm -rf /var/lib/apt/lists/*
+
 RUN groupadd -r appgroup && useradd -r -g appgroup appuser
 USER appuser
 

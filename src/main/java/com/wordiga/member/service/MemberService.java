@@ -29,7 +29,10 @@ public class MemberService {
         Member member = member(memberId);
         if (member.getProvider() == OAuthProvider.KAKAO) kakaoUnlinkClient.unlink(member.getProviderId());
         proposalRepository.findByPlanMemberId(memberId)
-                .forEach(proposal -> proposalStorage.delete(proposal.getS3Key()));
+                .forEach(proposal -> {
+                    proposalStorage.delete(proposal.getS3Key());
+                    if (proposal.getS3KeyPdf() != null) proposalStorage.delete(proposal.getS3KeyPdf());
+                });
         memberRepository.delete(member);
     }
 

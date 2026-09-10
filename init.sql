@@ -23,21 +23,21 @@ CREATE INDEX idx_members_provider ON members (provider, provider_id);
 -- ========================
 CREATE TABLE tourism_content_snapshots
 (
-    content_id        VARCHAR(50)     NOT NULL,
-    content_type_id   VARCHAR(20)     NULL,
-    title             VARCHAR(255)    NOT NULL,
-    firstimage        VARCHAR(500)    NULL,
-    addr1             VARCHAR(255)    NULL,
-    mapx              NUMERIC(15, 10) NULL,
-    mapy              NUMERIC(15, 10) NULL,
-    sigungu_code      VARCHAR(10)     NULL,
-    sigungu_name      VARCHAR(50)     NULL,
-    lcls_system1_code VARCHAR(20)     NULL,
-    lcls_system2_code VARCHAR(20)     NULL,
-    lcls_system3_code VARCHAR(20)     NULL,
-    updated_at        TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    source_modified_at TIMESTAMP      NULL,
-    last_synced_at     TIMESTAMP      NULL,
+    content_id         VARCHAR(50)     NOT NULL,
+    content_type_id    VARCHAR(20)     NULL,
+    title              VARCHAR(255)    NOT NULL,
+    firstimage         VARCHAR(500)    NULL,
+    addr1              VARCHAR(255)    NULL,
+    mapx               NUMERIC(15, 10) NULL,
+    mapy               NUMERIC(15, 10) NULL,
+    sigungu_code       VARCHAR(10)     NULL,
+    sigungu_name       VARCHAR(50)     NULL,
+    lcls_system1_code  VARCHAR(20)     NULL,
+    lcls_system2_code  VARCHAR(20)     NULL,
+    lcls_system3_code  VARCHAR(20)     NULL,
+    updated_at         TIMESTAMP       NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    source_modified_at TIMESTAMP       NULL,
+    last_synced_at     TIMESTAMP       NULL,
     CONSTRAINT pk_tourism_content_snapshots PRIMARY KEY (content_id)
 );
 
@@ -152,12 +152,14 @@ CREATE TABLE proposals
     id         BIGSERIAL    NOT NULL,
     plan_id    BIGINT       NOT NULL,
     s3_key     VARCHAR(500) NOT NULL,
+    s3_key_pdf VARCHAR(500) NULL,
     file_name  VARCHAR(255) NOT NULL,
     file_size  BIGINT       NOT NULL,
     expires_at TIMESTAMP    NOT NULL,
     created_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
     CONSTRAINT pk_proposals PRIMARY KEY (id),
+    CONSTRAINT uk_proposals_plan UNIQUE (plan_id),
     CONSTRAINT uk_proposals_s3_key UNIQUE (s3_key),
     CONSTRAINT fk_proposals_plan FOREIGN KEY (plan_id) REFERENCES plans (id) ON DELETE CASCADE
 );
