@@ -99,9 +99,8 @@
 ### Todo
 
 - [ ] OIDC 로그인 토큰 전달 보안 개선
-  - 현재: Access Token은 1시간, Refresh Token은 30일이며 Refresh Token은 HttpOnly 쿠키로 발급합니다.
-  - 현재: Access Token 재발급과 Refresh Cookie 삭제 API를 제공합니다.
-  - Todo: FE 연동 후 자체 Access Token을 URL query와 localStorage로 전달하는 호환 경로를 제거해야 합니다.
+  - Todo: 자체 JWT를 URL query parameter로 전달하는 현재 방식을 제거해야 합니다.
+  - Todo: HttpOnly 인증 쿠키와 일회용 코드 교환 방식 중 프론트 연동 방식을 확정한 뒤 `oidc-login-api.md`와 구현·테스트를 함께 수정해야 합니다.
 
 - [ ] 일정 수정 화면의 AI 재생성 호출 시점 확인
   - Todo: 화면설계서 확정 후 일정 저장·변경 저장 버튼 중 어느 동작에서 기존 생성 API를 다시 호출할지 프론트와 연결해야 합니다.

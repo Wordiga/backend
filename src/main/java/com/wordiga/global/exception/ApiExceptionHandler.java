@@ -50,7 +50,6 @@ public class ApiExceptionHandler {
         if (status == HttpStatus.NOT_FOUND)
             return reason != null && reason.contains("일정") ? "PLAN_NOT_FOUND" : "CONTENT_NOT_FOUND";
         return switch (status) {
-            case UNAUTHORIZED -> "UNAUTHORIZED";
             case BAD_GATEWAY -> reason != null && reason.contains("AI 서버가")
                     ? "AI_UPSTREAM_ERROR" : "AI_RESPONSE_INVALID";
             case GATEWAY_TIMEOUT -> "AI_SERVER_TIMEOUT";

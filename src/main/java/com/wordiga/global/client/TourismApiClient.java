@@ -227,7 +227,7 @@ public class TourismApiClient {
         } catch (ResponseStatusException e) {
             throw e;
         } catch (Exception e) {
-            log.error("[TourismAPI] 호출 실패: type={}", e.getClass().getSimpleName());
+            log.error("[TourismAPI] 호출 실패: {}", e.getMessage(), e);
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "관광공사 API를 사용할 수 없습니다.", e);
         }
     }

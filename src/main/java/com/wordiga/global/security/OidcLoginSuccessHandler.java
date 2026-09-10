@@ -11,8 +11,6 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.SimpleUrlAuthenticationSuccessHandler;
-import org.springframework.http.HttpHeaders;
-import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
@@ -26,8 +24,6 @@ public class OidcLoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandl
     private final MemberRepository memberRepository;
     @Value("${app.frontend-url}")
     private String frontendUrl;
-    @Value("${jwt.cookie-secure:true}")
-    private boolean cookieSecure;
 
     @Override
     public void onAuthenticationSuccess(HttpServletRequest request,
@@ -43,15 +39,6 @@ public class OidcLoginSuccessHandler extends SimpleUrlAuthenticationSuccessHandl
                 .orElseThrow(() -> new IllegalStateException("회원 정보를 찾을 수 없습니다."));
 
         String token = jwtTokenProvider.create(member.getId());
-        ResponseCookie refreshCookie = ResponseCookie.from("refreshToken", jwtTokenProvider.createRefresh(member.getId()))
-                .httpOnly(true)
-                .secure(cookieSecure)
-                .sameSite("Lax")
-                .path("/api/v1/auth")
-                .maxAge(java.time.Duration.ofMillis(jwtTokenProvider.getRefreshExpiration()))
-                .build();
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-        response.setHeader(HttpHeaders.CACHE_CONTROL, "no-store");
 
         String redirectUrl = UriComponentsBuilder.fromUriString(frontendUrl + "/login/callback")
                 .queryParam("token", token)

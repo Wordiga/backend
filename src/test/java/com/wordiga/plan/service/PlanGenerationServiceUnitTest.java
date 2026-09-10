@@ -40,8 +40,7 @@ class PlanGenerationServiceUnitTest {
     @BeforeEach
     void setUp() {
         lenient().when(regionalContentService.find(any(), anyList())).thenReturn(List.of());
-        service = new PlanGenerationService(tourismContentDetailService, regionalContentService, tourismApiClient,
-                aiServerClient, planWriter, 3);
+        service = new PlanGenerationService(tourismContentDetailService, regionalContentService, tourismApiClient, aiServerClient, planWriter);
     }
 
     @Test
@@ -113,18 +112,6 @@ class PlanGenerationServiceUnitTest {
         request.setEndDate(request.getStartDate().plusDays(3));
 
         assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("1~3일");
-        verifyNoInteractions(aiServerClient, planWriter);
-    }
-
-    @Test
-    void respectsConfiguredMaximumStayDays() {
-        service = new PlanGenerationService(tourismContentDetailService, regionalContentService, tourismApiClient,
-                aiServerClient, planWriter, 2);
-        PlanGenerateRequest request = request("A");
-        request.setEndDate(request.getStartDate().plusDays(2));
-        request.setStayDays(3);
-
-        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("1~2일");
         verifyNoInteractions(aiServerClient, planWriter);
     }
 

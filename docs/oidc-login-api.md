@@ -11,9 +11,9 @@
 | 순서 | 작업 | 설명 |
 |------|------|------|
 | 1 | 로그인 버튼 클릭 | 백엔드 OAuth2 엔드포인트로 브라우저 이동 |
-| 2 | 콜백 페이지 토큰 추출 | URL 쿼리의 1시간 Access Token 저장. BE는 30일 Refresh Token을 HttpOnly 쿠키로 별도 발급 |
+| 2 | 콜백 페이지 토큰 추출 | URL 쿼리 파라미터에서 JWT 추출 후 localStorage 저장 |
 | 3 | API 요청 시 토큰 전달 | Authorization 헤더에 Bearer Token 첨부 |
-| 4 | Access Token 만료 시 | Refresh Cookie로 `/api/v1/auth/refresh`를 호출해 Access Token 재발급 |
+| 4 | 401 응답 시 | 토큰 삭제 후 재로그인 유도 |
 
 ---
 
@@ -51,7 +51,7 @@ if (token) {
 }
 ```
 
-브라우저가 자동으로 해당 페이지를 로드하므로 URL에서 Access Token을 추출해 저장합니다. 같은 로그인 응답에서 BE는 JavaScript로 읽을 수 없는 Refresh Token 쿠키를 함께 설정합니다. Access Token의 URL/localStorage 전달은 FE 전환 완료 후 제거할 호환 경로입니다.
+브라우저가 자동으로 해당 페이지를 로드하므로 별도 API 호출 불필요. URL에서 token 추출 후 저장만 수행.
 
 ---
 
@@ -60,7 +60,7 @@ if (token) {
 | 항목 | 내용 |
 |------|------|
 | **Header** | `Authorization: Bearer {token}` |
-| **토큰 만료** | Access Token 1시간, Refresh Token 30일 |
+| **토큰 만료** | 24시간 |
 | **인증 실패** | `401 Unauthorized` |
 
 ```javascript
@@ -78,29 +78,13 @@ if (response.status === 401) {
 
 ---
 
-### 4단계: Access Token 재발급
-
-```javascript
-const response = await fetch('https://api.wordiga.site/api/v1/auth/refresh', {
-  method: 'POST',
-  credentials: 'include'
-});
-const { accessToken } = await response.json();
-```
-
-Google/Kakao Refresh Token을 사용하는 것이 아니라 Wordiga가 자체 발급한 Refresh Token 쿠키로 Wordiga Access Token을 재발급합니다.
-
-### 5단계: 로그아웃
+### 4단계: 로그아웃
 
 ```javascript
 localStorage.removeItem('token');
-await fetch('https://api.wordiga.site/api/v1/auth/session', {
-  method: 'DELETE',
-  credentials: 'include'
-});
 ```
 
-클라이언트 Access Token을 삭제하고 서버 응답으로 Refresh Token 쿠키를 만료시킵니다.
+서버 측 로그아웃 API 미존재. 클라이언트 토큰 삭제로 처리.
 
 ---
 
@@ -158,8 +142,7 @@ OIDC 채택으로 Provider별 사용자 정보 API 호출 제거, 네트워크 �
 | 토큰 | 발급 주체 | 용도 |
 |------|-----------|------|
 | ID Token | Google/Kakao | 사용자 정보 추출 (백엔드 내부 소비 후 폐기) |
-| **자체 Access JWT** | **본 서버** | **API 인가, 유효기간 1시간** |
-| **자체 Refresh JWT** | **본 서버** | **Access Token 재발급, HttpOnly 쿠키, 유효기간 30일** |
+| **자체 JWT** | **본 서버** | **API 인가 (회원 식별), 유효기간 24시간** |
 
 ---
 
@@ -184,8 +167,6 @@ Role 분리 없이 **로그인 여부(JWT 유효성)**로만 제어.
 | `KAKAO_CLIENT_ID` | Kakao OAuth Client ID | 필수 |
 | `KAKAO_CLIENT_SECRET` | Kakao OAuth Client Secret | 필수 |
 | `JWT_SECRET` | JWT 서명 키 (최소 32자) | 필수 |
-| `JWT_COOKIE_SECURE` | Refresh Cookie의 Secure 적용 여부 | `true` |
-| `PLAN_MAX_STAY_DAYS` | AI 일정의 최대 체류 일수 | `3` |
 | `FRONTEND_URL` | 프론트엔드 URL | `http://localhost:3000` |
 
 ---
@@ -198,8 +179,8 @@ Role 분리 없이 **로그인 여부(JWT 유효성)**로만 제어.
 |------|------|--------|
 | 토큰 저장 | localStorage | XSS 시 탈취 가능 |
 | 전송 프로토콜 | HTTP (개발) | 네트워크 스니핑 취약 |
-| Access Token 만료 | 1시간 | FE 전환 전까지 URL/localStorage 노출 가능 |
-| Refresh Token | 30일 HttpOnly 쿠키 | 개별 폐기 저장소는 없음 |
+| 토큰 만료 | 24시간 | 탈취 시 장시간 악용 가능 |
+| Refresh Token | 미적용 | 만료 시 재로그인 필요 |
 
 ### 보완 로드맵
 
@@ -207,7 +188,7 @@ Role 분리 없이 **로그인 여부(JWT 유효성)**로만 제어.
 |---------|------|------|
 | P0 | HTTPS 적용 | 네트워크 구간 토큰 탈취 방지 |
 | P1 | httpOnly Cookie 전환 | XSS로부터 토큰 보호 |
-| 적용 | Refresh Token 도입 | Access Token 만료 시 재로그인 방지 |
+| P2 | Refresh Token 도입 | 탈취 피해 최소화 (Access Token 만료 단축) |
 | P3 | CSP Header 설정 | XSS 원천 차단 |
 
 ---

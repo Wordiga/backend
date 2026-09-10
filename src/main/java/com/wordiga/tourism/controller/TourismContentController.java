@@ -1,6 +1,5 @@
 package com.wordiga.tourism.controller;
 
-import com.wordiga.common.dto.AgeGroup;
 import com.wordiga.tourism.api.TourismContentApi;
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.SigunguResponse;
@@ -43,27 +42,23 @@ public class TourismContentController implements TourismContentApi {
             @RequestParam(required = false) String referenceContentId,
             @RequestParam(required = false) Boolean capacitySatisfied,
             @RequestParam(defaultValue = "10") Integer participantCount,
-            @RequestParam(required = false) List<AgeGroup> ageGroups,
+            @RequestParam(required = false) List<String> ageGroups,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(tourismContentService.getContentList(
                 memberId, type, visitDate, keyword, contentTypeId, lDongSignguCd,
-                referenceContentId, capacitySatisfied, participantCount, codes(ageGroups), page, size));
+                referenceContentId, capacitySatisfied, participantCount, ageGroups, page, size));
     }
 
     @GetMapping("/{contentId}")
     public ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
             @PathVariable String contentId,
             @RequestParam(required = false) LocalDate visitDate,
-            @RequestParam(required = false) List<AgeGroup> ageGroups,
+            @RequestParam(required = false) List<String> ageGroups,
             @RequestParam(required = false) Integer stayDays,
             @RequestParam(defaultValue = "10") Integer participantCount) {
         return ResponseEntity.ok(tourismContentDetailService.getDetail(
-                contentId, visitDate, codes(ageGroups), stayDays == null ? null : stayDays - 1, participantCount));
-    }
-
-    private List<String> codes(List<AgeGroup> ageGroups) {
-        return ageGroups == null ? null : ageGroups.stream().map(AgeGroup::code).toList();
+                contentId, visitDate, ageGroups, stayDays == null ? null : stayDays - 1, participantCount));
     }
 }
