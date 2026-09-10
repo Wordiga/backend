@@ -40,29 +40,58 @@ class RegionalContentServiceUnitTest {
         PlanGenerateRequest request = request();
         AreaBasedItem duplicate = candidate("126508", "현충사");
         AreaBasedItem candidate = candidate("regional-1", "외암민속마을");
-        when(tourismApiClient.fetchAreaBasedContent("44", "460", 100))
+        when(tourismApiClient.fetchAreaBasedContent("44", "460", 1000))
                 .thenReturn(List.of(duplicate, candidate));
+        when(tourismApiClient.fetchAreaBasedContent("44", null, 1000)).thenReturn(List.of());
         TourismContentDetailResponse enriched = detail("regional-1", "외암민속마을");
-        when(detailService.getAiDetail("regional-1", request.getStartDate(), false))
+        when(detailService.getAiDetail("regional-1", request.getStartDate()))
                 .thenReturn(enriched);
 
         assertThat(service.find(request, List.of(detail("126508", "현충사"))))
                 .extracting(item -> item.getCommon().getContentId()).containsExactly("regional-1");
-        verify(detailService, never()).getAiDetail(eq("126508"), any(), anyBoolean());
+        verify(detailService, never()).getAiDetail(eq("126508"), any());
     }
 
     @Test
     void excludesRegionalContentMissingAiRequiredFields() {
         PlanGenerateRequest request = request();
         AreaBasedItem candidate = candidate("regional-1", "외암민속마을");
-        when(tourismApiClient.fetchAreaBasedContent("44", "460", 100)).thenReturn(List.of(candidate));
-        when(detailService.getAiDetail("regional-1", request.getStartDate(), false))
+        when(tourismApiClient.fetchAreaBasedContent("44", "460", 1000)).thenReturn(List.of(candidate));
+        when(tourismApiClient.fetchAreaBasedContent("44", null, 1000)).thenReturn(List.of());
+        when(detailService.getAiDetail("regional-1", request.getStartDate()))
                 .thenReturn(TourismContentDetailResponse.builder().common(TourismCommonDetailDto.builder()
                         .contentId("regional-1").title("외암민속마을").lDongSignguCd("460")
                         .mapx(java.math.BigDecimal.valueOf(126.9))
                         .mapy(java.math.BigDecimal.valueOf(36.8)).build()).build());
 
         assertThat(service.find(request, List.of(detail("126508", "현충사")))).isEmpty();
+    }
+
+    @Test
+    void balancesFifteenCandidatesAndFillsLocalShortagesFromChungnam() {
+        PlanGenerateRequest request = request();
+        List<AreaBasedItem> local = List.of(
+                candidate("lodging-local", "숙소", "32", "AC01"),
+                candidate("attraction-local", "관광지", "12", "NA"),
+                candidate("restaurant-local", "식당", "39", "FD01"),
+                candidate("cafe-local", "카페", "39", "FD05"));
+        java.util.ArrayList<AreaBasedItem> chungnam = new java.util.ArrayList<>();
+        add(chungnam, "lodging", 2, "32", "AC01");
+        add(chungnam, "attraction", 5, "12", "NA");
+        add(chungnam, "restaurant", 4, "39", "FD01");
+        add(chungnam, "cafe", 4, "39", "FD05");
+        when(tourismApiClient.fetchAreaBasedContent("44", "460", 1000)).thenReturn(local);
+        when(tourismApiClient.fetchAreaBasedContent("44", null, 1000)).thenReturn(chungnam);
+        when(detailService.getAiDetail(anyString(), eq(request.getStartDate())))
+                .thenAnswer(invocation -> detail(invocation.getArgument(0), invocation.getArgument(0)));
+
+        var result = service.find(request, List.of(detail("126508", "현충사")));
+
+        assertThat(result).hasSize(15);
+        assertThat(result.subList(0, 2)).extracting(item -> item.getCommon().getContentId())
+                .contains("lodging-local");
+        assertThat(result.subList(11, 15)).extracting(item -> item.getCommon().getContentId())
+                .contains("cafe-local");
     }
 
     private PlanGenerateRequest request() {
@@ -83,12 +112,22 @@ class RegionalContentServiceUnitTest {
     }
 
     private AreaBasedItem candidate(String id, String title) {
+        return candidate(id, title, "12", "NA");
+    }
+
+    private AreaBasedItem candidate(String id, String title, String contentTypeId, String middleCategory) {
         AreaBasedItem item = new AreaBasedItem();
         item.setContentid(id);
         item.setTitle(title);
-        item.setContenttypeid("12");
+        item.setContenttypeid(contentTypeId);
+        item.setLclsSystm2(middleCategory);
         item.setMapx("126.9");
         item.setMapy("36.8");
         return item;
+    }
+
+    private void add(List<AreaBasedItem> items, String prefix, int count, String type, String category) {
+        for (int index = 1; index <= count; index++)
+            items.add(candidate(prefix + "-" + index, prefix, type, category));
     }
 }

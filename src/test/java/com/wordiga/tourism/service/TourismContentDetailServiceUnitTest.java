@@ -41,9 +41,6 @@ class TourismContentDetailServiceUnitTest {
     @Mock
     private TourismSatisfactionService satisfactionService;
 
-    @Mock
-    private MonthlyWeatherService monthlyWeatherService;
-
     @InjectMocks
     private TourismContentDetailService service;
 
@@ -138,7 +135,7 @@ class TourismContentDetailServiceUnitTest {
     }
 
     @Test
-    void aiDetailFetchesOnlyCommonIntroAndOptionalWeather() {
+    void aiDetailFetchesOnlyCommonAndIntro() {
         ContentDetailDto common = common("44");
         DetailIntroDto intro = new DetailIntroDto();
         intro.setContenttypeid("12");
@@ -146,25 +143,14 @@ class TourismContentDetailServiceUnitTest {
         when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
         when(tourismApiClient.fetchIntroDetail("126508", "12")).thenReturn(intro);
 
-        TourismContentDetailResponse result = service.getAiDetail("126508", visitDate, false);
+        TourismContentDetailResponse result = service.getAiDetail("126508", visitDate);
 
         assertThat(result.getDetails()).isEmpty();
         assertThat(result.getImages()).isEmpty();
         assertThat(result.getMonthlyWeather()).isNull();
         verify(tourismApiClient, never()).fetchRepeatInfo(anyString(), anyString(), anyInt(), anyInt());
         verify(tourismApiClient, never()).fetchImages(anyString(), anyString(), anyInt(), anyInt());
-        verifyNoInteractions(satisfactionService, monthlyWeatherService);
-    }
-
-    @Test
-    void aiDetailFetchesWeatherOnlyWhenRequested() {
-        ContentDetailDto common = common("44");
-        LocalDate visitDate = LocalDate.of(2026, 8, 20);
-        when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
-
-        service.getAiDetail("126508", visitDate, true);
-
-        verify(monthlyWeatherService).estimate("200", visitDate);
+        verifyNoInteractions(satisfactionService);
     }
 
     private ContentDetailDto common(String regionCode) {
