@@ -47,16 +47,16 @@
 | `WishServiceIntegrationTest` | 성공 | 서로 다른 위시 동시 저장 | 두 행 저장과 10초 내 무교착 |
 | `WishServiceIntegrationExceptionTest` | 예외 | 동일 위시 동시 저장 | 한 행 유지, 한 요청 실패와 10초 내 종료 |
 | `PlanGenerationServiceUnitTest` | 성공·예외 | AI 일정 생성 | 동기 AI 호출, 선택·지역 콘텐츠와 날짜·순서 검증 및 저장 위임 |
-| `RegionalContentServiceUnitTest` | 성공 | 연관 관광지 후보 생성 | 연관 관광지명 KorService2 매칭·상세 보강과 선택 콘텐츠 중복 제외 |
+| `RegionalContentServiceUnitTest` | 성공 | 연관 관광지 후보 생성 | 같은 시군구 우선·충남 전체 보충과 숙소 2·관광지/체험 5·음식점 4·카페 4 비율 보장 |
 | `ProposalServiceUnitExceptionTest` | 성공·예외 | DOCX 검증 | DOCX 필수 ZIP 엔트리와 임의 파일 거부 |
 | `PlanServiceIntegrationTest` | 성공 | AI 일정 저장 | AI 원문·일정 식별자·이동시간·일자별 콘텐츠 저장, 자동 제목 순번과 목록 scheduleId |
 | `PlanControllerExceptionTest` | 예외 | 일정·제안서 요청값 오류 | Body 누락, DTO validation, 페이지 범위와 잘못된 enum의 400 공통 오류 응답 |
 | `AiPlanRequestTest` | 성공 | AI 요청 계약 | visit_month·num_people·num_days와 saved/regional 콘텐츠의 snake_case 직렬화 및 한글 tags 전달 |
 | `PlanGenerationServiceUnitTest` | 성공/외부 오류 | 관광공사 분류명 변환 | 한글 분류명을 AI tags로 전달하고 변환 API 실패 시 tags를 null로 전달 |
-| `MonthlyWeatherServiceUnitTest` | 성공 | 월 기후 예상치 | 최근 5개년 동일 월 ASOS 평균기온·월 강수량 평균과 관측소 매핑 |
+| `MonthlyWeatherServiceUnitTest` | 성공 | 일정 월 기후 예상치 | 대표 시군구 관측소의 최근 5개년 동일 월 평균기온·월 강수량 평균 |
 | `ProposalServiceUnitTest` | 성공·예외 | 제안서 삭제 | 소유 제안서 S3 영구삭제 후 DB 삭제와 미존재 404 |
 | `PlanControllerTest` | 성공 | 제안서 삭제 HTTP | DELETE 요청의 204 응답과 사용자·일정·제안서 ID 전달 |
-| `AiPlanRequestTest` | 성공 | Plan B 입력 계약 | num_nights·monthly_weather·is_outdoor 직렬화 |
+| `AiPlanRequestTest` | 성공 | Plan B 입력 계약 | num_days·is_outdoor 직렬화 |
 | `MemberControllerTest` | 성공 | 프로필 조회·회원탈퇴 HTTP | 소셜 프로필 JSON과 DELETE 204 응답 |
 | `MemberServiceUnitTest` | 성공·예외 | 회원탈퇴 | Kakao 연결 해제, S3 파일·회원 삭제, Google 프론트 해제 분기와 미존재 404 |
 | `JwtAuthenticationFilterUnitTest` | 성공·예외 | 탈퇴 회원 JWT 차단 | 유효한 JWT도 회원 행이 없으면 인증 객체를 만들지 않음 |

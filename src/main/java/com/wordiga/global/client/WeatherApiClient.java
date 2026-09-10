@@ -15,6 +15,8 @@ import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Component
@@ -42,7 +44,7 @@ public class WeatherApiClient {
 
         try {
             AsosDailyResponse response = client.fetchDailyWeather(
-                    properties.serviceKey(),
+                    URLDecoder.decode(properties.serviceKey(), StandardCharsets.UTF_8),
                     1,
                     100,
                     "JSON",

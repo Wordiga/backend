@@ -3,6 +3,7 @@ package com.wordiga.plan.controller;
 import com.wordiga.plan.dto.PlanDetailResponse;
 import com.wordiga.plan.dto.PlanListResponse;
 import com.wordiga.plan.dto.PlanSort;
+import com.wordiga.plan.dto.PlanWeatherResponse;
 import com.wordiga.proposal.dto.ProposalResponse;
 import com.wordiga.global.security.JwtTokenProvider;
 import com.wordiga.member.repository.MemberRepository;
@@ -62,11 +63,17 @@ class PlanControllerTest {
         when(planService.getPlans(1L, 0, 20, PlanSort.LATEST)).thenReturn(
                 PlanListResponse.builder().items(List.of()).page(0).size(20).hasNext(false).build());
         when(planService.getPlan(1L, 9L)).thenReturn(detail());
+        when(planService.getWeather(1L, 9L, 7)).thenReturn(
+                new PlanWeatherResponse("부여군", 7, new java.math.BigDecimal("25.5"),
+                        new java.math.BigDecimal("210.0"), 5, "부여", "ASOS_HISTORICAL_MONTHLY_AVERAGE"));
         when(planService.updatePlan(eq(1L), eq(9L), any())).thenReturn(detail());
         when(planService.updateContents(eq(1L), eq(9L), any())).thenReturn(detail());
 
         mockMvc.perform(get("/api/v1/plans")).andExpect(status().isOk()).andExpect(jsonPath("$.page").value(0));
         mockMvc.perform(get("/api/v1/plans/9")).andExpect(status().isOk()).andExpect(jsonPath("$.planId").value(9));
+        mockMvc.perform(get("/api/v1/plans/9/weather").param("month", "7"))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.locationName").value("부여군"))
+                .andExpect(jsonPath("$.avgTemp").value(25.5));
         mockMvc.perform(patch("/api/v1/plans/9").contentType("application/json")
                 .content("{\"title\":\"수정 일정\",\"participantCount\":4}")).andExpect(status().isOk());
         mockMvc.perform(put("/api/v1/plans/9/contents").contentType("application/json")
@@ -81,7 +88,6 @@ class PlanControllerTest {
         when(planGenerationService.generate(eq(1L), any())).thenReturn(detail());
         when(proposalService.create(eq(1L), eq(9L), any())).thenReturn(
                 ProposalResponse.builder().proposalId(3L).planId(9L).fileName("proposal.docx").build());
-        when(proposalService.list(1L, 9L)).thenReturn(List.of());
 
         mockMvc.perform(post("/api/v1/plans/generate").contentType("application/json").content("""
                 {"startDate":"2026-08-20","endDate":"2026-08-21","stayDays":2,"participantCount":10,
@@ -89,7 +95,7 @@ class PlanControllerTest {
                 """)).andExpect(status().isOk()).andExpect(jsonPath("$.planId").value(9));
         mockMvc.perform(post("/api/v1/plans/9/proposals").contentType("application/json").content("{}"))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.fileName").value("proposal.docx"));
-        mockMvc.perform(get("/api/v1/plans/9/proposals")).andExpect(status().isOk());
+        mockMvc.perform(get("/api/v1/plans/9/proposals")).andExpect(status().isMethodNotAllowed());
         mockMvc.perform(delete("/api/v1/plans/9/proposals/3")).andExpect(status().isNoContent());
         verify(proposalService).delete(1L, 9L, 3L);
     }

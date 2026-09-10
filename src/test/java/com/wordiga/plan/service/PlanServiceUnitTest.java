@@ -1,17 +1,19 @@
 package com.wordiga.plan.service;
 
-import com.wordiga.tourism.service.TourismContentDetailService;
-import com.wordiga.tourism.service.TourismContentSnapshotService;
-
 import com.wordiga.global.client.dto.ContentDetailDto;
+import com.wordiga.plan.Plan;
 import com.wordiga.plan.dto.PlanContentsUpdateRequest;
 import com.wordiga.plan.dto.PlanDetailResponse;
 import com.wordiga.plan.dto.PlanSort;
 import com.wordiga.plan.dto.PlanUpdateRequest;
-import com.wordiga.plan.Plan;
 import com.wordiga.plan.repository.PlanRepository;
+import com.wordiga.proposal.repository.ProposalRepository;
+import com.wordiga.proposal.service.ProposalStorage;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
+import com.wordiga.tourism.service.TourismContentDetailService;
+import com.wordiga.tourism.service.TourismContentSnapshotService;
+import com.wordiga.tourism.service.MonthlyWeatherService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -38,19 +40,29 @@ class PlanServiceUnitTest {
     TourismContentSnapshotRepository snapshotRepository;
     @Mock
     TourismContentSnapshotService snapshotService;
+    @Mock
+    ProposalRepository proposalRepository;
+    @Mock
+    ProposalStorage storage;
+    @Mock
+    MonthlyWeatherService monthlyWeatherService;
+
     PlanService service;
     Plan plan;
 
     @BeforeEach
     void setUp() {
-        service = new PlanService(planRepository, tourismContentDetailService, snapshotRepository, snapshotService);
+        service = new PlanService(planRepository, tourismContentDetailService, snapshotRepository, snapshotService,
+                proposalRepository, storage, monthlyWeatherService);
         plan = Plan.create(null, "충남 여행", LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 21), 2);
     }
 
     @Test
     void listsOnlyMemberPlansAndUpdatesBasicInformation() {
         when(planRepository.findByMemberId(eq(1L), any())).thenReturn(new PageImpl<>(List.of(plan)));
-        assertThat(service.getPlans(1L, 0, 20, PlanSort.LATEST).getItems()).hasSize(1);
+        var list = service.getPlans(1L, 0, 20, PlanSort.LATEST);
+        assertThat(list.getItems()).hasSize(1);
+        assertThat(list.getTotalPages()).isEqualTo(1);
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         PlanUpdateRequest request = new PlanUpdateRequest();
         request.setTitle(" 수정 일정 ");
@@ -68,7 +80,7 @@ class PlanServiceUnitTest {
         PlanDetailResponse result = service.updatePlan(1L, 9L, request);
 
         assertThat(result.getScheduleId()).isEqualTo(1L);
-        assertThat(result.getEstimatedBudget().totalAmount()).isEqualTo(40_000L);
+        assertThat(result.getEstimatedCost().totalAmount()).isEqualTo(40_000L);
     }
 
     @Test
@@ -81,8 +93,28 @@ class PlanServiceUnitTest {
         plan.applyAiResult(1L, 20_000L, 10_000L, breakdown);
         PlanDetailResponse result = PlanDetailResponse.from(plan);
 
-        assertThat(result.getEstimatedBudget().currency()).isEqualTo("KRW");
-        assertThat(result.getEstimatedBudget().breakdown()).containsExactly(entry("food", 20_000L));
+        assertThat(result.getEstimatedCost().currency()).isEqualTo("KRW");
+        assertThat(result.getEstimatedCost().breakdown()).containsExactly(entry("food", 20_000L));
+    }
+
+    @Test
+    void getsMonthlyWeatherForPlansRepresentativeLocation() {
+        TourismContentSnapshot content = TourismContentSnapshot.builder()
+                .contentId("1").contentTypeId("12").title("부여 박물관")
+                .sigunguCode("210").sigunguName("부여군").build();
+        plan.addContent(com.wordiga.plan.PlanContent.create(plan, 1, 1, content));
+        when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
+        when(monthlyWeatherService.estimate("210", 7)).thenReturn(
+                com.wordiga.tourism.dto.detail.MonthlyWeatherDto.builder()
+                        .targetMonth(7).avgTemp(new java.math.BigDecimal("25.5"))
+                        .monthlyPrecipitation(new java.math.BigDecimal("210.0"))
+                        .historicalYears(5).stationName("부여")
+                        .basis("ASOS_HISTORICAL_MONTHLY_AVERAGE").build());
+
+        var result = service.getWeather(1L, 9L, 7);
+
+        assertThat(result.locationName()).isEqualTo("부여군");
+        assertThat(result.avgTemp()).isEqualByComparingTo("25.5");
     }
 
     @Test

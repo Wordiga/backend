@@ -1,18 +1,17 @@
 package com.wordiga.plan.service;
 
-import com.wordiga.tourism.service.TourismContentDetailService;
-
 import com.wordiga.global.client.dto.ContentDetailDto;
-import com.wordiga.plan.dto.ai.AiPlanResponse;
-import com.wordiga.plan.dto.*;
 import com.wordiga.member.Member;
 import com.wordiga.member.OAuthProvider;
-import com.wordiga.plan.Plan;
 import com.wordiga.member.repository.MemberRepository;
+import com.wordiga.plan.Plan;
+import com.wordiga.plan.dto.*;
+import com.wordiga.plan.dto.ai.AiPlanResponse;
 import com.wordiga.plan.repository.PlanRepository;
+import com.wordiga.support.PostgresIntegrationTest;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
-import com.wordiga.support.PostgresIntegrationTest;
+import com.wordiga.tourism.service.TourismContentDetailService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -87,19 +86,19 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         AiPlanResponse ai = new AiPlanResponse();
         ai.setScheduleId(1L);
         ai.setDays(List.of(day));
-        AiPlanResponse.EstimatedBudget budget = new AiPlanResponse.EstimatedBudget();
+        AiPlanResponse.EstimatedCost budget = new AiPlanResponse.EstimatedCost();
         budget.setTotalAmount(20_000L);
         budget.setPerPersonAmount(10_000L);
         budget.setCurrency("KRW");
         budget.setBreakdown(java.util.Map.of("food", 20_000L));
-        ai.setEstimatedBudget(budget);
+        ai.setEstimatedCost(budget);
         snapshotRepository.save(snapshot("126508"));
 
         PlanDetailResponse saved = planWriter.saveGenerated(member.getId(), request, ai, "아산시");
 
         assertThat(saved.getScheduleId()).isEqualTo(1L);
         assertThat(saved.getDays().getFirst().getContents().getFirst().getTravelTimeMinutes()).isEqualTo(15);
-        assertThat(saved.getEstimatedBudget().toString()).contains("food");
+        assertThat(saved.getEstimatedCost().toString()).contains("food");
         assertThat(planRepository.findById(saved.getPlanId())).isPresent();
     }
 

@@ -1,16 +1,15 @@
 package com.wordiga.proposal.service;
 
-import com.wordiga.plan.service.PlanReader;
-
-import com.wordiga.proposal.dto.ProposalCreateRequest;
-import com.wordiga.proposal.dto.ProposalResponse;
 import com.wordiga.global.client.AiServerClient;
 import com.wordiga.global.config.ProposalS3Properties;
 import com.wordiga.plan.Plan;
 import com.wordiga.plan.PlanContent;
-import com.wordiga.tourism.domain.TourismContentSnapshot;
+import com.wordiga.plan.service.PlanReader;
 import com.wordiga.proposal.Proposal;
+import com.wordiga.proposal.dto.ProposalCreateRequest;
+import com.wordiga.proposal.dto.ProposalResponse;
 import com.wordiga.proposal.repository.ProposalRepository;
+import com.wordiga.tourism.domain.TourismContentSnapshot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -43,12 +42,14 @@ class ProposalServiceUnitTest {
     ProposalStorage storage;
     @Mock
     ProposalWriter writer;
+    @Mock
+    ProposalPdfConverter pdfConverter;
     ProposalService service;
     Plan plan;
 
     @BeforeEach
     void setUp() {
-        service = new ProposalService(planReader, proposalRepository, aiServerClient, storage, writer,
+        service = new ProposalService(planReader, proposalRepository, aiServerClient, storage, writer, pdfConverter,
                 new ProposalS3Properties("bucket", "ap-northeast-2", Duration.ofMinutes(15), Duration.ofDays(30)));
         plan = Plan.create(null, "아산 일정", LocalDate.now(), LocalDate.now(), 2);
         TourismContentSnapshot content = TourismContentSnapshot.builder()
@@ -58,20 +59,24 @@ class ProposalServiceUnitTest {
     }
 
     @Test
-    void createsStoresAndListsProposal() throws Exception {
+    void createsAndStoresDocxAndPdfProposal() throws Exception {
         byte[] docx = docx();
         ProposalCreateRequest request = new ProposalCreateRequest();
         request.setProposalTitle("제안서");
         when(planReader.read(1L, 9L)).thenReturn(new PlanReader.Snapshot(plan, com.wordiga.plan.dto.PlanDetailResponse.from(plan)));
         when(aiServerClient.generateProposal(any())).thenReturn(docx);
-        when(writer.save(eq(plan), anyString(), eq("제안서.docx"), eq((long) docx.length), any()))
-                .thenAnswer(inv -> Proposal.create(plan, inv.getArgument(1), inv.getArgument(2), inv.getArgument(3), inv.getArgument(4)));
-        when(storage.url(anyString(), eq("제안서.docx"), anyBoolean())).thenReturn("https://signed");
+        when(pdfConverter.convert(docx)).thenReturn("pdf".getBytes());
+        when(writer.save(eq(plan), anyString(), anyString(), eq("제안서.docx"), eq((long) docx.length), any()))
+                .thenAnswer(inv -> Proposal.create(plan, inv.getArgument(1), inv.getArgument(2),
+                        inv.getArgument(3), inv.getArgument(4), inv.getArgument(5)));
+        when(storage.url(anyString(), anyString(), anyBoolean())).thenReturn("https://signed");
 
         ProposalResponse response = service.create(1L, 9L, request);
 
-        assertThat(response.getPreviewUrl()).isEqualTo("https://signed");
+        assertThat(response.getPdfUrl()).isEqualTo("https://signed");
+        assertThat(response.getDocxUrl()).isEqualTo("https://signed");
         verify(storage).put(anyString(), same(docx));
+        verify(storage).putPdf(anyString(), any());
         ArgumentCaptor<com.wordiga.proposal.dto.AiProposalRequest> payload = ArgumentCaptor.forClass(com.wordiga.proposal.dto.AiProposalRequest.class);
         verify(aiServerClient).generateProposal(payload.capture());
         assertThat(payload.getValue().getVisitMonth()).isEqualTo(LocalDate.now().getMonthValue());
@@ -80,7 +85,7 @@ class ProposalServiceUnitTest {
 
     @Test
     void deletesOwnedProposalFromS3AndDatabase() {
-        Proposal proposal = Proposal.create(plan, "proposals/1/9/file.docx", "제안서.docx", 10L,
+        Proposal proposal = Proposal.create(plan, "proposals/1/9/file.docx", null, "제안서.docx", 10L,
                 LocalDateTime.now().plusDays(30));
         when(proposalRepository.findByIdAndPlanIdAndPlanMemberId(3L, 9L, 1L)).thenReturn(Optional.of(proposal));
 

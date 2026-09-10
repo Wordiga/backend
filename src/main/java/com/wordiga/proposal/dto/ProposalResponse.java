@@ -13,14 +13,14 @@ public class ProposalResponse {
     private Long planId;
     private String fileName;
     private long fileSize;
-    private String previewUrl;
-    private String downloadUrl;
+    private String pdfUrl;
+    private String docxUrl;
     private LocalDateTime createdAt;
     private LocalDateTime expiresAt;
 
-    public static ProposalResponse from(Proposal p, String previewUrl, String downloadUrl) {
+    public static ProposalResponse from(Proposal p, String pdfUrl, String docxUrl) {
         return builder().proposalId(p.getId()).planId(p.getPlan().getId()).fileName(p.getFileName())
-                .fileSize(p.getFileSize()).previewUrl(previewUrl).downloadUrl(downloadUrl)
+                .fileSize(p.getFileSize()).pdfUrl(pdfUrl).docxUrl(docxUrl)
                 .createdAt(p.getCreatedAt()).expiresAt(p.getExpiresAt()).build();
     }
 }

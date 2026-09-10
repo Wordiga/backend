@@ -15,7 +15,15 @@ public class ProposalWriter {
     private final ProposalRepository proposalRepository;
 
     @Transactional(timeout = 5)
-    public Proposal save(Plan plan, String key, String fileName, long size, LocalDateTime expiresAt) {
-        return proposalRepository.save(Proposal.create(plan, key, fileName, size, expiresAt));
+    public Proposal save(Plan plan, String s3Key, String s3KeyPdf, String fileName, long size, LocalDateTime expiresAt) {
+        return proposalRepository.save(Proposal.create(plan, s3Key, s3KeyPdf, fileName, size, expiresAt));
+    }
+
+    @Transactional(timeout = 5)
+    public Proposal replace(Proposal existing, Plan plan, String s3Key, String s3KeyPdf,
+                            String fileName, long size, LocalDateTime expiresAt) {
+        proposalRepository.delete(existing);
+        proposalRepository.flush();
+        return proposalRepository.save(Proposal.create(plan, s3Key, s3KeyPdf, fileName, size, expiresAt));
     }
 }

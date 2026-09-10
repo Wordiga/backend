@@ -16,7 +16,7 @@ public class AiProposalRequest {
     private Long planId;
     private CompanyInfo companyInfo;
     private Timetable timetable;
-    private EstimatedBudget estimatedBudget;
+    private EstimatedCost estimatedCost;
     private String workshopPurpose;
     private Integer visitMonth;
     private Integer numPeople;
@@ -29,7 +29,7 @@ public class AiProposalRequest {
                 .planId(plan.getPlanId())
                 .companyInfo(new CompanyInfo(valueOrDefault(request.getOrganizationName(), "Wordiga")))
                 .timetable(Timetable.from(plan))
-                .estimatedBudget(EstimatedBudget.from(plan.getEstimatedBudget()))
+                .estimatedCost(EstimatedCost.from(plan.getEstimatedCost()))
                 .workshopPurpose(purpose.isBlank() ? null : purpose)
                 .visitMonth(plan.getStartDate() == null ? null : plan.getStartDate().getMonthValue())
                 .numPeople(plan.getParticipantCount())
@@ -41,12 +41,13 @@ public class AiProposalRequest {
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record CompanyInfo(String companyName) {}
+    public record CompanyInfo(String companyName) {
+    }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record EstimatedBudget(Long total, Long perPerson, Map<String, Long> breakdown) {
-        static EstimatedBudget from(PlanDetailResponse.EstimatedBudget source) {
-            return source == null ? null : new EstimatedBudget(
+    public record EstimatedCost(Long total, Long perPerson, Map<String, Long> breakdown) {
+        static EstimatedCost from(PlanDetailResponse.EstimatedCost source) {
+            return source == null ? null : new EstimatedCost(
                     source.totalAmount(), source.perPersonAmount(), source.breakdown());
         }
     }

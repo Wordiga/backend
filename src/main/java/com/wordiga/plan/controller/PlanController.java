@@ -14,8 +14,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.List;
-
 @Validated
 @RestController
 @RequestMapping("/api/v1/plans")
@@ -44,6 +42,13 @@ public class PlanController implements PlanApi {
         return ResponseEntity.ok(planService.getPlan(memberId, planId));
     }
 
+    @GetMapping("/{planId}/weather")
+    public ResponseEntity<PlanWeatherResponse> getWeather(
+            @CurrentMemberId Long memberId, @PathVariable Long planId,
+            @RequestParam @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(12) int month) {
+        return ResponseEntity.ok(planService.getWeather(memberId, planId, month));
+    }
+
     @PatchMapping("/{planId}")
     public ResponseEntity<PlanDetailResponse> updatePlan(@CurrentMemberId Long memberId, @PathVariable Long planId,
                                                          @Valid @RequestBody PlanUpdateRequest request) {
@@ -66,11 +71,6 @@ public class PlanController implements PlanApi {
     public ResponseEntity<ProposalResponse> createProposal(@CurrentMemberId Long memberId, @PathVariable Long planId,
                                                            @Valid @RequestBody ProposalCreateRequest request) {
         return ResponseEntity.ok(proposalService.create(memberId, planId, request));
-    }
-
-    @GetMapping("/{planId}/proposals")
-    public ResponseEntity<List<ProposalResponse>> getProposals(@CurrentMemberId Long memberId, @PathVariable Long planId) {
-        return ResponseEntity.ok(proposalService.list(memberId, planId));
     }
 
     @DeleteMapping("/{planId}/proposals/{proposalId}")

@@ -2,10 +2,10 @@ package com.wordiga.global.client;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.wordiga.global.config.AiServerProperties;
 import com.wordiga.plan.dto.ai.AiPlanRequest;
 import com.wordiga.plan.dto.ai.AiPlanResponse;
 import com.wordiga.proposal.dto.AiProposalRequest;
-import com.wordiga.global.config.AiServerProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
@@ -66,9 +66,20 @@ public class AiServerClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .contentLength(body.length)
                     .body(outputStream -> outputStream.write(body))
-                    .retrieve()
-                    .body(byte[].class);
-            if (response == null) throw invalid("제안서 문서 응답이 비어 있습니다.");
+                    .exchange((req, res) -> {
+                        if (res.getStatusCode().isError()) {
+                            throw new RestClientResponseException(
+                                    "AI 서버 제안서 생성 실패",
+                                    res.getStatusCode().value(),
+                                    res.getStatusText(),
+                                    res.getHeaders(),
+                                    res.getBody().readAllBytes(),
+                                    null
+                            );
+                        }
+                        return res.getBody().readAllBytes();
+                    });
+            if (response == null || response.length == 0) throw invalid("제안서 문서 응답이 비어 있습니다.");
             return response;
         } catch (ResponseStatusException e) {
             throw e;

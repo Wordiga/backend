@@ -1,13 +1,13 @@
 package com.wordiga.plan.service;
 
-import com.wordiga.plan.dto.ai.AiPlanResponse;
-import com.wordiga.plan.dto.PlanDetailResponse;
-import com.wordiga.plan.dto.PlanGenerateRequest;
 import com.wordiga.global.config.TourismProperties;
 import com.wordiga.member.Member;
+import com.wordiga.member.repository.MemberRepository;
 import com.wordiga.plan.Plan;
 import com.wordiga.plan.PlanContent;
-import com.wordiga.member.repository.MemberRepository;
+import com.wordiga.plan.dto.PlanDetailResponse;
+import com.wordiga.plan.dto.PlanGenerateRequest;
+import com.wordiga.plan.dto.ai.AiPlanResponse;
 import com.wordiga.plan.repository.PlanRepository;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
@@ -17,8 +17,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.format.DateTimeFormatter;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 import static com.wordiga.global.util.KtoUtils.parseKtoDateTime;
@@ -78,7 +78,7 @@ public class PlanWriter {
             }
         }
 
-        AiPlanResponse.EstimatedBudget budget = ai.getEstimatedBudget();
+        AiPlanResponse.EstimatedCost budget = ai.getEstimatedCost();
         plan.applyAiResult(ai.getScheduleId(), budget == null ? null : budget.getTotalAmount(),
                 budget == null ? null : budget.getPerPersonAmount(),
                 budget == null ? null : budget.getBreakdown());
