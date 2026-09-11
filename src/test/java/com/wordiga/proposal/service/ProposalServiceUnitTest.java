@@ -6,7 +6,6 @@ import com.wordiga.plan.Plan;
 import com.wordiga.plan.PlanContent;
 import com.wordiga.plan.service.PlanReader;
 import com.wordiga.proposal.Proposal;
-import com.wordiga.proposal.dto.ProposalCreateRequest;
 import com.wordiga.proposal.dto.ProposalResponse;
 import com.wordiga.proposal.repository.ProposalRepository;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
@@ -61,17 +60,15 @@ class ProposalServiceUnitTest {
     @Test
     void createsAndStoresDocxAndPdfProposal() throws Exception {
         byte[] docx = docx();
-        ProposalCreateRequest request = new ProposalCreateRequest();
-        request.setProposalTitle("제안서");
         when(planReader.read(1L, 9L)).thenReturn(new PlanReader.Snapshot(plan, com.wordiga.plan.dto.PlanDetailResponse.from(plan)));
         when(aiServerClient.generateProposal(any())).thenReturn(docx);
         when(pdfConverter.convert(docx)).thenReturn("pdf".getBytes());
-        when(writer.save(eq(plan), anyString(), anyString(), eq("제안서.docx"), eq((long) docx.length), any()))
+        when(writer.save(eq(plan), anyString(), anyString(), eq("아산 일정 제안서.docx"), eq((long) docx.length), any()))
                 .thenAnswer(inv -> Proposal.create(plan, inv.getArgument(1), inv.getArgument(2),
                         inv.getArgument(3), inv.getArgument(4), inv.getArgument(5)));
         when(storage.url(anyString(), anyString(), anyBoolean())).thenReturn("https://signed");
 
-        ProposalResponse response = service.create(1L, 9L, request);
+        ProposalResponse response = service.create(1L, 9L);
 
         assertThat(response.getPdfUrl()).isEqualTo("https://signed");
         assertThat(response.getDocxUrl()).isEqualTo("https://signed");

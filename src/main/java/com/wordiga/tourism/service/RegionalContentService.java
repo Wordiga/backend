@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 
 @Service
 @RequiredArgsConstructor
@@ -53,7 +55,8 @@ public class RegionalContentService {
                 if (added >= target.limit()) break;
                 try {
                     TourismContentDetailResponse detail = detailService.getAiDetail(
-                            candidate.item().getContentid(), request.getStartDate());
+                            candidate.item().getContentid(), YearMonth.parse(request.getVisitMonth(),
+                                    DateTimeFormatter.ofPattern("yyyyMM")).atDay(1));
                     if (hasRequiredAiFields(detail)) {
                         details.add(detail);
                         includedIds.add(candidate.item().getContentid());

@@ -27,6 +27,8 @@ public class MonthlyWeatherService {
     private static final Map<String, AsosStation> ASOS_STATION_BY_SIGUNGU_CODE = Map.ofEntries(
             Map.entry("110", new AsosStation("236", "부여")), // 공주시 -> 부여/대전 인접
             Map.entry("120", new AsosStation("238", "금산")), // 금산군 -> 금산 관측소
+            Map.entry("131", new AsosStation("232", "천안")), // 천안시 동남구
+            Map.entry("133", new AsosStation("232", "천안")), // 천안시 서북구
             Map.entry("150", new AsosStation("236", "부여")), // 논산시 -> 부여 인접
             Map.entry("180", new AsosStation("129", "서산")), // 당진시 -> 서산 인접
             Map.entry("200", new AsosStation("235", "보령")), // 보령시 -> 보령 관측소

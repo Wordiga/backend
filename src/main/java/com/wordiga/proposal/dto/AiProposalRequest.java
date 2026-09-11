@@ -21,23 +21,16 @@ public class AiProposalRequest {
     private Integer visitMonth;
     private Integer numPeople;
 
-    public static AiProposalRequest from(ProposalCreateRequest request, PlanDetailResponse plan) {
-        String purpose = java.util.stream.Stream.of(request.getPurpose(), request.getAdditionalRequest())
-                .filter(value -> value != null && !value.isBlank())
-                .collect(java.util.stream.Collectors.joining("\n"));
+    public static AiProposalRequest from(PlanDetailResponse plan) {
         return builder()
                 .planId(plan.getPlanId())
-                .companyInfo(new CompanyInfo(valueOrDefault(request.getOrganizationName(), "Wordiga")))
+                .companyInfo(new CompanyInfo("Wordiga"))
                 .timetable(Timetable.from(plan))
-                .estimatedCost(EstimatedCost.from(plan.getEstimatedCost()))
-                .workshopPurpose(purpose.isBlank() ? null : purpose)
-                .visitMonth(plan.getStartDate() == null ? null : plan.getStartDate().getMonthValue())
+                .estimatedCost(EstimatedCost.from(plan.getEstimatedBudget()))
+                .workshopPurpose(null)
+                .visitMonth(plan.getVisitMonth() == null ? null : Integer.valueOf(plan.getVisitMonth().substring(4)))
                 .numPeople(plan.getParticipantCount())
                 .build();
-    }
-
-    private static String valueOrDefault(String value, String fallback) {
-        return value == null || value.isBlank() ? fallback : value.strip();
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)

@@ -2,6 +2,7 @@ package com.wordiga.member.api;
 
 import com.wordiga.member.dto.MemberProfileResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -15,7 +16,7 @@ public interface MemberApi {
             @ApiResponse(responseCode = "401", description = "인증 필요"),
             @ApiResponse(responseCode = "404", description = "회원 없음")
     })
-    ResponseEntity<MemberProfileResponse> getProfile(Long memberId);
+    ResponseEntity<MemberProfileResponse> getProfile(@Parameter(hidden = true) Long memberId);
 
     @Operation(summary = "회원탈퇴", description = "소셜 연결과 Wordiga 저장 데이터를 삭제합니다.")
     @ApiResponses({
@@ -24,5 +25,5 @@ public interface MemberApi {
             @ApiResponse(responseCode = "404", description = "회원 없음"),
             @ApiResponse(responseCode = "503", description = "소셜 연결 또는 파일 삭제 실패")
     })
-    ResponseEntity<Void> withdraw(Long memberId);
+    ResponseEntity<Void> withdraw(@Parameter(hidden = true) Long memberId);
 }

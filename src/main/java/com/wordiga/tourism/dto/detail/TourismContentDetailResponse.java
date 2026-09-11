@@ -16,5 +16,4 @@ public class TourismContentDetailResponse {
     private List<SeasonalImageDto> seasonalImages;
     private SatisfactionDto satisfaction;
     private Boolean capacitySatisfied;
-    private MonthlyWeatherDto monthlyWeather;
 }

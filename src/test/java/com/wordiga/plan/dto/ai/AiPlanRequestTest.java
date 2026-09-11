@@ -2,7 +2,6 @@ package com.wordiga.plan.dto.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.plan.dto.PlanGenerateRequest;
-import com.wordiga.tourism.dto.detail.MonthlyWeatherDto;
 import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.dto.detail.TourismIntroDetailDto;
@@ -19,10 +18,8 @@ class AiPlanRequestTest {
     @Test
     void serializesConfirmedAiRequestSchema() throws Exception {
         PlanGenerateRequest request = new PlanGenerateRequest();
-        request.setStartDate(LocalDate.of(2026, 9, 1));
-        request.setEndDate(LocalDate.of(2026, 9, 2));
         request.setParticipantCount(25);
-        request.setVisitMonth(9);
+        request.setVisitMonth("202609");
         request.setStayDays(2);
         request.setAgeGroups(List.of("30대", "40대"));
         request.setSelectedContentIds(List.of("CT001"));
@@ -32,10 +29,6 @@ class AiPlanRequestTest {
                         .mapy(BigDecimal.valueOf(36.4)).lDongSignguCd("380")
                         .firstImage("https://image.example/CT001.jpg").build())
                 .intro(TourismIntroDetailDto.builder().checkInTime("15:00").build())
-                .monthlyWeather(MonthlyWeatherDto.builder().targetMonth(9)
-                        .avgTemp(BigDecimal.valueOf(21.3))
-                        .monthlyPrecipitation(BigDecimal.valueOf(145.2))
-                        .historicalYears(5).basis("ASOS_HISTORICAL_MONTHLY_AVERAGE").build())
                 .build();
 
         var objectMapper = new ObjectMapper();
@@ -58,8 +51,6 @@ class AiPlanRequestTest {
         assertThat(json.get("regional_contents").isArray()).isTrue();
         assertThat(json.get("regional_contents").get(0).get("content_id").asText()).isEqualTo("CT001");
         assertThat(json.get("saved_contents").get(0).get("is_outdoor").asBoolean()).isFalse();
-        assertThat(json.get("monthly_weather").get("target_month").asInt()).isEqualTo(9);
-        assertThat(json.get("monthly_weather").get("estimated_average_temperature_celsius").decimalValue())
-                .isEqualByComparingTo("21.3");
+        assertThat(json.has("monthly_weather")).isFalse();
     }
 }

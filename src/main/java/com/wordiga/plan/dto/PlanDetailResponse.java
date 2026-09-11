@@ -7,7 +7,6 @@ import lombok.Builder;
 import lombok.Data;
 
 import java.math.BigDecimal;
-import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.util.*;
@@ -19,10 +18,10 @@ public class PlanDetailResponse {
     private Long planId;
     private Long scheduleId;
     private String title;
-    private LocalDate startDate;
-    private LocalDate endDate;
+    private String visitMonth;
+    private Integer stayDays;
     private Integer participantCount;
-    private EstimatedCost estimatedCost;
+    private EstimatedCost estimatedBudget;
     private List<Day> days;
     private ProposalInfo proposal;
     private LocalDateTime createdAt;
@@ -35,7 +34,7 @@ public class PlanDetailResponse {
     public static PlanDetailResponse from(Plan p, ProposalInfo proposalInfo) {
         List<Day> days = p.getPlanContents().stream().collect(Collectors.groupingBy(PlanContent::getDayNumber,
                 TreeMap::new, Collectors.toList())).entrySet().stream().map(e -> Day.builder().dayNumber(e.getKey())
-                .date(p.getStartDate().plusDays(e.getKey() - 1L)).contents(e.getValue().stream()
+                .contents(e.getValue().stream()
                         .sorted(Comparator.comparing(PlanContent::getSequence)).map(Content::from).toList()).build()).toList();
         EstimatedCost budget = null;
         if (p.getEstimatedTotalAmount() != null || p.getEstimatedPerPersonAmount() != null) {
@@ -45,8 +44,10 @@ public class PlanDetailResponse {
             budget = new EstimatedCost(p.getEstimatedTotalAmount(), p.getEstimatedPerPersonAmount(),
                     "KRW", breakdown);
         }
-        return builder().planId(p.getId()).scheduleId(p.getScheduleId()).title(p.getTitle()).startDate(p.getStartDate()).endDate(p.getEndDate())
-                .participantCount(p.getParticipantCount()).estimatedCost(budget).days(days)
+        return builder().planId(p.getId()).scheduleId(p.getScheduleId()).title(p.getTitle())
+                .visitMonth(p.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM")))
+                .stayDays((int) java.time.temporal.ChronoUnit.DAYS.between(p.getStartDate(), p.getEndDate()) + 1)
+                .participantCount(p.getParticipantCount()).estimatedBudget(budget).days(days)
                 .proposal(proposalInfo)
                 .createdAt(p.getCreatedAt()).updatedAt(p.getUpdatedAt()).build();
     }
@@ -62,7 +63,6 @@ public class PlanDetailResponse {
     @Builder
     public static class Day {
         private Integer dayNumber;
-        private LocalDate date;
         private List<Content> contents;
     }
 

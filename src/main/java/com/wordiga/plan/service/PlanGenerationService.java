@@ -15,7 +15,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.temporal.ChronoUnit;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -31,9 +32,10 @@ public class PlanGenerationService {
     public PlanDetailResponse generate(Long memberId, PlanGenerateRequest request) {
         validateRequest(request);
         List<TourismContentDetailResponse> details = new ArrayList<>();
+        var visitDate = YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM")).atDay(1);
         for (int index = 0; index < request.getSelectedContentIds().size(); index++)
             details.add(tourismContentDetailService.getAiDetail(
-                    request.getSelectedContentIds().get(index), request.getStartDate()));
+                    request.getSelectedContentIds().get(index), visitDate));
         if (details.stream().anyMatch(detail -> !hasRequiredAiFields(detail)))
             invalid(HttpStatus.BAD_REQUEST, "선택 콘텐츠에 AI 일정 생성에 필요한 좌표 또는 지역 정보가 없습니다.");
         var regional = regionalContentService.find(request, details);
@@ -100,23 +102,20 @@ public class PlanGenerationService {
     }
 
     private void validateRequest(PlanGenerateRequest r) {
-        if (r.getStartDate().isAfter(r.getEndDate()) || ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) > 2)
-            invalid(HttpStatus.BAD_REQUEST, "일정 기간은 1~3일이어야 합니다.");
+        try {
+            YearMonth.parse(r.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM"));
+        } catch (RuntimeException exception) {
+            invalid(HttpStatus.BAD_REQUEST, "방문 월은 YYYYMM 형식이어야 합니다.");
+        }
         if (new HashSet<>(r.getSelectedContentIds()).size() != r.getSelectedContentIds().size())
             invalid(HttpStatus.BAD_REQUEST, "콘텐츠 ID는 중복될 수 없습니다.");
-        if (r.getVisitMonth() != null && r.getVisitMonth() != r.getStartDate().getMonthValue())
-            invalid(HttpStatus.BAD_REQUEST, "방문 월은 시작일의 월과 같아야 합니다.");
-        long dateDays = ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) + 1;
-        if (r.getStayDays() != dateDays)
-            invalid(HttpStatus.BAD_REQUEST, "체류 일수는 시작일과 종료일을 포함한 기간과 같아야 합니다.");
     }
 
     private void validateResponse(PlanGenerateRequest r, List<TourismContentDetailResponse> regional,
                                   AiPlanResponse response) {
         if (response.getDays() == null || response.getDays().isEmpty())
             invalid(HttpStatus.BAD_GATEWAY, "AI 일정이 비어 있습니다.");
-        long requestedDays = ChronoUnit.DAYS.between(r.getStartDate(), r.getEndDate()) + 1;
-        if (response.getDays().size() != requestedDays)
+        if (response.getDays().size() != r.getStayDays())
             invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 일수가 요청과 다릅니다.");
         Set<String> selected = new HashSet<>(r.getSelectedContentIds());
         Set<String> allowed = new HashSet<>(selected);

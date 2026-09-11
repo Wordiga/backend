@@ -13,7 +13,6 @@ import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
 import com.wordiga.tourism.service.TourismContentDetailService;
 import com.wordiga.tourism.service.TourismContentSnapshotService;
-import com.wordiga.tourism.service.MonthlyWeatherService;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -44,16 +43,13 @@ class PlanServiceUnitTest {
     ProposalRepository proposalRepository;
     @Mock
     ProposalStorage storage;
-    @Mock
-    MonthlyWeatherService monthlyWeatherService;
-
     PlanService service;
     Plan plan;
 
     @BeforeEach
     void setUp() {
         service = new PlanService(planRepository, tourismContentDetailService, snapshotRepository, snapshotService,
-                proposalRepository, storage, monthlyWeatherService);
+                proposalRepository, storage);
         plan = Plan.create(null, "충남 여행", LocalDate.of(2026, 8, 20), LocalDate.of(2026, 8, 21), 2);
     }
 
@@ -80,7 +76,8 @@ class PlanServiceUnitTest {
         PlanDetailResponse result = service.updatePlan(1L, 9L, request);
 
         assertThat(result.getScheduleId()).isEqualTo(1L);
-        assertThat(result.getEstimatedCost().totalAmount()).isEqualTo(40_000L);
+        assertThat(result.getEstimatedBudget().totalAmount()).isEqualTo(40_000L);
+        assertThat(result.getEstimatedBudget().breakdown()).containsEntry("food", 40_000L);
     }
 
     @Test
@@ -93,28 +90,8 @@ class PlanServiceUnitTest {
         plan.applyAiResult(1L, 20_000L, 10_000L, breakdown);
         PlanDetailResponse result = PlanDetailResponse.from(plan);
 
-        assertThat(result.getEstimatedCost().currency()).isEqualTo("KRW");
-        assertThat(result.getEstimatedCost().breakdown()).containsExactly(entry("food", 20_000L));
-    }
-
-    @Test
-    void getsMonthlyWeatherForPlansRepresentativeLocation() {
-        TourismContentSnapshot content = TourismContentSnapshot.builder()
-                .contentId("1").contentTypeId("12").title("부여 박물관")
-                .sigunguCode("210").sigunguName("부여군").build();
-        plan.addContent(com.wordiga.plan.PlanContent.create(plan, 1, 1, content));
-        when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
-        when(monthlyWeatherService.estimate("210", 7)).thenReturn(
-                com.wordiga.tourism.dto.detail.MonthlyWeatherDto.builder()
-                        .targetMonth(7).avgTemp(new java.math.BigDecimal("25.5"))
-                        .monthlyPrecipitation(new java.math.BigDecimal("210.0"))
-                        .historicalYears(5).stationName("부여")
-                        .basis("ASOS_HISTORICAL_MONTHLY_AVERAGE").build());
-
-        var result = service.getWeather(1L, 9L, 7);
-
-        assertThat(result.locationName()).isEqualTo("부여군");
-        assertThat(result.avgTemp()).isEqualByComparingTo("25.5");
+        assertThat(result.getEstimatedBudget().currency()).isEqualTo("KRW");
+        assertThat(result.getEstimatedBudget().breakdown()).containsExactly(entry("food", 20_000L));
     }
 
     @Test
@@ -132,7 +109,7 @@ class PlanServiceUnitTest {
     }
 
     @Test
-    void replacesContentsInDayAndRequestOrder() {
+    void replacesContentsInDayAndAllowsRepeatedContent() {
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         when(tourismContentDetailService.getCommonDetail(anyString())).thenAnswer(invocation -> {
             ContentDetailDto content = new ContentDetailDto();
@@ -144,14 +121,16 @@ class PlanServiceUnitTest {
         when(snapshotRepository.save(any(TourismContentSnapshot.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
         PlanContentsUpdateRequest request = new PlanContentsUpdateRequest();
-        request.setDays(List.of(day(1, "2026-08-20", "A", "B"), day(2, "2026-08-21", "C")));
+        request.setDays(List.of(day(1, "2026-08-20", "A", "A"), day(2, "2026-08-21", "A")));
 
         var result = service.updateContents(1L, 9L, request);
 
         assertThat(result.getDays()).hasSize(2);
         assertThat(result.getDays().getFirst().getContents()).extracting(PlanDetailResponse.Content::getContentId)
-                .containsExactly("A", "B");
+                .containsExactly("A", "A");
         assertThat(result.getDays()).hasSize(2);
+        assertThat(result.getDays().get(1).getContents()).extracting(PlanDetailResponse.Content::getContentId)
+                .containsExactly("A");
     }
 
     @Test

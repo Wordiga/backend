@@ -48,9 +48,9 @@ class TourismContentControllerExceptionTest {
     }
 
     @Test
-    void rejectsInvalidVisitDateFormat() throws Exception {
+    void rejectsInvalidVisitMonthFormat() throws Exception {
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
-                        .param("visitDate", "2026/08/20"))
+                        .param("visitMonth", "2026/08"))
                 .andExpect(status().isBadRequest());
     }
 }

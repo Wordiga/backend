@@ -44,6 +44,7 @@ public class ApiExceptionHandler {
     private String code(HttpStatus status, String reason) {
         if (status == HttpStatus.SERVICE_UNAVAILABLE) {
             if (reason != null && reason.contains("관광공사")) return "TOURISM_API_UNAVAILABLE";
+            if (reason != null && (reason.contains("기상청") || reason.contains("날씨"))) return "WEATHER_API_UNAVAILABLE";
             if (reason != null && reason.contains("제안서")) return "PROPOSAL_STORAGE_UNAVAILABLE";
             return "AI_SERVER_UNAVAILABLE";
         }

@@ -16,7 +16,7 @@
 | POST | `/api/v1/plans/generate` | O | AI 일정 생성 및 저장 |
 | GET | `/api/v1/plans` | O | 내 일정 목록 조회 |
 | GET | `/api/v1/plans/{planId}` | O | 내 일정 상세 조회 |
-| GET | `/api/v1/plans/{planId}/weather` | O | 일정 대표 지역의 월평균 기후 조회 |
+| GET | `/api/v1/weather` | X | 지역·방문 월 기준 월평균 기후 조회 |
 | PATCH | `/api/v1/plans/{planId}` | O | 내 일정 기본정보 수정 |
 | PUT | `/api/v1/plans/{planId}/contents` | O | 내 일정 콘텐츠 수정 |
 | DELETE | `/api/v1/plans/{planId}` | O | 내 일정 삭제 |
@@ -39,8 +39,8 @@
   "message": "요청값을 확인해 주세요.",
   "fieldErrors": [
     {
-      "field": "startDate",
-      "reason": "오늘 이후의 날짜를 입력해 주세요."
+      "field": "visitMonth",
+      "reason": "방문 월은 YYYYMM 형식이어야 합니다."
     }
   ]
 }
@@ -56,6 +56,7 @@ GET /api/v1/tourism/contents
 
 * 인기·계절·연관 관광지·위시 기반 개인화 콘텐츠를 조회합니다.
 * 검색어와 지역·관광타입 필터를 적용합니다.
+* 응답의 `hasNext`를 기준으로 다음 `page`를 요청하는 무한 스크롤 방식을 사용합니다.
 
 인증: 불필요
 
@@ -64,7 +65,7 @@ GET /api/v1/tourism/contents
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
 | `type` | Enum | N | `POPULAR`, `SEASONAL`, `RELATED`, `PERSONALIZED`; 기본값은 `POPULAR` | `POPULAR` |
-| `visitDate` | LocalDate | N | 계절 정렬 기준일, 미입력 시 오늘 | `2026-08-20` |
+| `visitMonth` | String | N | 계절 정렬 기준 월 `YYYYMM`, 미입력 시 현재 월 | `202608` |
 | `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
 | `contentTypeId` | String | N | 관광타입 ID | `12` |
 | `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드 | `200` |
@@ -269,7 +270,7 @@ GET /api/v1/tourism/contents/{contentId}
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `visitDate` | LocalDate | N | 쾌적도 판단 기준일, 미입력 시 오늘 | `2026-08-20` |
+| `visitMonth` | String | N | 쾌적도 판단 기준 월 `YYYYMM` | `202608` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `8` |
 | `ageGroups` | String[] | N | 연령대 코드 `10S`~`70S` | `20S,30S` |
 | `stayDays` | Integer | N | 체류 일수 `1`~`3`; 체류 적합도 계산 시 숙박 일수 `stayDays-1`로 변환 | `2` |
@@ -718,7 +719,7 @@ comfortScore = 100 - concentrationRate
 - `ageGroups`를 보내지 않으면 연령 적합도는 원천값 없음으로 처리되어 중립값 50을 적용합니다.
 - 상세 API는 숙박일 수를 입력받지 않으므로 체류 적합도는 전체 체류 유형 코드로 계산합니다.
 - `participantCount`는 만족도 점수에 반영되지 않고 숙박 콘텐츠의 `capacitySatisfied`에만 반영됩니다.
-- `visitDate`가 관광 집중도 30일 자료의 날짜와 정확히 일치하면 해당 날짜의 집중률을 사용합니다. 일치하지 않으면 조회된 30일 집중률 평균을 사용하며, 자료가 없으면 중립값 50을 적용합니다.
+- `visitMonth`와 같은 달의 관광 집중도 자료가 있으면 해당 월 평균을 사용하고, 없으면 조회된 향후 30일 전체 평균을 사용합니다. 자료가 없으면 중립값 50을 적용합니다.
 
 ## 3. 위시 등록
 
@@ -994,7 +995,7 @@ POST /api/v1/plans/generate
 * 상세정보의 단일 콘텐츠 또는 일정설계에서 선택한 최대 10개 콘텐츠로 AI 일정을 생성합니다.
 * AI 서버 응답을 저장한 뒤 화면에 일자별 일정과 이동시간을 제공합니다.
 * 동일 조건으로 다시 호출해도 기존 일정을 덮어쓰지 않고 새 `planId`와 AI가 발급한 새 `scheduleId`로 저장합니다.
-* 제목을 생략하면 첫 번째 선택 콘텐츠의 시군구와 시작일로 `{시군구} {MMdd}`를 사용하며, 같은 회원에게 같은 제목이 있으면 ` 1`, ` 2` 순번을 붙입니다.
+* 제목을 생략하면 첫 번째 선택 콘텐츠의 시군구와 방문 월로 `{시군구} {yy년 MM월}`을 사용하며, 같은 회원에게 같은 제목이 있으면 ` 1`, ` 2` 순번을 붙입니다.
 
 인증: 필수
 
@@ -1007,11 +1008,9 @@ POST /api/v1/plans/generate
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `title` | String | N | 일정 제목 |
-| `startDate` | LocalDate | Y | 시작일 |
-| `endDate` | LocalDate | Y | 종료일 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `visitMonth` | Integer | N | 방문 월(1~12), 미입력 시 `startDate`의 월 사용 |
-| `stayDays` | Integer | Y | 체류 일수 `1`~`3`; 시작일과 종료일을 포함한 기간과 일치해야 함 |
+| `visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `stayDays` | Integer | Y | 체류 일수 `1`~`3` |
 | `ageGroups` | String[] | N | 참가자 연령대 |
 | `selectedContentIds` | String[] | Y | 선택 콘텐츠 ID, 배열 순서가 사용자 우선순위 |
 
@@ -1022,14 +1021,14 @@ POST /api/v1/plans/generate
 | `planId` | Long | Y | 저장된 일정 ID |
 | `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
-| `startDate` | LocalDate | Y | 시작일 |
-| `endDate` | LocalDate | Y | 종료일 |
+| `visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `stayDays` | Integer | Y | 체류 일수 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedCost` | EstimatedCost | N | 예상 예산 |
-| `estimatedCost.totalAmount` | Long | N | 전체 예상 금액 |
-| `estimatedCost.perPersonAmount` | Long | N | 1인당 예상 금액 |
-| `estimatedCost.currency` | String | N | 통화 코드 |
-| `estimatedCost.breakdown` | Map<String, Long> | N | AI 서버가 제공한 항목별 예상 금액. 항목명과 금액을 구조화해 저장 |
+| `estimatedBudget` | EstimatedCost | N | 예상 예산 |
+| `estimatedBudget.totalAmount` | Long | N | 전체 예상 금액 |
+| `estimatedBudget.perPersonAmount` | Long | N | 1인당 예상 금액 |
+| `estimatedBudget.currency` | String | N | 통화 코드 |
+| `estimatedBudget.breakdown` | Map<String, Long> | N | AI 서버가 제공한 항목별 예상 금액. 항목명과 금액을 구조화해 저장 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1058,10 +1057,10 @@ POST /api/v1/plans/generate
   "planId": 77,
   "scheduleId": 1001,
   "title": "아산 역사 워크숍",
-  "startDate": "2026-08-20",
-  "endDate": "2026-08-21",
+  "visitMonth": "202608",
+  "stayDays": 2,
   "participantCount": 10,
-  "estimatedCost": {
+  "estimatedBudget": {
     "totalAmount": 640000,
     "perPersonAmount": 80000,
     "currency": "KRW",
@@ -1074,7 +1073,6 @@ POST /api/v1/plans/generate
   "days": [
     {
       "dayNumber": 1,
-      "date": "2026-08-20",
       "contents": [
         {
           "sequence": 1,
@@ -1114,11 +1112,9 @@ POST /api/v1/plans/generate
 
 ### Validation
 
-- 시작일은 종료일보다 늦을 수 없습니다.
-- 일정 기간은 최대 3일입니다.
 - 참가 인원은 10~50명입니다.
-- `visitMonth`는 `startDate`의 월과 같아야 합니다.
-- `stayDays`는 1~3이며 `endDate - startDate + 1`과 같아야 합니다.
+- `visitMonth`는 실제 존재하는 `YYYYMM` 형식이어야 합니다.
+- `stayDays`는 1~3입니다.
 - AI 요청 JSON만 snake_case를 사용합니다. 애플리케이션 요청·응답 DTO는 lowerCamelCase를 유지합니다.
 - AI 요청에는 콘텐츠별 `is_outdoor`와 보충 후보 `regional_contents`를 전달합니다. 체류 기간은 `num_days` 하나로 전달합니다.
 - 분류 코드는 관광공사 `lclsSystmCode2` 변환 API의 한글 분류명으로 바꿔 `tags`에 전달합니다. 변환 실패 시 로그를 기록하고 AI 계약에 맞게 `tags: []`로 전달합니다.
@@ -1177,8 +1173,8 @@ GET /api/v1/plans
 | `items[].planId` | Long | Y | 일정 ID |
 | `items[].scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `items[].title` | String | Y | 일정 제목 |
-| `items[].startDate` | LocalDate | Y | 시작일 |
-| `items[].endDate` | LocalDate | Y | 종료일 |
+| `items[].visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `items[].stayDays` | Integer | Y | 체류 일수 |
 | `items[].participantCount` | Integer | Y | 참가 인원 |
 | `items[].thumbnailUrl` | String | N | 첫 일정 콘텐츠 대표 이미지 |
 | `items[].contentCount` | Integer | Y | 일정 콘텐츠 수 |
@@ -1198,8 +1194,8 @@ GET /api/v1/plans
       "planId": 77,
       "scheduleId": 1001,
       "title": "아산 역사 워크숍",
-      "startDate": "2026-08-20",
-      "endDate": "2026-08-21",
+      "visitMonth": "202608",
+      "stayDays": 2,
       "participantCount": 10,
       "thumbnailUrl": "https://example.com/main.jpg",
       "contentCount": 5,
@@ -1266,10 +1262,10 @@ GET /api/v1/plans/{planId}
 | `planId` | Long | Y | 일정 ID |
 | `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
-| `startDate` | LocalDate | Y | 시작일 |
-| `endDate` | LocalDate | Y | 종료일 |
+| `visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `stayDays` | Integer | Y | 체류 일수 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedCost` | EstimatedCost | N | 예상 예산 |
+| `estimatedBudget` | EstimatedCost | N | 예상 예산 |
 | `proposal` | ProposalInfo | N | 유효한 제안서가 없으면 `null` |
 | `proposal.fileName` | String | Y | `.docx` 확장자를 포함한 파일명 |
 | `proposal.pdfUrl` | String | N | PDF 미리보기 URL. 변환 실패 시 `null` |
@@ -1303,10 +1299,10 @@ GET /api/v1/plans/{planId}
   "planId": 77,
   "scheduleId": 1001,
   "title": "아산 역사 워크숍",
-  "startDate": "2026-08-20",
-  "endDate": "2026-08-21",
+  "visitMonth": "202608",
+  "stayDays": 2,
   "participantCount": 10,
-  "estimatedCost": null,
+  "estimatedBudget": null,
   "proposal": {
     "fileName": "아산 워크숍 제안서.docx",
     "pdfUrl": "https://presigned.example.com/proposal.pdf",
@@ -1316,7 +1312,6 @@ GET /api/v1/plans/{planId}
   "days": [
     {
       "dayNumber": 1,
-      "date": "2026-08-20",
       "contents": [
         {
           "sequence": 1,
@@ -1357,21 +1352,22 @@ GET /api/v1/plans/{planId}
 
 - 일자는 `date ASC`, 콘텐츠는 `sequence ASC`로 정렬합니다.
 
-## 9-1. 일정 대표 지역의 월평균 기후 조회
+## 9-1. 지역·방문 월 기준 월평균 기후 조회
 
 ```http
-GET /api/v1/plans/{planId}/weather?month=7
+GET /api/v1/weather?lDongSignguCd=133&visitMonth=202609
 ```
 
-일정의 첫 번째 콘텐츠가 속한 시군구를 대표 지역으로 사용해 입력 월의 최근 5개년 ASOS 평균을 반환합니다.
+시군구 코드와 방문 월을 사용해 최근 5개년 ASOS 평균을 반환합니다.
 
-인증: 필수
+인증: 불필요
 
 ### Query Parameter
 
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
-| `month` | Integer | Y | 조회 월 1~12 |
+| `lDongSignguCd` | String | Y | 충청남도 법정동 시군구 코드 |
+| `visitMonth` | String | Y | 조회 월 `YYYYMM` |
 
 ### Response Body
 
@@ -1401,9 +1397,8 @@ GET /api/v1/plans/{planId}/weather?month=7
 
 ### Validation
 
-- `month`는 1~12여야 합니다.
-- 본인 소유 일정만 조회합니다.
-- 일정 콘텐츠가 없으면 `400`, 지역 매핑 또는 기상 자료가 없으면 `503`을 반환합니다.
+- `visitMonth`는 실제 존재하는 `YYYYMM` 형식이어야 합니다.
+- 지역 매핑 또는 기상 자료가 없으면 `WEATHER_API_UNAVAILABLE(503)`을 반환합니다.
 
 ## 10. 내 일정 기본정보 수정
 
@@ -1433,7 +1428,7 @@ PATCH /api/v1/plans/{planId}
 | `planId` | Long | Y | 일정 ID |
 | `title` | String | Y | 일정 제목 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedCost` | EstimatedCost | N | 예상 예산 |
+| `estimatedBudget` | EstimatedCost | N | 예상 예산 |
 | `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
 ### Response Example
@@ -1443,7 +1438,7 @@ PATCH /api/v1/plans/{planId}
   "planId": 77,
   "title": "아산 역사 워크숍 수정",
   "participantCount": 10,
-  "estimatedCost": {
+  "estimatedBudget": {
     "totalAmount": 800000,
     "perPersonAmount": 80000,
     "currency": "KRW",
@@ -1499,10 +1494,10 @@ PUT /api/v1/plans/{planId}/contents
 | `planId` | Long | Y | 일정 ID |
 | `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
-| `startDate` | LocalDate | Y | 시작일 |
-| `endDate` | LocalDate | Y | 종료일 |
+| `visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `stayDays` | Integer | Y | 체류 일수 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedCost` | EstimatedCost | N | 마지막 AI 생성 시 저장된 예상 예산이며 재생성 전까지 유지 |
+| `estimatedBudget` | EstimatedCost | N | 마지막 AI 생성 시 저장된 예상 예산이며 재생성 전까지 유지 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1542,12 +1537,11 @@ PUT /api/v1/plans/{planId}/contents
 {
   "planId": 77,
   "title": "아산 역사 워크숍",
-  "startDate": "2026-08-20",
-  "endDate": "2026-08-21",
+  "visitMonth": "202608",
+  "stayDays": 2,
   "days": [
     {
       "dayNumber": 1,
-      "date": "2026-08-20",
       "contents": [
         {
           "sequence": 1,
@@ -1565,7 +1559,6 @@ PUT /api/v1/plans/{planId}/contents
     },
     {
       "dayNumber": 2,
-      "date": "2026-08-21",
       "contents": [
         {
           "sequence": 1,
@@ -1592,7 +1585,7 @@ PUT /api/v1/plans/{planId}/contents
 ### Validation
 
 - `dayNumber`는 1부터 중복 없이 이어져야 합니다.
-- 모든 `contentIds`를 합친 결과는 중복 없이 1~10개여야 합니다.
+- 모든 `contentIds`를 합친 실제 배치 항목 수는 1~10개이며, 같은 콘텐츠의 반복 배치를 허용합니다.
 - 모든 콘텐츠는 충청남도 범위여야 합니다.
 
 ### 처리 기준
@@ -1658,12 +1651,7 @@ POST /api/v1/plans/{planId}/proposals
 
 ### Request Body
 
-| 이름 | 타입 | 필수 | 설명 |
-|---|---|---|---|
-| `proposalTitle` | String | N | 제안서 제목 |
-| `organizationName` | String | N | 조직명 |
-| `purpose` | String | N | 워크숍 목적 |
-| `additionalRequest` | String | N | AI 서버에 전달할 추가 요청 |
+없습니다.
 
 ### Response Body
 
@@ -1706,8 +1694,7 @@ POST /api/v1/plans/{planId}/proposals
 ### Validation
 
 - 일정에는 콘텐츠가 1개 이상 있어야 합니다.
-- 제목과 조직명은 각각 최대 100자입니다. 제목이 비어 있으면 일정 제목 뒤에 `제안서`를 붙이고, 조직명이 비어 있으면 `Wordiga`를 사용합니다.
-- 목적과 추가 요청은 각각 최대 1000자입니다.
+- 파일명은 일정 제목 뒤에 `제안서`를 붙여 생성하고 조직명은 `Wordiga`를 사용합니다.
 - 응답 파일은 20 MiB 이하여야 하며 ZIP 내부에 `[Content_Types].xml`과 `word/document.xml`이 있어야 합니다.
 
 ### AI 및 저장소 연동 계약

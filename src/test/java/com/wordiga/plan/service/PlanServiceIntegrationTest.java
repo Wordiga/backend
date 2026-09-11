@@ -71,8 +71,8 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         Member member = memberRepository.save(Member.create("generated@test.com", "생성", OAuthProvider.GOOGLE, "generated", null));
         PlanGenerateRequest request = new PlanGenerateRequest();
         request.setTitle("AI 일정");
-        request.setStartDate(LocalDate.of(2026, 8, 20));
-        request.setEndDate(request.getStartDate());
+        request.setVisitMonth("202608");
+        request.setStayDays(1);
         request.setParticipantCount(2);
         AiPlanResponse.Content content = new AiPlanResponse.Content();
         content.setSequence(1);
@@ -81,7 +81,7 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         content.setTravelTimeMinutes(15);
         AiPlanResponse.Day day = new AiPlanResponse.Day();
         day.setDayNumber(1);
-        day.setDate(request.getStartDate());
+        day.setDate(LocalDate.of(2026, 8, 1));
         day.setContents(List.of(content));
         AiPlanResponse ai = new AiPlanResponse();
         ai.setScheduleId(1L);
@@ -98,7 +98,7 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
 
         assertThat(saved.getScheduleId()).isEqualTo(1L);
         assertThat(saved.getDays().getFirst().getContents().getFirst().getTravelTimeMinutes()).isEqualTo(15);
-        assertThat(saved.getEstimatedCost().toString()).contains("food");
+        assertThat(saved.getEstimatedBudget().toString()).contains("food");
         assertThat(planRepository.findById(saved.getPlanId())).isPresent();
     }
 
@@ -106,8 +106,8 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
     void assignsRegionalDateTitleAndSuffixAndIncludesScheduleIdInList() {
         Member member = memberRepository.save(Member.create("title@test.com", "제목", OAuthProvider.GOOGLE, "title", null));
         PlanGenerateRequest request = new PlanGenerateRequest();
-        request.setStartDate(LocalDate.of(2026, 8, 20));
-        request.setEndDate(request.getStartDate());
+        request.setVisitMonth("202608");
+        request.setStayDays(1);
         request.setParticipantCount(2);
         AiPlanResponse ai = new AiPlanResponse();
         ai.setScheduleId(1L);
@@ -117,8 +117,8 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         ai.setScheduleId(2L);
         PlanDetailResponse second = planWriter.saveGenerated(member.getId(), request, ai, "아산시");
 
-        assertThat(first.getTitle()).isEqualTo("아산시 0820");
-        assertThat(second.getTitle()).isEqualTo("아산시 0820 1");
+        assertThat(first.getTitle()).isEqualTo("아산시 26년 08월");
+        assertThat(second.getTitle()).isEqualTo("아산시 26년 08월 1");
         assertThat(planService.getPlans(member.getId(), 0, 20, PlanSort.LATEST).getItems())
                 .extracting(PlanSummaryResponse::getScheduleId).containsExactly(2L, 1L);
     }

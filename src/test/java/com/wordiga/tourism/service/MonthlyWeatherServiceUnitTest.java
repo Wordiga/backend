@@ -30,7 +30,7 @@ class MonthlyWeatherServiceUnitTest {
         MonthlyWeatherService service = new MonthlyWeatherService(weatherApiClient,
                 new WeatherProperties("https://weather", "key", 5));
 
-        var result = service.estimate("310", LocalDate.of(2026, 9, 10));
+        var result = service.estimate("133", LocalDate.of(2026, 9, 10));
 
         assertThat(result.getTargetMonth()).isEqualTo(9);
         assertThat(result.getAvgTemp()).isEqualByComparingTo("21.0");

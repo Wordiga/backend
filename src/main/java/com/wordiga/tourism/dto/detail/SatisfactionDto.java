@@ -5,6 +5,7 @@ import lombok.Getter;
 
 import java.math.BigDecimal;
 import java.time.OffsetDateTime;
+import java.util.List;
 
 @Getter
 @Builder
@@ -15,5 +16,6 @@ public class SatisfactionDto {
     private ScoreComponentDto ageFitScore;
     private ScoreComponentDto stayFitScore;
     private ScoreComponentDto comfortScore;
+    private List<String> reasons;
     private OffsetDateTime calculatedAt;
 }

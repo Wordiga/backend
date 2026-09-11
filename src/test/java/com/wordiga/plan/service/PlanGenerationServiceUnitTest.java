@@ -120,18 +120,17 @@ class PlanGenerationServiceUnitTest {
     }
 
     @Test
-    void rejectsPlanLongerThanThreeDays() {
+    void rejectsInvalidVisitMonth() {
         PlanGenerateRequest request = request("A");
-        request.setEndDate(request.getStartDate().plusDays(3));
+        request.setVisitMonth("202613");
 
-        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("1~3일");
+        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("YYYYMM");
         verifyNoInteractions(aiServerClient, planWriter);
     }
 
     @Test
     void rejectsWrongDayCountButAllowsSameContentOnDifferentDays() {
         PlanGenerateRequest request = request("126508");
-        request.setEndDate(request.getStartDate().plusDays(1));
         request.setStayDays(2);
         when(tourismContentDetailService.getAiDetail(eq("126508"), any())).thenReturn(detail());
         when(aiServerClient.generatePlan(any())).thenReturn(response("126508"));
@@ -150,7 +149,6 @@ class PlanGenerationServiceUnitTest {
     @Test
     void normalizesAiSequenceAndDropsDuplicatesOnlyWithinEachDay() {
         PlanGenerateRequest request = request("126508");
-        request.setEndDate(request.getStartDate().plusDays(1));
         request.setStayDays(2);
         AiPlanResponse response = new AiPlanResponse();
         AiPlanResponse.Day first = day(1, "126508", "126508");
@@ -173,22 +171,21 @@ class PlanGenerationServiceUnitTest {
     @Test
     void leavesWeatherOutOfPlanGenerationContentCalls() {
         PlanGenerateRequest request = request("A", "B");
-        when(tourismContentDetailService.getAiDetail("A", request.getStartDate()))
+        when(tourismContentDetailService.getAiDetail("A", LocalDate.of(2026, 8, 1)))
                 .thenReturn(detail("A", "A 관광지"));
-        when(tourismContentDetailService.getAiDetail("B", request.getStartDate()))
+        when(tourismContentDetailService.getAiDetail("B", LocalDate.of(2026, 8, 1)))
                 .thenReturn(detail("B", "B 관광지"));
         when(aiServerClient.generatePlan(any())).thenReturn(response("A", "B"));
 
         service.generate(1L, request);
 
-        verify(tourismContentDetailService).getAiDetail("A", request.getStartDate());
-        verify(tourismContentDetailService).getAiDetail("B", request.getStartDate());
+        verify(tourismContentDetailService).getAiDetail("A", LocalDate.of(2026, 8, 1));
+        verify(tourismContentDetailService).getAiDetail("B", LocalDate.of(2026, 8, 1));
     }
 
     private PlanGenerateRequest request(String... ids) {
         PlanGenerateRequest r = new PlanGenerateRequest();
-        r.setStartDate(LocalDate.of(2026, 8, 20));
-        r.setEndDate(r.getStartDate());
+        r.setVisitMonth("202608");
         r.setStayDays(1);
         r.setParticipantCount(2);
         r.setSelectedContentIds(List.of(ids));

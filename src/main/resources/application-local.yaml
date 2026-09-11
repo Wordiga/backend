@@ -24,3 +24,6 @@ logging:
     org.hibernate.SQL: debug
     org.hibernate.orm.results: trace
     org.springframework.security: debug
+
+server:
+  port: 8090

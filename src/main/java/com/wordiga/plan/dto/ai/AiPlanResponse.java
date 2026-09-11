@@ -1,5 +1,8 @@
 package com.wordiga.plan.dto.ai;
 
+import com.fasterxml.jackson.annotation.JsonAlias;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.databind.PropertyNamingStrategies;
 import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
@@ -13,14 +16,15 @@ import java.util.Map;
 
 @Data
 @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class AiPlanResponse {
-    @com.fasterxml.jackson.annotation.JsonProperty("plan_id")
+    @JsonProperty("plan_id")
     private Long scheduleId;
+    @JsonAlias("estimated_budget")
     private EstimatedCost estimatedCost;
     private List<Day> days;
 
-    @com.fasterxml.jackson.annotation.JsonProperty("timetable")
+    @JsonProperty("timetable")
     public void readTimetable(Timetable timetable) {
         if (timetable == null || timetable.getDays() == null) {
             this.days = List.of();
@@ -42,6 +46,8 @@ public class AiPlanResponse {
                 if (content.getStartTime() != null && content.getEndTime() != null)
                     content.setDurationMinutes((int) Duration.between(content.getStartTime(), content.getEndTime()).toMinutes());
                 content.setTravelTimeMinutes(item.getTravelTimeFromPrevMin());
+                content.setTravelDistanceMeters(item.getTravelDistanceMeters());
+                content.setEstimatedCost(item.getEstimatedCost());
                 content.setMemo(item.getMemo());
                 contents.add(content);
             });
@@ -57,14 +63,14 @@ public class AiPlanResponse {
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Timetable {
         private List<TimetableDay> days;
     }
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TimetableDay {
         private Integer day;
         private List<TimetableItem> items;
@@ -72,7 +78,7 @@ public class AiPlanResponse {
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    @com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class TimetableItem {
         private Integer order;
         private String startTime;
@@ -82,12 +88,15 @@ public class AiPlanResponse {
         private java.math.BigDecimal latitude;
         private java.math.BigDecimal longitude;
         private Integer travelTimeFromPrevMin;
+        private Integer travelDistanceMeters;
+        private Long estimatedCost;
         private String memo;
     }
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public static class EstimatedCost {
+        @JsonAlias("total")
         private Long totalAmount;
         private Long perPersonAmount;
         private String currency;

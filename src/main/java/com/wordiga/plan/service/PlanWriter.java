@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
 
@@ -57,7 +58,9 @@ public class PlanWriter {
         });
 
         Plan plan = Plan.create(member, title(memberId, request, sigunguName),
-                request.getStartDate(), request.getEndDate(), request.getParticipantCount());
+                YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM")).atDay(1),
+                YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM"))
+                        .atDay(1).plusDays(request.getStayDays() - 1L), request.getParticipantCount());
 
         for (AiPlanResponse.Day day : ai.getDays()) {
             for (AiPlanResponse.Content c : day.getContents()) {
@@ -90,7 +93,8 @@ public class PlanWriter {
         if (request.getTitle() != null && !request.getTitle().isBlank()) return request.getTitle().strip();
         String defaultName = tourismProperties.getRegion().getChungnamName();
         String base = (sigunguName == null ? defaultName : sigunguName) + " "
-                + request.getStartDate().format(DateTimeFormatter.ofPattern("MMdd"));
+                + YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM"))
+                .format(DateTimeFormatter.ofPattern("yy년 MM월"));
         if (!planRepository.existsByMemberIdAndTitle(memberId, base)) return base;
         int number = 1;
         while (planRepository.existsByMemberIdAndTitle(memberId, base + " " + number)) number++;
