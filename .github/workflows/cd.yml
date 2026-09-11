@@ -147,6 +147,8 @@ jobs:
             echo '[3/7] DB 스키마 반영...'
             docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
             ALTER TABLE proposals ADD COLUMN IF NOT EXISTS s3_key_pdf VARCHAR(500);
+            ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS source_modified_at TIMESTAMP;
+            ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP;
             WITH ranked AS (
                 SELECT id, ROW_NUMBER() OVER (PARTITION BY plan_id ORDER BY created_at DESC, id DESC) AS row_number
                 FROM proposals

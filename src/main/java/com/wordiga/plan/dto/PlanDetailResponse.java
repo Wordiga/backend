@@ -74,6 +74,7 @@ public class PlanDetailResponse {
         private String title;
         private String contentTypeId;
         private String addr1;
+        private String thumbnailUrl;
         private BigDecimal mapx;
         private BigDecimal mapy;
         private LocalTime startTime;
@@ -88,6 +89,7 @@ public class PlanDetailResponse {
             var content = c.getContent();
             return builder().sequence(c.getSequence()).contentId(content.getContentId())
                     .title(content.getTitle()).contentTypeId(content.getContentTypeId()).addr1(content.getAddr1())
+                    .thumbnailUrl(content.getFirstimage())
                     .mapx(content.getMapx()).mapy(content.getMapy())
                     .startTime(c.getStartTime()).endTime(c.getEndTime()).durationMinutes(c.getDuration())
                     .travelTimeMinutes(c.getTravelTimeMinutes()).travelDistanceMeters(c.getTravelDistanceMeters())

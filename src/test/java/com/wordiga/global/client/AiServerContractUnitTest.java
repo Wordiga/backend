@@ -37,6 +37,7 @@ class AiServerContractUnitTest {
     void writesCurrentProposalRequestContract() throws Exception {
         PlanDetailResponse.Content content = PlanDetailResponse.Content.builder().sequence(1).contentId("126508")
                 .title("현충사").contentTypeId("12").addr1("충청남도 아산시")
+                .thumbnailUrl("https://image.example/126508.jpg")
                 .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(11, 30)).travelTimeMinutes(0).build();
         PlanDetailResponse.Day day = PlanDetailResponse.Day.builder().dayNumber(1)
                 .date(LocalDate.of(2026, 8, 20)).contents(List.of(content)).build();

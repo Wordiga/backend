@@ -29,7 +29,8 @@ class AiPlanRequestTest {
         TourismContentDetailResponse detail = TourismContentDetailResponse.builder()
                 .common(TourismCommonDetailDto.builder().contentId("CT001").contentTypeId("32")
                         .title("숙소").addr1("충남 태안군").mapx(BigDecimal.valueOf(126.3))
-                        .mapy(BigDecimal.valueOf(36.4)).lDongSignguCd("380").build())
+                        .mapy(BigDecimal.valueOf(36.4)).lDongSignguCd("380")
+                        .firstImage("https://image.example/CT001.jpg").build())
                 .intro(TourismIntroDetailDto.builder().checkInTime("15:00").build())
                 .monthlyWeather(MonthlyWeatherDto.builder().targetMonth(9)
                         .avgTemp(BigDecimal.valueOf(21.3))
@@ -50,6 +51,10 @@ class AiPlanRequestTest {
         assertThat(json.get("saved_contents").get(0).get("category").asText()).isEqualTo("accommodation");
         assertThat(json.get("saved_contents").get(0).get("latitude").decimalValue()).isEqualByComparingTo("36.4");
         assertThat(json.get("saved_contents").get(0).get("tags").get(0).asText()).isEqualTo("숙박");
+        assertThat(json.get("saved_contents").get(0).get("thumbnail").asText())
+                .isEqualTo("https://image.example/CT001.jpg");
+        assertThat(json.get("saved_contents").get(0).get("firstimage").asText())
+                .isEqualTo("https://image.example/CT001.jpg");
         assertThat(json.get("regional_contents").isArray()).isTrue();
         assertThat(json.get("regional_contents").get(0).get("content_id").asText()).isEqualTo("CT001");
         assertThat(json.get("saved_contents").get(0).get("is_outdoor").asBoolean()).isFalse();
