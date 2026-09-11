@@ -118,6 +118,20 @@ class PlanServiceUnitTest {
     }
 
     @Test
+    void returnsStoredThumbnailForEachPlanContent() {
+        TourismContentSnapshot content = TourismContentSnapshot.builder()
+                .contentId("126508").contentTypeId("12").title("현충사")
+                .firstimage("https://image.example/126508.jpg").build();
+        plan.addContent(com.wordiga.plan.PlanContent.create(plan, 1, 1, content));
+        when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
+
+        PlanDetailResponse result = service.getPlan(1L, 9L);
+
+        assertThat(result.getDays().getFirst().getContents().getFirst().getThumbnailUrl())
+                .isEqualTo("https://image.example/126508.jpg");
+    }
+
+    @Test
     void replacesContentsInDayAndRequestOrder() {
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         when(tourismContentDetailService.getCommonDetail(anyString())).thenAnswer(invocation -> {

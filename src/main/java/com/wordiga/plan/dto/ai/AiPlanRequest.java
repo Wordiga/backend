@@ -61,6 +61,7 @@ public record AiPlanRequest(
             String tel,
             String overview,
             String firstimage,
+            String thumbnail,
             @JsonProperty("avg_visit_duration_min") Integer averageVisitDurationMinutes,
             Double dist,
             String eventstartdate,
@@ -74,7 +75,8 @@ public record AiPlanRequest(
                     common.getContentId(), common.getTitle(), category(common.getContentTypeId()),
                     join(common.getAddr1(), common.getAddr2()), common.getMapy(), common.getMapx(),
                     common.getLDongSignguCd(), operatingHours(intro), tags == null ? List.of() : tags,
-                    common.getTel(), truncate(common.getOverview()), common.getFirstImage(), duration(intro), null,
+                    common.getTel(), truncate(common.getOverview()), common.getFirstImage(), common.getFirstImage(),
+                    duration(intro), null,
                     intro == null ? null : intro.getEventStartDate(), intro == null ? null : intro.getEventEndDate(),
                     outdoor(tags));
         }
