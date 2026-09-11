@@ -66,16 +66,6 @@ class PlanControllerExceptionTest {
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         mockMvc.perform(get("/api/v1/plans").param("sort", "UNKNOWN"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
-        mockMvc.perform(get("/api/v1/plans/1/weather").param("month", "13"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         verifyNoInteractions(planService);
-    }
-
-    @Test
-    void rejectsInvalidProposalInput() throws Exception {
-        mockMvc.perform(post("/api/v1/plans/1/proposals").contentType("application/json")
-                        .content("{\"proposalTitle\":\"" + "가".repeat(101) + "\"}"))
-                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.fieldErrors[0].field").value("proposalTitle"));
-        verifyNoInteractions(proposalService);
     }
 }

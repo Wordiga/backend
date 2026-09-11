@@ -11,7 +11,6 @@ import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
 import com.wordiga.tourism.service.TourismContentDetailService;
 import com.wordiga.tourism.service.TourismContentSnapshotService;
-import com.wordiga.tourism.service.MonthlyWeatherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -23,9 +22,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.HashSet;
 import java.util.List;
-import java.util.Set;
 
 import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
 import static com.wordiga.global.util.KtoUtils.parseKtoDateTime;
@@ -40,7 +37,6 @@ public class PlanService {
     private final TourismContentSnapshotService snapshotService;
     private final ProposalRepository proposalRepository;
     private final ProposalStorage proposalStorage;
-    private final MonthlyWeatherService monthlyWeatherService;
 
     @Transactional
     public PlanListResponse getPlans(Long memberId, int page, int size, PlanSort sort) {
@@ -59,21 +55,6 @@ public class PlanService {
         return detail(plan);
     }
 
-    public PlanWeatherResponse getWeather(Long memberId, Long planId, int month) {
-        Plan plan = owned(memberId, planId);
-        TourismContentSnapshot representative = plan.getPlanContents().stream()
-                .sorted(java.util.Comparator.comparing(PlanContent::getDayNumber)
-                        .thenComparing(PlanContent::getSequence))
-                .map(PlanContent::getContent)
-                .findFirst()
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.BAD_REQUEST, "날씨를 조회할 일정 콘텐츠가 없습니다."));
-        var weather = monthlyWeatherService.estimate(representative.getSigunguCode(), month);
-        if (weather == null)
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "일정 지역의 날씨를 조회할 수 없습니다.");
-        return PlanWeatherResponse.from(representative.getSigunguName(), weather);
-    }
-
     @Transactional
     public PlanDetailResponse updatePlan(Long memberId, Long planId, PlanUpdateRequest request) {
         if ((request.getTitle() == null && request.getParticipantCount() == null)
@@ -89,11 +70,10 @@ public class PlanService {
         Plan plan = owned(memberId, planId);
         validateDays(plan, request.getDays());
         List<PlanContent> contents = new ArrayList<>();
-        Set<String> ids = new HashSet<>();
+        int contentCount = 0;
         for (PlanContentsUpdateRequest.Day day : request.getDays()) {
             int sequence = 1;
             for (String contentId : day.getContentIds()) {
-                if (!ids.add(contentId)) invalid("콘텐츠 ID는 중복될 수 없습니다.");
                 ContentDetailDto c = tourismContentDetailService.getCommonDetail(contentId);
 
                 TourismContentSnapshot snapshot = snapshotRepository.save(TourismContentSnapshot.builder()
@@ -114,9 +94,10 @@ public class PlanService {
 
                 PlanContent planContent = PlanContent.create(plan, sequence++, day.getDayNumber(), snapshot);
                 contents.add(planContent);
+                contentCount++;
             }
         }
-        if (ids.size() > 10) invalid("콘텐츠는 최대 10개까지 저장할 수 있습니다.");
+        if (contentCount > 10) invalid("콘텐츠는 최대 10개까지 저장할 수 있습니다.");
         plan.replaceContents(contents);
         return detail(plan);
     }

@@ -14,6 +14,8 @@ import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 
@@ -35,7 +37,7 @@ public class TourismContentController implements TourismContentApi {
     public ResponseEntity<TourismContentListResponse> getTourismContentList(
             @AuthenticationPrincipal Long memberId,
             @RequestParam(value = "type", defaultValue = "POPULAR") ListType type,
-            @RequestParam(required = false) LocalDate visitDate,
+            @RequestParam(required = false) String visitMonth,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String contentTypeId,
             @RequestParam(required = false) String lDongSignguCd,
@@ -47,18 +49,28 @@ public class TourismContentController implements TourismContentApi {
             @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(tourismContentService.getContentList(
-                memberId, type, visitDate, keyword, contentTypeId, lDongSignguCd,
+                memberId, type, visitDate(visitMonth), keyword, contentTypeId, lDongSignguCd,
                 referenceContentId, capacitySatisfied, participantCount, ageGroups, page, size));
     }
 
     @GetMapping("/{contentId}")
     public ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
             @PathVariable String contentId,
-            @RequestParam(required = false) LocalDate visitDate,
+            @RequestParam(required = false) String visitMonth,
             @RequestParam(required = false) List<String> ageGroups,
             @RequestParam(required = false) Integer stayDays,
             @RequestParam(defaultValue = "10") Integer participantCount) {
         return ResponseEntity.ok(tourismContentDetailService.getDetail(
-                contentId, visitDate, ageGroups, stayDays == null ? null : stayDays - 1, participantCount));
+                contentId, visitDate(visitMonth), ageGroups, stayDays == null ? null : stayDays - 1, participantCount));
+    }
+
+    private LocalDate visitDate(String visitMonth) {
+        if (visitMonth == null || visitMonth.isBlank()) return null;
+        try {
+            return YearMonth.parse(visitMonth, DateTimeFormatter.ofPattern("yyyyMM")).atDay(1);
+        } catch (RuntimeException exception) {
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "방문 월은 YYYYMM 형식이어야 합니다.");
+        }
     }
 }

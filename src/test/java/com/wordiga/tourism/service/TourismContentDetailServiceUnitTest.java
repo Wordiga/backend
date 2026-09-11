@@ -147,7 +147,6 @@ class TourismContentDetailServiceUnitTest {
 
         assertThat(result.getDetails()).isEmpty();
         assertThat(result.getImages()).isEmpty();
-        assertThat(result.getMonthlyWeather()).isNull();
         verify(tourismApiClient, never()).fetchRepeatInfo(anyString(), anyString(), anyInt(), anyInt());
         verify(tourismApiClient, never()).fetchImages(anyString(), anyString(), anyInt(), anyInt());
         verifyNoInteractions(satisfactionService);

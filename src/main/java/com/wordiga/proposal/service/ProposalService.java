@@ -6,7 +6,6 @@ import com.wordiga.plan.Plan;
 import com.wordiga.plan.service.PlanReader;
 import com.wordiga.proposal.Proposal;
 import com.wordiga.proposal.dto.AiProposalRequest;
-import com.wordiga.proposal.dto.ProposalCreateRequest;
 import com.wordiga.proposal.dto.ProposalResponse;
 import com.wordiga.proposal.repository.ProposalRepository;
 import lombok.RequiredArgsConstructor;
@@ -34,16 +33,16 @@ public class ProposalService {
     private final ProposalPdfConverter pdfConverter;
     private final ProposalS3Properties properties;
 
-    public ProposalResponse create(Long memberId, Long planId, ProposalCreateRequest request) {
+    public ProposalResponse create(Long memberId, Long planId) {
         PlanReader.Snapshot snapshot = planReader.read(memberId, planId);
         Plan plan = snapshot.plan();
         if (plan.getPlanContents().isEmpty())
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "일정 콘텐츠가 필요합니다.");
 
-        byte[] docxBytes = aiServerClient.generateProposal(AiProposalRequest.from(request, snapshot.response()));
+        byte[] docxBytes = aiServerClient.generateProposal(AiProposalRequest.from(snapshot.response()));
         validateDocx(docxBytes);
 
-        String fileName = fileName(request.getProposalTitle(), plan.getTitle());
+        String fileName = fileName(plan.getTitle());
         String uuid = UUID.randomUUID().toString();
         String docxKey = "proposals/%d/%d/%s.docx".formatted(memberId, planId, uuid);
         String pdfKey = "proposals/%d/%d/%s.pdf".formatted(memberId, planId, uuid);
@@ -59,7 +58,7 @@ public class ProposalService {
             byte[] pdfBytes = pdfConverter.convert(docxBytes);
             storage.putPdf(pdfKey, pdfBytes);
             savedPdfKey = pdfKey;
-        } catch (RuntimeException e) {
+        } catch (RuntimeException | LinkageError e) {
             // pdf 변환 실패 시 docx만 제공 (pdf는 null)
             storage.deleteQuietly(pdfKey);
         }
@@ -95,9 +94,8 @@ public class ProposalService {
         proposalRepository.delete(proposal);
     }
 
-    private String fileName(String requested, String planTitle) {
-        String title = requested == null || requested.isBlank() ? planTitle + " 제안서" : requested.strip();
-        return title.replaceAll("[\\\\/:*?\"<>|]", "_") + ".docx";
+    private String fileName(String planTitle) {
+        return (planTitle + " 제안서").replaceAll("[\\\\/:*?\"<>|]", "_") + ".docx";
     }
 
     void validateDocx(byte[] bytes) {

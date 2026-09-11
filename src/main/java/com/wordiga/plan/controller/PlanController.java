@@ -2,7 +2,6 @@ package com.wordiga.plan.controller;
 
 import com.wordiga.plan.api.PlanApi;
 import com.wordiga.plan.dto.*;
-import com.wordiga.proposal.dto.ProposalCreateRequest;
 import com.wordiga.proposal.dto.ProposalResponse;
 import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.plan.service.PlanGenerationService;
@@ -42,13 +41,6 @@ public class PlanController implements PlanApi {
         return ResponseEntity.ok(planService.getPlan(memberId, planId));
     }
 
-    @GetMapping("/{planId}/weather")
-    public ResponseEntity<PlanWeatherResponse> getWeather(
-            @CurrentMemberId Long memberId, @PathVariable Long planId,
-            @RequestParam @jakarta.validation.constraints.Min(1) @jakarta.validation.constraints.Max(12) int month) {
-        return ResponseEntity.ok(planService.getWeather(memberId, planId, month));
-    }
-
     @PatchMapping("/{planId}")
     public ResponseEntity<PlanDetailResponse> updatePlan(@CurrentMemberId Long memberId, @PathVariable Long planId,
                                                          @Valid @RequestBody PlanUpdateRequest request) {
@@ -68,9 +60,8 @@ public class PlanController implements PlanApi {
     }
 
     @PostMapping("/{planId}/proposals")
-    public ResponseEntity<ProposalResponse> createProposal(@CurrentMemberId Long memberId, @PathVariable Long planId,
-                                                           @Valid @RequestBody ProposalCreateRequest request) {
-        return ResponseEntity.ok(proposalService.create(memberId, planId, request));
+    public ResponseEntity<ProposalResponse> createProposal(@CurrentMemberId Long memberId, @PathVariable Long planId) {
+        return ResponseEntity.ok(proposalService.create(memberId, planId));
     }
 
     @DeleteMapping("/{planId}/proposals/{proposalId}")

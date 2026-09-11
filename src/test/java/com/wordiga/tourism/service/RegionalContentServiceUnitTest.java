@@ -44,7 +44,7 @@ class RegionalContentServiceUnitTest {
                 .thenReturn(List.of(duplicate, candidate));
         when(tourismApiClient.fetchAreaBasedContent("44", null, 1000)).thenReturn(List.of());
         TourismContentDetailResponse enriched = detail("regional-1", "외암민속마을");
-        when(detailService.getAiDetail("regional-1", request.getStartDate()))
+        when(detailService.getAiDetail("regional-1", LocalDate.of(2026, 8, 1)))
                 .thenReturn(enriched);
 
         assertThat(service.find(request, List.of(detail("126508", "현충사"))))
@@ -58,7 +58,7 @@ class RegionalContentServiceUnitTest {
         AreaBasedItem candidate = candidate("regional-1", "외암민속마을");
         when(tourismApiClient.fetchAreaBasedContent("44", "460", 1000)).thenReturn(List.of(candidate));
         when(tourismApiClient.fetchAreaBasedContent("44", null, 1000)).thenReturn(List.of());
-        when(detailService.getAiDetail("regional-1", request.getStartDate()))
+        when(detailService.getAiDetail("regional-1", LocalDate.of(2026, 8, 1)))
                 .thenReturn(TourismContentDetailResponse.builder().common(TourismCommonDetailDto.builder()
                         .contentId("regional-1").title("외암민속마을").lDongSignguCd("460")
                         .mapx(java.math.BigDecimal.valueOf(126.9))
@@ -82,7 +82,7 @@ class RegionalContentServiceUnitTest {
         add(chungnam, "cafe", 4, "39", "FD05");
         when(tourismApiClient.fetchAreaBasedContent("44", "460", 1000)).thenReturn(local);
         when(tourismApiClient.fetchAreaBasedContent("44", null, 1000)).thenReturn(chungnam);
-        when(detailService.getAiDetail(anyString(), eq(request.getStartDate())))
+        when(detailService.getAiDetail(anyString(), eq(LocalDate.of(2026, 8, 1))))
                 .thenAnswer(invocation -> detail(invocation.getArgument(0), invocation.getArgument(0)));
 
         var result = service.find(request, List.of(detail("126508", "현충사")));
@@ -96,8 +96,7 @@ class RegionalContentServiceUnitTest {
 
     private PlanGenerateRequest request() {
         PlanGenerateRequest request = new PlanGenerateRequest();
-        request.setStartDate(LocalDate.of(2026, 8, 20));
-        request.setEndDate(request.getStartDate());
+        request.setVisitMonth("202608");
         request.setStayDays(1);
         request.setParticipantCount(20);
         request.setSelectedContentIds(List.of("126508"));

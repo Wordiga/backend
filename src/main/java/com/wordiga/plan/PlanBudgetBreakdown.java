@@ -35,4 +35,12 @@ public class PlanBudgetBreakdown {
     public static PlanBudgetBreakdown create(Plan plan, String category, Long amount) {
         return new PlanBudgetBreakdown(plan, category, amount);
     }
+
+    void rescale(int previousParticipantCount, int participantCount) {
+        if (previousParticipantCount <= 0) return;
+        amount = java.math.BigDecimal.valueOf(amount)
+                .multiply(java.math.BigDecimal.valueOf(participantCount))
+                .divide(java.math.BigDecimal.valueOf(previousParticipantCount), 0, java.math.RoundingMode.HALF_UP)
+                .longValue();
+    }
 }

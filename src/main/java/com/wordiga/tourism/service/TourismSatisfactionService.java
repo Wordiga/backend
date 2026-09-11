@@ -81,6 +81,7 @@ public class TourismSatisfactionService {
                 .ageFitScore(ageFitComponent)
                 .stayFitScore(stayFitComponent)
                 .comfortScore(comfortComponent)
+                .reasons(reasons(popularityComponent, ageFitComponent, stayFitComponent, comfortComponent))
                 .calculatedAt(OffsetDateTime.now())
                 .build();
     }
@@ -152,23 +153,19 @@ public class TourismSatisfactionService {
             return new ScoreResult(OptionalDouble.empty(), "관광지 집중률 원천 데이터가 없어 중립값 50을 적용했습니다.");
         }
 
-        // 1. visitDate가 유효하고 30일 관측 목록 내에 존재하는지 확인
+        // 월 단위 요청이면 제공 범위 안의 같은 달 자료를 평균하고, 없으면 조회된 30일 전체를 사용한다.
         if (visitDate != null) {
-            String targetDateStr = visitDate.format(DateTimeFormatter.BASIC_ISO_DATE);
-            OptionalDouble exactMatch = items.stream()
-                    .filter(item -> targetDateStr.equals(item.getBaseYmd()))
+            String targetMonth = visitDate.format(DateTimeFormatter.ofPattern("yyyyMM"));
+            double monthlyAverage = items.stream()
+                    .filter(item -> item.getBaseYmd() != null && item.getBaseYmd().startsWith(targetMonth))
                     .mapToDouble(item -> parseDouble(item.getCnctrRate()))
                     .filter(Double::isFinite)
-                    .findFirst();
-
-            if (exactMatch.isPresent()) {
-                return new ScoreResult(OptionalDouble.of(clamp(100.0 - exactMatch.getAsDouble())), null);
-            }
-            return new ScoreResult(OptionalDouble.empty(),
-                    "요청일이 관광지 집중률 예측 제공 범위를 벗어나 중립값 50을 적용했습니다.");
+                    .average().orElse(Double.NaN);
+            if (Double.isFinite(monthlyAverage))
+                return new ScoreResult(OptionalDouble.of(clamp(100.0 - monthlyAverage)), null);
         }
 
-        // 2. visitDate가 범위를 벗어났거나 지정되지 않은 경우 -> 향후 30일 전체 평균 집중률 적용
+        // 해당 월 자료가 없거나 월이 지정되지 않으면 향후 30일 전체 평균 집중률 적용
         double avgConcentration = items.stream()
                 .mapToDouble(item -> parseDouble(item.getCnctrRate()))
                 .filter(Double::isFinite)
@@ -211,6 +208,24 @@ public class TourismSatisfactionService {
         return total.setScale(1, RoundingMode.HALF_UP);
     }
 
+    private List<String> reasons(ScoreComponentDto popularity, ScoreComponentDto ageFit,
+                                 ScoreComponentDto stayFit, ScoreComponentDto comfort) {
+        return java.util.stream.Stream.of(
+                        reason("지역 인기도", popularity), reason("선택 연령대 적합도", ageFit),
+                        reason("체류 일정 적합도", stayFit), reason("방문 쾌적도", comfort))
+                .filter(Objects::nonNull)
+                .sorted(java.util.Comparator.comparing(Reason::score).reversed())
+                .limit(2)
+                .map(Reason::text)
+                .toList();
+    }
+
+    private Reason reason(String label, ScoreComponentDto component) {
+        if (component.isImputed()) return null;
+        return new Reason(component.getScore(), label + "가 " + component.getScore().stripTrailingZeros().toPlainString()
+                + "점으로 산정되었습니다.");
+    }
+
     private OptionalDouble averageValidValues(double... values) {
         double[] valid = Arrays.stream(values).filter(Double::isFinite).toArray();
         return valid.length == 0 ? OptionalDouble.empty() : OptionalDouble.of(Arrays.stream(valid).average().orElseThrow());
@@ -250,5 +265,8 @@ public class TourismSatisfactionService {
     }
 
     private record ScoreResult(OptionalDouble score, String missingReason) {
+    }
+
+    private record Reason(BigDecimal score, String text) {
     }
 }

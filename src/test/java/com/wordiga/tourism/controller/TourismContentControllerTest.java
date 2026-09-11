@@ -120,13 +120,13 @@ class TourismContentControllerTest {
                         .build());
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
-                        .param("visitDate", "2026-08-20")
+                        .param("visitMonth", "202608")
                         .param("ageGroups", "20S,30S")
                         .param("stayDays", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.common.contentId").value("126508"))
                 .andExpect(jsonPath("$.common.title").value("현충사"));
-        verify(tourismContentDetailService).getDetail("126508", LocalDate.of(2026, 8, 20),
+        verify(tourismContentDetailService).getDetail("126508", LocalDate.of(2026, 8, 1),
                 List.of("20S", "30S"), 1, 10);
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508"))

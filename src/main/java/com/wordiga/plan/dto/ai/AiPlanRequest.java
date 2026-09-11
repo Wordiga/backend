@@ -6,7 +6,8 @@ import com.wordiga.plan.dto.PlanGenerateRequest;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.dto.detail.TourismIntroDetailDto;
 
-import java.time.temporal.ChronoUnit;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -21,7 +22,6 @@ public record AiPlanRequest(
         @JsonProperty("regional_contents") List<Content> regionalContents,
         @JsonProperty("age_groups") List<String> ageGroups,
         @JsonProperty("gender_ratio") Object genderRatio,
-        @JsonProperty("monthly_weather") MonthlyWeather monthlyWeather,
         Object preferences) {
 
     public static AiPlanRequest from(PlanGenerateRequest request, List<TourismContentDetailResponse> details) {
@@ -33,9 +33,9 @@ public record AiPlanRequest(
                                      Map<String, List<String>> tagsByContentId) {
         return new AiPlanRequest(
                 System.currentTimeMillis(),
-                request.getVisitMonth() == null ? request.getStartDate().getMonthValue() : request.getVisitMonth(),
+                YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM")).getMonthValue(),
                 request.getParticipantCount(),
-                (int) ChronoUnit.DAYS.between(request.getStartDate(), request.getEndDate()) + 1,
+                request.getStayDays(),
                 request.getSelectedContentIds(),
                 savedDetails.stream().map(detail -> Content.from(
                         detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
@@ -43,7 +43,6 @@ public record AiPlanRequest(
                         detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
                 request.getAgeGroups(),
                 null,
-                MonthlyWeather.from(savedDetails.getFirst().getMonthlyWeather()),
                 null);
     }
 
@@ -134,16 +133,4 @@ public record AiPlanRequest(
                                  @JsonProperty("closed_days") List<String> closedDays, String raw) {
     }
 
-    public record MonthlyWeather(
-            @JsonProperty("target_month") Integer targetMonth,
-            @JsonProperty("estimated_average_temperature_celsius") java.math.BigDecimal averageTemperature,
-            @JsonProperty("estimated_monthly_precipitation_millimeters") java.math.BigDecimal precipitation,
-            @JsonProperty("historical_years") Integer historicalYears,
-            String basis) {
-        static MonthlyWeather from(com.wordiga.tourism.dto.detail.MonthlyWeatherDto source) {
-            return source == null ? null : new MonthlyWeather(source.getTargetMonth(),
-                    source.getAvgTemp(),
-                    source.getMonthlyPrecipitation(), source.getHistoricalYears(), source.getBasis());
-        }
-    }
 }

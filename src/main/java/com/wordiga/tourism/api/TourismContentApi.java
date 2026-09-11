@@ -11,7 +11,6 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import org.springframework.http.ResponseEntity;
 
-import java.time.LocalDate;
 import java.util.List;
 
 @Tag(name = "Tourism Contents", description = "관광 콘텐츠 조회 API")
@@ -23,9 +22,9 @@ public interface TourismContentApi {
     @Operation(summary = "관광 콘텐츠 조회",
             description = "방문일과 검색 조건에 따라 충청남도 관광 콘텐츠를 조회합니다.")
     ResponseEntity<TourismContentListResponse> getTourismContentList(
-            Long memberId,
+            @Parameter(hidden = true) Long memberId,
             @Parameter(description = "추천 타입 (SEASONAL / POPULAR / PERSONALIZED)") ListType type,
-            LocalDate visitDate,
+            @Parameter(description = "방문 월(YYYYMM)", example = "202609") String visitMonth,
             String keyword,
             String contentTypeId,
             String lDongSignguCd,
@@ -41,7 +40,7 @@ public interface TourismContentApi {
             description = "공통정보, 타입별 소개·반복정보와 이미지를 통합하여 조회합니다.")
     ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
             @Parameter(description = "관광 콘텐츠 ID") String contentId,
-            LocalDate visitDate,
+            @Parameter(description = "방문 월(YYYYMM)", example = "202609") String visitMonth,
             List<String> ageGroups,
             @Min(1) @Max(3) Integer stayDays,
             @Min(1) @Max(50) Integer participantCount

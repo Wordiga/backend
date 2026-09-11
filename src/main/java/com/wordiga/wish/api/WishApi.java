@@ -23,7 +23,7 @@ public interface WishApi {
             @ApiResponse(responseCode = "200", description = "등록 성공 (또는 이미 존재)"),
             @ApiResponse(responseCode = "401", description = "인증 필요 - 로그인 필요")
     })
-    ResponseEntity<WishResponse> addWish(Long memberId, WishRequest request);
+    ResponseEntity<WishResponse> addWish(@Parameter(hidden = true) Long memberId, WishRequest request);
 
     @Operation(summary = "위시 삭제",
             description = "등록된 위시를 삭제합니다.")
@@ -31,7 +31,7 @@ public interface WishApi {
             @ApiResponse(responseCode = "200", description = "삭제 성공"),
             @ApiResponse(responseCode = "401", description = "인증 필요")
     })
-    ResponseEntity<Void> removeWish(Long memberId, WishDeleteRequest request);
+    ResponseEntity<Void> removeWish(@Parameter(hidden = true) Long memberId, WishDeleteRequest request);
 
     @Operation(summary = "위시 폴더 목록 조회",
             description = "충청남도 시군구 자동 폴더와 기본 위시리스트 폴더를 조회합니다. " +
@@ -40,7 +40,7 @@ public interface WishApi {
             @ApiResponse(responseCode = "200", description = "조회 성공"),
             @ApiResponse(responseCode = "401", description = "인증 필요")
     })
-    ResponseEntity<List<WishFolderResponse>> getWishFolders(Long memberId);
+    ResponseEntity<List<WishFolderResponse>> getWishFolders(@Parameter(hidden = true) Long memberId);
 
     @Operation(summary = "폴더별 위시 목록 조회",
             description = "특정 폴더(지역명 또는 '기본 위시리스트') 내의 위시 콘텐츠 목록을 조회합니다.")
@@ -49,7 +49,7 @@ public interface WishApi {
             @ApiResponse(responseCode = "401", description = "인증 필요")
     })
     ResponseEntity<List<WishResponse>> getWishesByFolder(
-            Long memberId,
+            @Parameter(hidden = true) Long memberId,
             @Parameter(description = "폴더명 (시군구명 또는 '기본 위시리스트')") String folderName
     );
 }

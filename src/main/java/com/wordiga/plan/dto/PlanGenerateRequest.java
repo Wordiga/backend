@@ -2,15 +2,13 @@ package com.wordiga.plan.dto;
 
 import jakarta.validation.constraints.*;
 import lombok.Data;
-import java.time.LocalDate;
 import java.util.List;
 
 @Data
 public class PlanGenerateRequest {
     @Size(max = 100) private String title;
-    @NotNull private LocalDate startDate;
-    @NotNull private LocalDate endDate;
-    @Min(1) @Max(12) private Integer visitMonth;
+    @NotBlank @Pattern(regexp = "\\d{6}", message = "방문 월은 YYYYMM 형식이어야 합니다.")
+    private String visitMonth;
     @NotNull @Min(1) @Max(3) private Integer stayDays;
     @NotNull @Min(10) @Max(50) private Integer participantCount;
     @Size(max = 10) private List<String> ageGroups;

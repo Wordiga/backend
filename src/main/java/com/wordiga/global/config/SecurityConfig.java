@@ -48,6 +48,7 @@ public class SecurityConfig {
                                 "/api/v1/tourism/contents",
                                 "/api/v1/tourism/contents/**",
                                 "/api/v1/tourism/categories",
+                                "/api/v1/weather",
                                 "/api/v1/health",
                                 "/api-docs/**",
                                 "/swagger-ui.html",
