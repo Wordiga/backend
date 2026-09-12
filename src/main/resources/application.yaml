@@ -61,7 +61,7 @@ weather:
   api:
     base-url: https://apis.data.go.kr/1360000/AsosDalyInfoService
     service-key: ${WEATHER_API_SERVICE_KEY:${TOUR_API_SERVICE_KEY:}}
-    historical-years: 5
+    historical-years: 3
 
 app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}

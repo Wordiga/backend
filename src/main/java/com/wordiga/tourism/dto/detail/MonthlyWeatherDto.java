@@ -9,9 +9,11 @@ import java.math.BigDecimal;
 @Builder
 public class MonthlyWeatherDto {
     private Integer targetMonth;                // 대상 월 (1~12)
-    private BigDecimal avgTemp;                 // 월평균 기온 (℃)
+    private BigDecimal averageMinTemp;          // 일 최저기온 월평균 (℃)
+    private BigDecimal averageMaxTemp;          // 일 최고기온 월평균 (℃)
+    private Integer averageRainyDays;           // 월평균 강수일수 (0.1mm 이상)
     private BigDecimal monthlyPrecipitation;    // 월평균 누적 강수량 (mm)
-    private Integer historicalYears;            // 참조 과거 년수 (예: 5년)
+    private Integer historicalYears;            // 참조 과거 년수
     private String stationName;                 // 참조 ASOS 관측소명
     private String basis;                       // 데이터 산출 근거 식별자
 }

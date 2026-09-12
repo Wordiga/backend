@@ -7,14 +7,17 @@ import java.math.BigDecimal;
 public record PlanWeatherResponse(
         String locationName,
         Integer targetMonth,
-        BigDecimal avgTemp,
+        BigDecimal averageMinTemp,
+        BigDecimal averageMaxTemp,
+        Integer averageRainyDays,
         BigDecimal monthlyPrecipitation,
         Integer historicalYears,
         String stationName,
         String basis) {
 
     public static PlanWeatherResponse from(String locationName, MonthlyWeatherDto weather) {
-        return new PlanWeatherResponse(locationName, weather.getTargetMonth(), weather.getAvgTemp(),
+        return new PlanWeatherResponse(locationName, weather.getTargetMonth(), weather.getAverageMinTemp(),
+                weather.getAverageMaxTemp(), weather.getAverageRainyDays(),
                 weather.getMonthlyPrecipitation(), weather.getHistoricalYears(), weather.getStationName(),
                 weather.getBasis());
     }
