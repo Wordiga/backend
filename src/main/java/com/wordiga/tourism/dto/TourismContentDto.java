@@ -48,6 +48,9 @@ public class TourismContentDto {
     @Schema(description = "추천 점수")
     private BigDecimal recommendationScore;
 
+    @Schema(description = "관광타입 기본 정책 기준 1인 예상 비용")
+    private Long estimatedCost;
+
     @Schema(description = "현재 로그인 회원의 위시 등록 여부")
     @JsonProperty("isWished")
     @Getter(onMethod_ = @JsonProperty("isWished"))

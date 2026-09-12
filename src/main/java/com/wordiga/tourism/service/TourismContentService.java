@@ -3,6 +3,7 @@ package com.wordiga.tourism.service;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
+import com.wordiga.plan.service.PlanCostPolicy;
 import com.wordiga.wish.repository.WishRepository;
 import com.wordiga.tourism.domain.TourismContentType;
 import com.wordiga.tourism.domain.TourismCategory;
@@ -48,23 +49,26 @@ public class TourismContentService {
 
     public TourismContentListResponse getContentList(
             Long memberId, ListType type, LocalDate visitDate, String keyword, String contentTypeId,
+            String theme, List<String> categories,
             String lDongSignguCd, String referenceContentId, Boolean capacitySatisfied,
             Integer participantCount, List<String> ageGroups, int page, int size) {
         if (type == ListType.PERSONALIZED)
-            return personalizedTourismContentService.get(memberId, visitDate, ageGroups, null, page, size);
+            return personalizedTourismContentService.get(
+                    memberId, visitDate, ageGroups, null, theme, categories, page, size);
         if (type == ListType.RELATED)
             return enrichMemberData(memberId, visitDate, ageGroups,
                     related(referenceContentId, page, size));
         if (keyword != null && !keyword.isBlank()) {
             return enrichMemberData(memberId, visitDate, ageGroups,
                     filterCapacity(search(keyword.trim(), type == ListType.FESTIVAL ? "15" : contentTypeId,
-                                    lDongSignguCd, page, size, type == ListType.FESTIVAL),
+                                    lDongSignguCd, page, size, type == ListType.FESTIVAL, theme, categories,
+                                    participantCount),
                             capacitySatisfied, participantCount, visitDate, ageGroups));
         }
 
         LocalDate targetDate = visitDate == null ? LocalDate.now() : visitDate;
         List<ScoredCandidate> candidates = switch (type) {
-            case POPULAR -> fetchPopularCandidates();
+            case POPULAR -> fetchPopularCandidates(targetDate);
             case SEASONAL -> fetchSeasonalCandidates(targetDate);
             case FESTIVAL -> fetchSeasonalCandidates(targetDate);
             default -> throw new IllegalStateException("지원하지 않는 추천 타입입니다.");
@@ -76,6 +80,7 @@ public class TourismContentService {
                         : !"15".equals(candidate.item().getContenttypeid()))
                 .filter(candidate -> type == ListType.FESTIVAL || contentTypeId == null || contentTypeId.isBlank()
                         || contentTypeId.equals(candidate.item().getContenttypeid()))
+                .filter(candidate -> matchesCategory(candidate.item(), theme, categories))
                 .filter(candidate -> lDongSignguCd == null || lDongSignguCd.isBlank()
                         || lDongSignguCd.equals(candidate.item().getLDongSignguCd()))
                 .collect(
@@ -86,7 +91,7 @@ public class TourismContentService {
                 .values().stream().toList();
 
         return enrichMemberData(memberId, visitDate, ageGroups,
-                filterCapacity(page(filtered, type, page, size), capacitySatisfied, participantCount,
+                filterCapacity(page(filtered, type, page, size, participantCount), capacitySatisfied, participantCount,
                         visitDate, ageGroups));
     }
 
@@ -105,6 +110,14 @@ public class TourismContentService {
             Integer participantCount, List<String> ageGroups, int page, int size) {
         return getContentList(memberId, type, visitDate, keyword, contentTypeId, lDongSignguCd,
                 null, capacitySatisfied, participantCount, ageGroups, page, size);
+    }
+
+    public TourismContentListResponse getContentList(
+            Long memberId, ListType type, LocalDate visitDate, String keyword, String contentTypeId,
+            String lDongSignguCd, String referenceContentId, Boolean capacitySatisfied,
+            Integer participantCount, List<String> ageGroups, int page, int size) {
+        return getContentList(memberId, type, visitDate, keyword, contentTypeId, null, List.of(), lDongSignguCd,
+                referenceContentId, capacitySatisfied, participantCount, ageGroups, page, size);
     }
 
     private TourismContentListResponse related(String referenceContentId, int page, int size) {
@@ -133,6 +146,21 @@ public class TourismContentService {
                     .findFirst()
                     .ifPresent(candidate -> resolved.putIfAbsent(candidate.getContentid(),
                             toDto(candidate, rankScore(item.getRlteRank() == null ? resolved.size() : item.getRlteRank() - 1))));
+        }
+
+        if (resolved.isEmpty() && reference.getLDongSignguCd() != null) {
+            TourismCategory referenceCategory = TourismCategory.resolve(
+                    reference.getLclsSystm1(), reference.getLclsSystm2(), reference.getLclsSystm3());
+            tourismApiClient.fetchAreaBasedContent(areaCode, reference.getLDongSignguCd(), 50).stream()
+                    .filter(candidate -> !referenceContentId.equals(candidate.getContentid()))
+                    .sorted(Comparator.comparingInt((AreaBasedItem candidate) -> {
+                        TourismCategory category = TourismCategory.resolve(
+                                candidate.getLclsSystm1(), candidate.getLclsSystm2(), candidate.getLclsSystm3());
+                        return category == referenceCategory ? 0 : 1;
+                    }).thenComparingInt(candidate -> Objects.hash(referenceContentId, candidate.getContentid())))
+                    .limit((long) (page + 1) * size + 1)
+                    .forEach(candidate -> resolved.putIfAbsent(candidate.getContentid(),
+                            toDto(candidate, rankScore(resolved.size()))));
         }
 
         List<TourismContentDto> items = new ArrayList<>(resolved.values());
@@ -171,7 +199,7 @@ public class TourismContentService {
 
     private TourismContentListResponse search(
             String keyword, String contentTypeId, String lDongSignguCd, int page, int size,
-            boolean festivalsOnly) {
+            boolean festivalsOnly, String theme, List<String> categories, Integer participantCount) {
         AreaBasedResponse response = tourismApiClient.searchContent(
                 keyword,
                 contentTypeId,
@@ -181,7 +209,8 @@ public class TourismContentService {
                 size
         );
         List<AreaBasedItem> items = extractItems(response).stream()
-                .filter(item -> festivalsOnly == "15".equals(item.getContenttypeid())).toList();
+                .filter(item -> festivalsOnly == "15".equals(item.getContenttypeid()))
+                .filter(item -> matchesCategory(item, theme, categories)).toList();
         int totalCount = response == null || response.getResponse() == null
                 || response.getResponse().getBody() == null
                 ? items.size()
@@ -191,7 +220,7 @@ public class TourismContentService {
         for (int index = 0; index < items.size(); index++) {
             result.add(toDto(
                     items.get(index),
-                    rankScore(page * size + index)
+                    rankScore(page * size + index), participantCount
             ));
         }
         return TourismContentListResponse.builder()
@@ -205,13 +234,13 @@ public class TourismContentService {
     }
 
     private TourismContentListResponse page(
-            List<ScoredCandidate> candidates, ListType type, int page, int size) {
+            List<ScoredCandidate> candidates, ListType type, int page, int size, Integer participantCount) {
         int fromIndex = Math.min(page * size, candidates.size());
         int toIndex = Math.min(fromIndex + size, candidates.size());
         List<TourismContentDto> items = new ArrayList<>();
         for (int index = fromIndex; index < toIndex; index++) {
             ScoredCandidate candidate = candidates.get(index);
-            items.add(toDto(candidate.item(), candidate.score()));
+            items.add(toDto(candidate.item(), candidate.score(), participantCount));
         }
         return TourismContentListResponse.builder()
                 .items(items)
@@ -223,7 +252,7 @@ public class TourismContentService {
                 .build();
     }
 
-    private List<ScoredCandidate> fetchPopularCandidates() {
+    private List<ScoredCandidate> fetchPopularCandidates(LocalDate targetDate) {
         String chungnamCode = tourismProperties.getRegion().getChungnamCode();
         String currentYm = getCurrentYm();
         AreaTarExpDsResponse expenditure = tourismApiClient.fetchExpenditureIntensity(
@@ -237,7 +266,7 @@ public class TourismContentService {
                 .sorted(Map.Entry.<String, Double>comparingByValue().reversed())
                 .map(Map.Entry::getKey)
                 .toList();
-        return fetchContentsBySignguCodes(signguCodes, scores, null);
+        return fetchContentsBySignguCodes(signguCodes, scores, null, "POPULAR:" + targetDate);
     }
 
     private List<ScoredCandidate> fetchSeasonalCandidates(LocalDate visitDate) {
@@ -252,22 +281,38 @@ public class TourismContentService {
                         b.getValue(), a.getValue()))
                 .map(Map.Entry::getKey)
                 .toList();
-        return fetchContentsBySignguCodes(signguCodes, scores, visitDate.getMonthValue());
+        return fetchContentsBySignguCodes(signguCodes, scores, visitDate.getMonthValue(),
+                "SEASONAL:" + java.time.YearMonth.from(visitDate));
     }
 
     private List<ScoredCandidate> fetchContentsBySignguCodes(
-            List<String> signguCodes, Map<String, Double> scores, Integer month) {
+            List<String> signguCodes, Map<String, Double> scores, Integer month, String orderSeed) {
         String regionCode = tourismProperties.getRegion().getChungnamCode();
         List<List<ScoredCandidate>> byRegion = signguCodes.stream().map(this::convertToLDongSignguCd)
                 .map(signguCode -> tourismApiClient.fetchAreaBasedContent(regionCode, signguCode, CONTENTS_PER_SIGNGU)
                         .stream().map(item -> new ScoredCandidate(item, score(
-                                scores.getOrDefault(regionCode + signguCode, 0D), item, month))).toList())
+                                scores.getOrDefault(regionCode + signguCode, 0D), item, month)))
+                        .sorted(Comparator.comparingInt(candidate ->
+                                Objects.hash(orderSeed, signguCode, candidate.item().getContentid())))
+                        .toList())
                 .toList();
         List<ScoredCandidate> result = new ArrayList<>();
         int maxSize = byRegion.stream().mapToInt(List::size).max().orElse(0);
         for (int index = 0; index < maxSize; index++)
             for (List<ScoredCandidate> items : byRegion) if (index < items.size()) result.add(items.get(index));
         return result;
+    }
+
+    private boolean matchesCategory(AreaBasedItem item, String theme, List<String> categories) {
+        TourismCategory resolved = TourismCategory.resolve(
+                item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
+        if (theme != null && !theme.isBlank()
+                && (resolved == null || !theme.equals(resolved.getTheme().getCode()))) return false;
+        if (categories == null || categories.isEmpty()) return true;
+        Set<String> codes = categories.stream().filter(Objects::nonNull)
+                .flatMap(value -> Arrays.stream(value.split(","))).map(String::trim)
+                .filter(value -> !value.isEmpty()).collect(Collectors.toSet());
+        return codes.isEmpty() || resolved != null && codes.contains(resolved.getCode());
     }
 
     private BigDecimal score(double regionalScore, AreaBasedItem item, Integer month) {
@@ -282,8 +327,12 @@ public class TourismContentService {
                 .setScale(1, java.math.RoundingMode.HALF_UP);
     }
 
+    private TourismContentDto toDto(AreaBasedItem item, BigDecimal recommendationScore) {
+        return toDto(item, recommendationScore, DEFAULT_PARTICIPANT_COUNT);
+    }
+
     private TourismContentDto toDto(
-            AreaBasedItem item, BigDecimal recommendationScore) {
+            AreaBasedItem item, BigDecimal recommendationScore, Integer participantCount) {
         TourismCategory category = TourismCategory.resolve(
                 item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
         return TourismContentDto.builder()
@@ -298,6 +347,8 @@ public class TourismContentService {
                 .theme(category == null ? null : codeName(category.getTheme()))
                 .category(category == null ? null : codeName(category))
                 .recommendationScore(recommendationScore)
+                .estimatedCost(PlanCostPolicy.defaultPerPersonAmount(item.getContenttypeid(),
+                        participantCount == null ? DEFAULT_PARTICIPANT_COUNT : participantCount))
                 .build();
     }
 
