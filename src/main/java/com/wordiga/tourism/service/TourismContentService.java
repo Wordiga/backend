@@ -54,7 +54,8 @@ public class TourismContentService {
             Integer participantCount, List<String> ageGroups, int page, int size) {
         if (type == ListType.PERSONALIZED)
             return personalizedTourismContentService.get(
-                    memberId, visitDate, ageGroups, null, theme, categories, page, size);
+                    memberId, visitDate, ageGroups, participantCount, capacitySatisfied,
+                    theme, categories, page, size);
         if (type == ListType.RELATED)
             return enrichMemberData(memberId, visitDate, ageGroups,
                     related(referenceContentId, page, size));

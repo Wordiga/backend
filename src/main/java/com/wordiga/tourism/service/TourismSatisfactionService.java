@@ -31,6 +31,12 @@ public class TourismSatisfactionService {
 
     private final TourismApiClient tourismApiClient;
 
+    public BigDecimal ageFitForRegion(String areaCode, String localSignguCode, Map<String, BigDecimal> ageRatios) {
+        OptionalDouble score = calculateAgeFit(latestBaseYm(), areaCode, areaCode + localSignguCode, ageRatios);
+        return score.isEmpty() ? NEUTRAL_SCORE
+                : BigDecimal.valueOf(clamp(score.getAsDouble())).setScale(1, RoundingMode.HALF_UP);
+    }
+
     public SatisfactionDto calculate(SatisfactionRequestDto request, CalculationCache cache) {
         if (cache == null) {
             cache = new CalculationCache();

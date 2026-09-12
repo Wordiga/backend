@@ -135,6 +135,22 @@ class TourismContentDetailServiceUnitTest {
     }
 
     @Test
+    void capacityOnlyLookupAvoidsImagesAndSatisfactionCalls() {
+        ContentDetailDto common = common("44");
+        common.setContenttypeid("32");
+        DetailIntroDto intro = new DetailIntroDto();
+        intro.setAccomcountlodging("10명");
+        when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
+        when(tourismApiClient.fetchIntroDetail("126508", "32")).thenReturn(intro);
+        when(tourismApiClient.fetchRepeatInfo("126508", "32", 1, 100)).thenReturn(List.of());
+
+        assertThat(service.capacitySatisfied("126508", 8)).isTrue();
+        assertThat(service.capacitySatisfied("126508", 11)).isFalse();
+        verify(tourismApiClient, never()).fetchImages(anyString(), anyString(), anyInt(), anyInt());
+        verifyNoInteractions(satisfactionService);
+    }
+
+    @Test
     void aiDetailFetchesCommonIntroAndCostDetails() {
         ContentDetailDto common = common("44");
         DetailIntroDto intro = new DetailIntroDto();

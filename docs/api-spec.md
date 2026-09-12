@@ -73,8 +73,8 @@ GET /api/v1/tourism/contents
 | `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드 | `200` |
 | `referenceContentId` | String | C | `type=RELATED`일 때 필수인 기준 관광 콘텐츠 ID | `2717354` |
 | `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
-| `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `25` |
-| `ageGroups` | String[] | N | 추천 입력 연령대 | `30S,40S` |
+| `participantCount` | Integer | N | 숙박 수용 가능 여부·1인 예상 비용 계산 인원, 기본값은 `10` | `25` |
+| `ageGroups` | String[] | N | 개인화 추천의 연령 적합도 입력. 쉼표 구분 또는 반복 파라미터 사용 | `30S,40S` |
 | `page` | Integer | N | 0부터 시작하는 페이지 기본값은 `0` | `0` |
 | `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
 
@@ -162,7 +162,8 @@ GET /api/v1/tourism/contents
 - `POPULAR` 기본 점수는 소비 강도 60%, 체류 강도 40%로 계산합니다.
 - `POPULAR`은 시군구별 콘텐츠를 교차 배치하고 날짜 기반 순서를 적용해 첫 화면의 지역·콘텐츠 편중을 줄입니다.
 - `SEASONAL`은 전년도 동월 지역 관광 서비스 수요 70%와 관광타입 계절 적합도 30%를 사용하고 방문 월 기반 순서를 적용합니다.
-- `PERSONALIZED`는 위시 지역 50%, 위시 대분류 30%, 계절 적합도 20%로 계산하며 활동로그는 수집하지 않습니다.
+- `PERSONALIZED`는 위시 지역 40%, 위시 대분류 25%, 계절 적합도 20%, 선택 연령대의 지역 적합도 15%로 계산하며 활동로그는 수집하지 않습니다. 연령대·원천값이 없으면 연령 적합도는 50점입니다.
+- `PERSONALIZED`에서 `participantCount`는 숙박 수용 가능 여부와 1인 예상 비용에 반영합니다. 수용 불가능한 숙박은 제외하고 수용 정보가 없는 숙박은 유지합니다. `capacitySatisfied=true`이면 수용 가능하다고 확인된 숙박만 남깁니다.
 - `RELATED`는 기준 콘텐츠명과 지역으로 한국관광공사 연관 관광지를 조회한 뒤 충청남도 콘텐츠 ID로 매칭합니다. 매칭 결과가 없으면 같은 시군구의 동일 카테고리 콘텐츠를 우선해 대체합니다.
 - 일반 목록에서는 축제(`contentTypeId=15`)를 제외하고 `type=FESTIVAL`로 별도 조회합니다.
 - 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
