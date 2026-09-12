@@ -71,11 +71,9 @@ public class Plan extends BaseTimeEntity {
     public void update(String title, Integer participantCount) {
         if (title != null) this.title = title.strip();
         if (participantCount != null) {
-            int previousParticipantCount = this.participantCount;
             this.participantCount = participantCount;
             if (estimatedPerPersonAmount != null) {
                 this.estimatedTotalAmount = estimatedPerPersonAmount * participantCount;
-                budgetBreakdowns.forEach(item -> item.rescale(previousParticipantCount, participantCount));
             }
         }
     }

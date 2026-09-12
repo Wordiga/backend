@@ -62,8 +62,8 @@ public class PlanWriter {
         });
 
         Plan plan = Plan.create(member, title(memberId, request, sigunguName),
-                YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM")).atDay(1),
-                YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM"))
+                YearMonth.parse(request.getVisitMonth()).atDay(1),
+                YearMonth.parse(request.getVisitMonth())
                         .atDay(1).plusDays(request.getStayDays() - 1L), request.getParticipantCount());
 
         Map<String, com.wordiga.tourism.dto.detail.TourismContentDetailResponse> detailById = details.stream()
@@ -73,6 +73,7 @@ public class PlanWriter {
         long total = 0;
 
         for (AiPlanResponse.Day day : ai.getDays()) {
+            TourismContentSnapshot previous = null;
             for (AiPlanResponse.Content c : day.getContents()) {
                 TourismContentSnapshot snapshot = snapshotRepository.findById(c.getContentId())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "콘텐츠 스냅샷을 찾을 수 없습니다."));
@@ -80,19 +81,22 @@ public class PlanWriter {
                 PlanContent planContent = PlanContent.create(plan, c.getSequence(), day.getDayNumber(), snapshot);
                 var detail = detailById.get(c.getContentId());
                 var cost = detail == null ? null : PlanCostPolicy.estimate(detail, request.getParticipantCount());
+                Integer travelDistance = c.getTravelDistanceMeters() != null ? c.getTravelDistanceMeters()
+                        : previous == null ? 0 : distanceMeters(previous, snapshot);
                 planContent.updateAiDetails(
                         null,
                         c.getDurationMinutes(),
                         c.getStartTime(),
                         c.getEndTime(),
                         c.getTravelTimeMinutes(),
-                        c.getTravelDistanceMeters(),
+                        travelDistance,
                         cost == null ? null : cost.calculatedAmount()
                 );
                 plan.addContent(planContent);
+                previous = snapshot;
                 if (cost != null) {
                     total += cost.calculatedAmount();
-                    breakdown.merge(cost.category(), cost.calculatedAmount(), Long::sum);
+                    breakdown.merge(cost.category(), cost.calculatedAmount() / request.getParticipantCount(), Long::sum);
                 }
             }
         }
@@ -108,11 +112,24 @@ public class PlanWriter {
         return PlanDetailResponse.from(planRepository.save(plan));
     }
 
+    private Integer distanceMeters(TourismContentSnapshot from, TourismContentSnapshot to) {
+        if (from.getMapx() == null || from.getMapy() == null || to.getMapx() == null || to.getMapy() == null)
+            return null;
+        double lat1 = Math.toRadians(from.getMapy().doubleValue());
+        double lat2 = Math.toRadians(to.getMapy().doubleValue());
+        double deltaLat = lat2 - lat1;
+        double deltaLon = Math.toRadians(to.getMapx().doubleValue() - from.getMapx().doubleValue());
+        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
+                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
+        a = Math.min(1, a);
+        return (int) Math.round(6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
+    }
+
     private String title(Long memberId, PlanGenerateRequest request, String sigunguName) {
         if (request.getTitle() != null && !request.getTitle().isBlank()) return request.getTitle().strip();
         String defaultName = tourismProperties.getRegion().getChungnamName();
         String base = (sigunguName == null ? defaultName : sigunguName) + " "
-                + YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM"))
+                + YearMonth.parse(request.getVisitMonth())
                 .format(DateTimeFormatter.ofPattern("yy년 MM월"));
         if (!planRepository.existsByMemberIdAndTitle(memberId, base)) return base;
         int number = 1;
