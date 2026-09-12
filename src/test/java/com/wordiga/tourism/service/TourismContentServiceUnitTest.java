@@ -21,6 +21,9 @@ import java.time.LocalDate;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
@@ -70,6 +73,7 @@ class TourismContentServiceUnitTest {
         assertThat(result.getItems()).hasSize(1);
         assertThat(result.getItems().getFirst().getContentId()).isEqualTo("126508");
         assertThat(result.getItems().getFirst().getFirstImage()).isNull();
+        assertThat(result.getItems().getFirst().getEstimatedCost()).isEqualTo(10_000);
         assertThat(result.isHasNext()).isTrue();
         assertThat(result.getTotalCount()).isEqualTo(21);
         assertThat(result.getTotalPages()).isEqualTo(2);
@@ -197,6 +201,78 @@ class TourismContentServiceUnitTest {
     }
 
     @Test
+    void appliesThemeAndMultipleCategoryFilters() {
+        mockPopularRegion(List.of(classified("history", "HS"), classified("nature", "NA"),
+                classified("food", "FD01")));
+
+        TourismContentListResponse result = tourismContentService.getContentList(null, ListType.POPULAR,
+                LocalDate.of(2026, 9, 1), null, null, "ATTRACTION_EXPERIENCE", List.of("HS,NA"),
+                null, null, null, 10, null, 0, 20);
+
+        assertThat(result.getItems()).extracting("contentId").containsExactlyInAnyOrder("history", "nature");
+    }
+
+    @Test
+    void handlesBlankAndUnknownRecommendationFilters() {
+        AreaBasedItem unknown = item("12");
+        unknown.setContentid("unknown");
+        unknown.setLDongSignguCd("200");
+        AreaBasedItem food = classified("food", "unused");
+        food.setLclsSystm2("FD01");
+        mockPopularRegion(List.of(classified("history", "HS"), unknown, food));
+
+        var foodOnly = tourismContentService.getContentList(null, ListType.POPULAR, LocalDate.of(2026, 9, 1),
+                null, null, "FOOD_CAFE", null, null, null, null, 10, null, 0, 20);
+        var historyOnly = tourismContentService.getContentList(null, ListType.POPULAR, LocalDate.of(2026, 9, 1),
+                null, null, " ", java.util.Arrays.asList(null, " ", "HS"), null, null, null, 10, null, 0, 20);
+        var blankCategory = tourismContentService.getContentList(null, ListType.POPULAR, LocalDate.of(2026, 9, 1),
+                null, null, null, List.of(""), null, null, null, 10, null, 0, 20);
+
+        assertThat(foodOnly.getItems()).extracting("contentId").containsExactly("food");
+        assertThat(historyOnly.getItems()).extracting("contentId").containsExactly("history");
+        assertThat(blankCategory.getItems()).hasSize(3);
+    }
+
+    @Test
+    void popularAndSeasonalUseDifferentStableOrdering() {
+        List<AreaBasedItem> contents = java.util.stream.IntStream.range(0, 20)
+                .mapToObj(index -> classified("content-" + index, "HS")).toList();
+        mockPopularRegion(contents);
+        AreaTarSvcDemItem demand = new AreaTarSvcDemItem();
+        demand.setSignguCd("44200");
+        demand.setTarSvcDemIxVal("90");
+        when(tourismApiClient.fetchServiceDemand("202509", "44", null, "11"))
+                .thenReturn(wrap(new AreaTarSvcDemResponse(), List.of(demand)));
+
+        var popular = tourismContentService.getContentList(null, ListType.POPULAR, LocalDate.of(2026, 9, 1),
+                null, null, null, null, null, null, null, 0, 6);
+        var seasonal = tourismContentService.getContentList(null, ListType.SEASONAL, LocalDate.of(2026, 9, 1),
+                null, null, null, null, null, null, null, 0, 6);
+
+        var popularIds = popular.getItems().stream().map(item -> item.getContentId()).toList();
+        var seasonalIds = seasonal.getItems().stream().map(item -> item.getContentId()).toList();
+        assertThat(popularIds).isNotEqualTo(seasonalIds);
+    }
+
+    @ParameterizedTest
+    @CsvSource({"4,12,93.0", "7,28,93.0", "12,32,93.0"})
+    void appliesSeasonSpecificContentScore(int month, String contentTypeId, String expectedScore) {
+        AreaTarSvcDemItem demand = new AreaTarSvcDemItem();
+        demand.setSignguCd("44200");
+        demand.setTarSvcDemIxVal("90");
+        when(tourismApiClient.fetchServiceDemand(anyString(), eq("44"), isNull(), eq("11")))
+                .thenReturn(wrap(new AreaTarSvcDemResponse(), List.of(demand)));
+        AreaBasedItem content = item(contentTypeId);
+        content.setContentid("seasonal");
+        when(tourismApiClient.fetchAreaBasedContent("44", "200", 50)).thenReturn(List.of(content));
+
+        var result = tourismContentService.getContentList(null, ListType.SEASONAL,
+                LocalDate.of(2026, month, 1), null, null, null, null, null, null, null, 0, 6);
+
+        assertThat(result.getItems().getFirst().getRecommendationScore()).isEqualByComparingTo(expectedScore);
+    }
+
+    @Test
     void returnsFestivalsOnlyThroughFestivalType() {
         AreaBasedItem festival = item("15");
         when(tourismApiClient.searchContent("가을", "15", "44", null, 1, 20))
@@ -263,11 +339,33 @@ class TourismContentServiceUnitTest {
         TourismContentListResponse empty = TourismContentListResponse.builder()
                 .items(List.of()).page(0).size(20).hasNext(false).build();
         when(personalizedTourismContentService.get(
-                1L, LocalDate.of(2026, 8, 20), List.of("30S"), null, 0, 20)).thenReturn(empty);
+                1L, LocalDate.of(2026, 8, 20), List.of("30S"), null, null, List.of(), 0, 20)).thenReturn(empty);
 
         assertThat(tourismContentService.getContentList(1L, ListType.PERSONALIZED, LocalDate.of(2026, 8, 20),
                 null, null, null, null, null, List.of("30S"), 0, 20)).isSameAs(empty);
         verify(wishRepository, org.mockito.Mockito.never()).findByMemberIdOrderByCreatedAtDescIdDesc(1L);
+    }
+
+    private AreaBasedItem classified(String id, String large) {
+        AreaBasedItem item = item("12");
+        item.setContentid(id);
+        item.setLclsSystm1(large);
+        item.setLDongSignguCd("200");
+        return item;
+    }
+
+    private void mockPopularRegion(List<AreaBasedItem> contents) {
+        AreaTarExpDsItem expenditure = new AreaTarExpDsItem();
+        expenditure.setSignguCd("44200");
+        expenditure.setTarExpDsIxVal("90");
+        AreaTarSjrnDsItem stay = new AreaTarSjrnDsItem();
+        stay.setSignguCd("44200");
+        stay.setTarSjrnDsIxVal("80");
+        when(tourismApiClient.fetchExpenditureIntensity(anyString(), eq("44"), isNull(), eq("2201")))
+                .thenReturn(wrap(new AreaTarExpDsResponse(), List.of(expenditure)));
+        when(tourismApiClient.fetchStayIntensity(anyString(), eq("44"), isNull(), eq("2103")))
+                .thenReturn(wrap(new AreaTarSjrnDsResponse(), List.of(stay)));
+        when(tourismApiClient.fetchAreaBasedContent("44", "200", 50)).thenReturn(contents);
     }
 
     @Test

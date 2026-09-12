@@ -67,7 +67,7 @@ class PlanServiceUnitTest {
     }
 
     @Test
-    void recalculatesTotalBudgetAndKeepsScheduleWhenParticipantCountChanges() {
+    void recalculatesTotalBudgetAndKeepsPerPersonBreakdownWhenParticipantCountChanges() {
         plan.applyAiResult(1L, 20_000L, 10_000L, java.util.Map.of("food", 20_000L));
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         PlanUpdateRequest request = new PlanUpdateRequest();
@@ -77,7 +77,7 @@ class PlanServiceUnitTest {
 
         assertThat(result.getScheduleId()).isEqualTo(1L);
         assertThat(result.getEstimatedBudget().totalAmount()).isEqualTo(40_000L);
-        assertThat(result.getEstimatedBudget().breakdown()).containsEntry("food", 40_000L);
+        assertThat(result.getEstimatedBudget().breakdown()).containsEntry("food", 20_000L);
     }
 
     @Test

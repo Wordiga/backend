@@ -122,9 +122,9 @@ class PlanGenerationServiceUnitTest {
     @Test
     void rejectsInvalidVisitMonth() {
         PlanGenerateRequest request = request("A");
-        request.setVisitMonth("202613");
+        request.setVisitMonth("2026-13");
 
-        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("YYYYMM");
+        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("YYYY-MM");
         verifyNoInteractions(aiServerClient, planWriter);
     }
 
@@ -185,7 +185,7 @@ class PlanGenerationServiceUnitTest {
 
     private PlanGenerateRequest request(String... ids) {
         PlanGenerateRequest r = new PlanGenerateRequest();
-        r.setVisitMonth("202608");
+        r.setVisitMonth("2026-08");
         r.setStayDays(1);
         r.setParticipantCount(2);
         r.setSelectedContentIds(List.of(ids));

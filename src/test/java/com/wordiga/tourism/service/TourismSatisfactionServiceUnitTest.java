@@ -45,6 +45,8 @@ class TourismSatisfactionServiceUnitTest {
         assertThat(result.getStayFitScore().getScore()).isEqualByComparingTo("70.0");
         assertThat(result.getComfortScore().getScore()).isEqualByComparingTo("80.0");
         assertThat(result.getTotalScore()).isEqualByComparingTo("81.0");
+        assertThat(result.getReasons()).anyMatch(reason -> reason.contains("20대 방문·소비 다양성 지수"));
+        assertThat(result.getReasons()).noneMatch(reason -> reason.contains("산정되었습니다"));
     }
 
     @Test

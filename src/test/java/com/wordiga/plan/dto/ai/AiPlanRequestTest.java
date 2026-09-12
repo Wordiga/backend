@@ -19,7 +19,7 @@ class AiPlanRequestTest {
     void serializesConfirmedAiRequestSchema() throws Exception {
         PlanGenerateRequest request = new PlanGenerateRequest();
         request.setParticipantCount(25);
-        request.setVisitMonth("202609");
+        request.setVisitMonth("2026-09");
         request.setStayDays(2);
         request.setAgeGroups(List.of("30대", "40대"));
         request.setSelectedContentIds(List.of("CT001"));

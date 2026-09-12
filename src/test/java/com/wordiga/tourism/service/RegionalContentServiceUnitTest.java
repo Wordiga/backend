@@ -96,7 +96,7 @@ class RegionalContentServiceUnitTest {
 
     private PlanGenerateRequest request() {
         PlanGenerateRequest request = new PlanGenerateRequest();
-        request.setVisitMonth("202608");
+        request.setVisitMonth("2026-08");
         request.setStayDays(1);
         request.setParticipantCount(20);
         request.setSelectedContentIds(List.of("126508"));
