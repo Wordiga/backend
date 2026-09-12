@@ -12,5 +12,7 @@ public class TourismContentListResponse {
     private List<TourismContentDto> items;
     private int page;
     private int size;
+    private Integer totalCount;
+    private Integer totalPages;
     private boolean hasNext;
 }

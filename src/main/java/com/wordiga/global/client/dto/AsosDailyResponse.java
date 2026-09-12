@@ -50,6 +50,8 @@ public class AsosDailyResponse {
         private String stnId;
         private String stnNm;
         private String avgTa;
+        private String minTa;
+        private String maxTa;
         private String sumRn;
     }
 }

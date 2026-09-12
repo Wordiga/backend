@@ -1,5 +1,7 @@
 # 관광 콘텐츠 추천 API 문서
 
+> 최신 목록 계약과 추천 점수 정책은 `api-spec.md`와 `tourism-recommendation-algorithm.md`를 기준으로 합니다. 이 문서의 초기 응답 예시와 `baseYm`·`numOfRows` 파라미터는 이전 계약 기록입니다.
+
 ## 기본 정보
 
 | 항목         | 내용                              |

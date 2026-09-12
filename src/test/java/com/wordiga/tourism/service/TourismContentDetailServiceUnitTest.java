@@ -135,19 +135,20 @@ class TourismContentDetailServiceUnitTest {
     }
 
     @Test
-    void aiDetailFetchesOnlyCommonAndIntro() {
+    void aiDetailFetchesCommonIntroAndCostDetails() {
         ContentDetailDto common = common("44");
         DetailIntroDto intro = new DetailIntroDto();
         intro.setContenttypeid("12");
         LocalDate visitDate = LocalDate.of(2026, 8, 20);
         when(tourismApiClient.fetchCommonDetail("126508")).thenReturn(common);
         when(tourismApiClient.fetchIntroDetail("126508", "12")).thenReturn(intro);
+        when(tourismApiClient.fetchRepeatInfo("126508", "12", 1, 100)).thenReturn(List.of());
 
         TourismContentDetailResponse result = service.getAiDetail("126508", visitDate);
 
         assertThat(result.getDetails()).isEmpty();
         assertThat(result.getImages()).isEmpty();
-        verify(tourismApiClient, never()).fetchRepeatInfo(anyString(), anyString(), anyInt(), anyInt());
+        verify(tourismApiClient).fetchRepeatInfo("126508", "12", 1, 100);
         verify(tourismApiClient, never()).fetchImages(anyString(), anyString(), anyInt(), anyInt());
         verifyNoInteractions(satisfactionService);
     }

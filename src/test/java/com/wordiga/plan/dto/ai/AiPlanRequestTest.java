@@ -51,6 +51,9 @@ class AiPlanRequestTest {
         assertThat(json.get("regional_contents").isArray()).isTrue();
         assertThat(json.get("regional_contents").get(0).get("content_id").asText()).isEqualTo("CT001");
         assertThat(json.get("saved_contents").get(0).get("is_outdoor").asBoolean()).isFalse();
+        assertThat(json.get("saved_contents").get(0).has("avg_visit_duration_min")).isFalse();
+        assertThat(json.get("saved_contents").get(0).get("estimated_cost").get("quantity").asInt()).isEqualTo(1);
+        assertThat(json.get("estimated_budget").get("currency").asText()).isEqualTo("KRW");
         assertThat(json.has("monthly_weather")).isFalse();
     }
 }

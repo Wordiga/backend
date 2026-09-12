@@ -72,7 +72,7 @@ GET /api/v1/tourism/contents
 | `referenceContentId` | String | C | `type=RELATED`일 때 필수인 기준 관광 콘텐츠 ID | `2717354` |
 | `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `25` |
-| `ageGroups` | String[] | N | 로그인 회원의 목록 만족도 산출에 사용할 연령대 | `30S,40S` |
+| `ageGroups` | String[] | N | 추천 입력 연령대 | `30S,40S` |
 | `page` | Integer | N | 0부터 시작하는 페이지 기본값은 `0` | `0` |
 | `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
 
@@ -102,10 +102,11 @@ GET /api/v1/tourism/contents
 | `items[].category.code` | String | Y | 필터와 선택 상태에 사용하는 분류 코드 |
 | `items[].category.name` | String | Y | 화면 표시용 분류명 |
 | `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수 |
-| `items[].satisfaction` | Satisfaction | N | 로그인 회원 기준 만족도. 원천 데이터가 모두 없으면 `null` |
 | `items[].isWished` | Boolean | Y | 현재 로그인 회원의 위시 등록 여부이며 비회원은 `false` |
 | `page` | Integer | Y | 현재 페이지 |
 | `size` | Integer | Y | 페이지 크기 |
+| `totalCount` | Integer | N | 전체 후보 수. `RELATED`는 `null` |
+| `totalPages` | Integer | N | 전체 페이지 수. `RELATED`는 `null` |
 | `hasNext` | Boolean | Y | 다음 페이지 존재 여부 |
 
 ### Response Example
@@ -125,12 +126,13 @@ GET /api/v1/tourism/contents
       "theme": {"code": "ATTRACTION_EXPERIENCE", "name": "관광지/체험"},
       "category": {"code": "HS", "name": "역사관광"},
       "recommendationScore": 88.3,
-      "satisfaction": null,
       "isWished": true
     }
   ],
   "page": 0,
   "size": 20,
+  "totalCount": 138,
+  "totalPages": 7,
   "hasNext": false
 }
 ```
@@ -154,9 +156,11 @@ GET /api/v1/tourism/contents
 
 - 검색어가 있으면 한국관광공사 `searchKeyword2`, 없으면 `areaBasedList2`로 후보를 조회합니다.
 - `POPULAR` 기본 점수는 소비 강도 60%, 체류 강도 40%로 계산합니다.
-- `SEASONAL` 기본 점수는 방문 예정 월의 관광 서비스 수요를 사용합니다.
-- `PERSONALIZED`는 위시에 저장된 상위 3개 시군구와 관광 분류 테마를 후보 조건으로 사용하고, 활동로그는 수집하지 않습니다. 만족도는 조회 시 계산하며 저장하지 않습니다.
+- `POPULAR`은 시군구별 콘텐츠를 교차 배치해 첫 화면의 지역 편중을 줄입니다.
+- `SEASONAL`은 전년도 동월 지역 관광 서비스 수요 70%와 관광타입 계절 적합도 30%를 사용합니다.
+- `PERSONALIZED`는 위시 지역 50%, 위시 대분류 30%, 계절 적합도 20%로 계산하며 활동로그는 수집하지 않습니다.
 - `RELATED`는 기준 콘텐츠명과 지역으로 한국관광공사 연관 관광지를 조회한 뒤 충청남도 콘텐츠 ID로 매칭하며, 기준 콘텐츠와 중복 결과를 제외하고 원천 순위를 유지합니다.
+- 일반 목록에서는 축제(`contentTypeId=15`)를 제외하고 `type=FESTIVAL`로 별도 조회합니다.
 - 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
 - `POPULAR`, `SEASONAL`은 원천 API 순위를 유지하고 `PERSONALIZED`는 `recommendationScore DESC`로 정렬합니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.
@@ -1028,7 +1032,7 @@ POST /api/v1/plans/generate
 | `estimatedBudget.totalAmount` | Long | N | 전체 예상 금액 |
 | `estimatedBudget.perPersonAmount` | Long | N | 1인당 예상 금액 |
 | `estimatedBudget.currency` | String | N | 통화 코드 |
-| `estimatedBudget.breakdown` | Map<String, Long> | N | AI 서버가 제공한 항목별 예상 금액. 항목명과 금액을 구조화해 저장 |
+| `estimatedBudget.breakdown` | Map<String, Long> | N | 백엔드 관광타입 비용 정책으로 계산한 항목별 예상 금액 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1042,10 +1046,10 @@ POST /api/v1/plans/generate
 | `days[].contents[].mapy` | BigDecimal | N | 위도 |
 | `days[].contents[].startTime` | LocalTime | N | 시작 시각 |
 | `days[].contents[].endTime` | LocalTime | N | 종료 시각 |
-| `days[].contents[].durationMinutes` | Integer | N | 체류시간(분) |
+| `days[].contents[].durationMinutes` | Integer | N | AI가 정한 시작·종료 시각의 차이(분) |
 | `days[].contents[].travelTimeMinutes` | Integer | N | 이전 콘텐츠부터 이동시간(분) |
 | `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m) |
-| `days[].contents[].estimatedCost` | Long | N | 예상 비용 |
+| `days[].contents[].estimatedCost` | Long | N | 관광공사 원천 금액 또는 유형별 기본값에 수량을 곱한 예상 비용 |
 | `days[].contents[].memo` | String | N | 일정 메모 |
 | `createdAt` | LocalDateTime | Y | 저장 시각 |
 | `updatedAt` | LocalDateTime | Y | 수정 시각 |
@@ -1358,7 +1362,7 @@ GET /api/v1/plans/{planId}
 GET /api/v1/weather?lDongSignguCd=133&visitMonth=202609
 ```
 
-시군구 코드와 방문 월을 사용해 최근 5개년 ASOS 평균을 반환합니다.
+시군구 코드와 방문 월을 사용해 최근 3개년 ASOS 평균을 반환합니다.
 
 인증: 불필요
 
@@ -1375,9 +1379,11 @@ GET /api/v1/weather?lDongSignguCd=133&visitMonth=202609
 |---|---|---|---|
 | `locationName` | String | N | 일정 대표 시군구명 |
 | `targetMonth` | Integer | Y | 조회 월 |
-| `avgTemp` | BigDecimal | N | 최근 5개년 해당 월 일평균기온의 평균, 소수점 첫째 자리 반올림 |
-| `monthlyPrecipitation` | BigDecimal | N | 최근 5개년 해당 월 누적강수량의 연평균, 소수점 첫째 자리 반올림 |
-| `historicalYears` | Integer | Y | 집계 연도 수, 기본 5년 |
+| `averageMinTemp` | BigDecimal | N | 최근 3개년 해당 월 일 최저기온의 평균, 소수점 첫째 자리 반올림 |
+| `averageMaxTemp` | BigDecimal | N | 최근 3개년 해당 월 일 최고기온의 평균, 소수점 첫째 자리 반올림 |
+| `averageRainyDays` | Integer | Y | 일 강수량 0.1mm 이상인 날의 연평균, 정수 반올림 |
+| `monthlyPrecipitation` | BigDecimal | N | 최근 3개년 해당 월 누적강수량의 연평균, 소수점 첫째 자리 반올림 |
+| `historicalYears` | Integer | Y | 집계 연도 수, 기본 3년 |
 | `stationName` | String | Y | 대표 시군구에 대응하는 ASOS 관측소명 |
 | `basis` | String | Y | `ASOS_HISTORICAL_MONTHLY_AVERAGE` |
 
@@ -1387,9 +1393,11 @@ GET /api/v1/weather?lDongSignguCd=133&visitMonth=202609
 {
   "locationName": "부여군",
   "targetMonth": 7,
-  "avgTemp": 25.5,
+  "averageMinTemp": 22.0,
+  "averageMaxTemp": 29.0,
+  "averageRainyDays": 9,
   "monthlyPrecipitation": 210.0,
-  "historicalYears": 5,
+  "historicalYears": 3,
   "stationName": "부여",
   "basis": "ASOS_HISTORICAL_MONTHLY_AVERAGE"
 }

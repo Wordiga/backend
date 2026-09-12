@@ -48,9 +48,7 @@ public class MonthlyWeatherService {
     private final WeatherApiClient weatherApiClient;
     private final WeatherProperties properties;
 
-    /**
-     *  5개년 평균 기온/강수량 계산
-     */
+    /** 최근 완료된 연도의 같은 달 관측값으로 최저·최고기온, 강수일수, 강수량을 계산한다. */
     public MonthlyWeatherDto estimate(String sigunguCode, LocalDate visitDate) {
         return estimate(sigunguCode, visitDate.getMonthValue());
     }
@@ -70,33 +68,46 @@ public class MonthlyWeatherService {
         if (observations.isEmpty()) return null;
 
         // 1. 단일 순회 집계 (Single-pass Aggregation)
-        BigDecimal totalTemp = BigDecimal.ZERO;
+        BigDecimal totalMinTemp = BigDecimal.ZERO;
+        BigDecimal totalMaxTemp = BigDecimal.ZERO;
         BigDecimal totalPrecipitation = BigDecimal.ZERO;
-        long tempCount = 0;
+        long minTempCount = 0;
+        long maxTempCount = 0;
+        long rainyDays = 0;
 
         for (AsosDailyResponse.Item item : observations) {
-            BigDecimal temp = parseBigDecimal(item.getAvgTa());
-            if (temp != null) {
-                totalTemp = totalTemp.add(temp);
-                tempCount++;
+            BigDecimal minTemp = parseBigDecimal(item.getMinTa());
+            if (minTemp != null) {
+                totalMinTemp = totalMinTemp.add(minTemp);
+                minTempCount++;
+            }
+            BigDecimal maxTemp = parseBigDecimal(item.getMaxTa());
+            if (maxTemp != null) {
+                totalMaxTemp = totalMaxTemp.add(maxTemp);
+                maxTempCount++;
             }
 
             BigDecimal rn = parseBigDecimal(item.getSumRn());
             if (rn != null) {
                 totalPrecipitation = totalPrecipitation.add(rn);
+                if (rn.compareTo(BigDecimal.valueOf(0.1)) >= 0) rainyDays++;
             }
         }
 
-        // 2. 연산 수행 (평균 기온 및 과거 5년 기준 월평균 누적 강수량)
-        BigDecimal avgTemp = tempCount == 0 ? null
-                : totalTemp.divide(BigDecimal.valueOf(tempCount), 1, RoundingMode.HALF_UP);
+        BigDecimal averageMinTemp = minTempCount == 0 ? null
+                : totalMinTemp.divide(BigDecimal.valueOf(minTempCount), 1, RoundingMode.HALF_UP);
+        BigDecimal averageMaxTemp = maxTempCount == 0 ? null
+                : totalMaxTemp.divide(BigDecimal.valueOf(maxTempCount), 1, RoundingMode.HALF_UP);
 
         BigDecimal avgMonthlyPrecipitation = totalPrecipitation.divide(
                 BigDecimal.valueOf(years), 1, RoundingMode.HALF_UP);
 
         return MonthlyWeatherDto.builder()
                 .targetMonth(month)
-                .avgTemp(avgTemp)
+                .averageMinTemp(averageMinTemp)
+                .averageMaxTemp(averageMaxTemp)
+                .averageRainyDays(BigDecimal.valueOf(rainyDays).divide(
+                        BigDecimal.valueOf(years), 0, RoundingMode.HALF_UP).intValue())
                 .monthlyPrecipitation(avgMonthlyPrecipitation)
                 .historicalYears(years)
                 .stationName(station.name())

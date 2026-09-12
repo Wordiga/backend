@@ -4,6 +4,7 @@ import com.wordiga.wish.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -38,10 +39,25 @@ public class WishPreferenceCacheService {
         ));
     }
 
+    @Cacheable(value = "userCategoryPreferences", key = "#memberId")
+    public Map<String, BigDecimal> getCategoryPreferenceRatios(Long memberId) {
+        List<String> codes = wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(memberId).stream()
+                .map(wish -> wish.getContent().getLclsSystem1Code())
+                .filter(code -> code != null && !code.isBlank())
+                .toList();
+        if (codes.isEmpty()) return Map.of();
+        return codes.stream().collect(Collectors.groupingBy(code -> code, Collectors.collectingAndThen(
+                Collectors.counting(), count -> BigDecimal.valueOf((double) count / codes.size())
+                        .setScale(2, RoundingMode.HALF_UP))));
+    }
+
     /**
      * 위시 추가/삭제 발생 시 해당 유저의 선호도 캐시 삭제 (Evict)
      */
-    @CacheEvict(value = "userSigunguPreferences", key = "#memberId")
+    @Caching(evict = {
+            @CacheEvict(value = "userSigunguPreferences", key = "#memberId"),
+            @CacheEvict(value = "userCategoryPreferences", key = "#memberId")
+    })
     public void evictUserPreferenceCache(Long memberId) {
         // 캐시 갱신을 위해 비워둠
     }

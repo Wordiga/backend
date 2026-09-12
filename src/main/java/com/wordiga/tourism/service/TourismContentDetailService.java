@@ -73,11 +73,12 @@ public class TourismContentDetailService {
     public TourismContentDetailResponse getAiDetail(String contentId, LocalDate visitDate) {
         ContentDetailDto common = getCommonDetail(contentId);
         DetailIntroDto intro = tourismApiClient.fetchIntroDetail(contentId, common.getContenttypeid());
+        List<DetailInfoDto> details = tourismApiClient.fetchRepeatInfo(contentId, common.getContenttypeid(), 1, 100);
 
         return TourismContentDetailResponse.builder()
                 .common(detailMapper.toCommon(common))
                 .intro(detailMapper.toIntro(intro))
-                .details(List.of())
+                .details(detailMapper.toDetails(details))
                 .images(List.of())
                 .seasonalImages(List.of())
                 .build();

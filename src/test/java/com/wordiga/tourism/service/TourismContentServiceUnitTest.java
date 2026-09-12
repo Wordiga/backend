@@ -11,6 +11,8 @@ import com.wordiga.wish.Wish;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -44,7 +46,7 @@ class TourismContentServiceUnitTest {
         TourismProperties properties = new TourismProperties();
         properties.getRegion().setChungnamCode("44");
         tourismContentService = new TourismContentService(tourismApiClient, properties,
-                personalizedTourismContentService, detailService, satisfactionService, wishRepository);
+                personalizedTourismContentService, detailService, wishRepository);
     }
 
     @Test
@@ -69,6 +71,8 @@ class TourismContentServiceUnitTest {
         assertThat(result.getItems().getFirst().getContentId()).isEqualTo("126508");
         assertThat(result.getItems().getFirst().getFirstImage()).isNull();
         assertThat(result.isHasNext()).isTrue();
+        assertThat(result.getTotalCount()).isEqualTo(21);
+        assertThat(result.getTotalPages()).isEqualTo(2);
         verifyNoInteractions(satisfactionService);
     }
 
@@ -84,15 +88,11 @@ class TourismContentServiceUnitTest {
                 .thenReturn(response(List.of(wished, unwished), 2));
         when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of(
                 Wish.create(1L, snapshot("wished", "위시", null), "아산시")));
-        SatisfactionDto satisfaction = SatisfactionDto.builder().totalScore(java.math.BigDecimal.valueOf(87.5)).build();
-        when(satisfactionService.calculate(org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.any())).thenReturn(satisfaction);
-
         TourismContentListResponse result = tourismContentService.getContentList(1L, ListType.POPULAR, null,
                 "충남", null, null, null, null, List.of("30S"), 0, 20);
 
         assertThat(result.getItems()).extracting("wished").containsExactly(true, false);
-        assertThat(result.getItems()).extracting("satisfaction").containsOnly(satisfaction);
+        assertThat(result.getItems()).extracting("recommendationScore").doesNotContainNull();
     }
 
     @Test
@@ -101,6 +101,43 @@ class TourismContentServiceUnitTest {
                 ListType.SEASONAL, LocalDate.of(2026, 8, 20), null, null, null, null, null, null, 0, 20);
 
         verify(tourismApiClient).fetchServiceDemand("202508", "44", null, "11");
+    }
+
+    @ParameterizedTest
+    @CsvSource({"4,12,93.0", "10,14,93.0", "1,32,93.0"})
+    void combinesRegionalDemandWithSeasonalContentTypeFit(int month, String contentType, String expectedScore) {
+        AreaTarSvcDemItem demand = new AreaTarSvcDemItem();
+        demand.setSignguCd("44200");
+        demand.setTarSvcDemIxVal("90");
+        String baseYm = "2025" + String.format("%02d", month);
+        when(tourismApiClient.fetchServiceDemand(baseYm, "44", null, "11"))
+                .thenReturn(wrap(new AreaTarSvcDemResponse(), List.of(demand)));
+        when(tourismApiClient.fetchAreaBasedContent("44", "200", 50))
+                .thenReturn(List.of(item(contentType)));
+
+        TourismContentListResponse result = tourismContentService.getContentList(null, ListType.SEASONAL,
+                LocalDate.of(2026, month, 1), null, null, null, null, null, null, 0, 20);
+
+        assertThat(result.getItems()).singleElement()
+                .satisfies(item -> assertThat(item.getRecommendationScore()).isEqualByComparingTo(expectedScore));
+    }
+
+    @Test
+    void festivalRecommendationExcludesOrdinaryContents() {
+        AreaTarSvcDemItem demand = new AreaTarSvcDemItem();
+        demand.setSignguCd("44200");
+        demand.setTarSvcDemIxVal("90");
+        when(tourismApiClient.fetchServiceDemand("202507", "44", null, "11"))
+                .thenReturn(wrap(new AreaTarSvcDemResponse(), List.of(demand)));
+        when(tourismApiClient.fetchAreaBasedContent("44", "200", 50))
+                .thenReturn(List.of(item("12"), item("15")));
+
+        TourismContentListResponse result = tourismContentService.getContentList(null, ListType.FESTIVAL,
+                LocalDate.of(2026, 7, 1), null, null, null, null, null, null, 0, 20);
+
+        assertThat(result.getItems()).extracting("contentTypeId").containsExactly("15");
+        assertThat(result.getTotalCount()).isEqualTo(1);
+        assertThat(result.getTotalPages()).isEqualTo(1);
     }
 
     @Test
@@ -129,7 +166,7 @@ class TourismContentServiceUnitTest {
         TourismContentListResponse result = tourismContentService.getContentList(null,
                 ListType.POPULAR, null, null, null, null, null, null, null, 0, 20);
 
-        assertThat(result.getItems()).hasSize(10);
+        assertThat(result.getItems()).hasSize(9);
         assertThat(result.getItems().getFirst().getRecommendationScore()).isEqualByComparingTo("86");
     }
 
@@ -151,12 +188,25 @@ class TourismContentServiceUnitTest {
                 null, "분류", null, null, null, null, null, null, 0, 20);
 
         assertThat(result.getItems()).extracting(item -> item.getTheme().name())
-                .containsExactly("관광지/체험", "숙소", "맛집/카페");
+                .containsExactly("숙소", "맛집/카페");
         assertThat(result.getItems()).extracting(item -> item.getCategory().name())
-                .containsExactly("축제/공연/행사", "콘도미니엄", "양식");
+                .containsExactly("콘도미니엄", "양식");
         assertThat(tourismContentService.getCategories()).hasSize(3)
                 .extracting(group -> group.categories().size())
                 .containsExactly(7, 6, 9);
+    }
+
+    @Test
+    void returnsFestivalsOnlyThroughFestivalType() {
+        AreaBasedItem festival = item("15");
+        when(tourismApiClient.searchContent("가을", "15", "44", null, 1, 20))
+                .thenReturn(response(List.of(festival), 1));
+
+        TourismContentListResponse result = tourismContentService.getContentList(null, ListType.FESTIVAL,
+                LocalDate.of(2026, 10, 1), "가을", null, null, null, null, null, null, 0, 20);
+
+        assertThat(result.getItems()).extracting("contentTypeId").containsExactly("15");
+        assertThat(result.getTotalCount()).isEqualTo(1);
     }
 
     @Test

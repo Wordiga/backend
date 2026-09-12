@@ -22,23 +22,25 @@ class MonthlyWeatherServiceUnitTest {
     WeatherApiClient weatherApiClient;
 
     @Test
-    void averagesFiveYearsOfSameMonthAsExpectedWeather() {
-        AsosDailyResponse.Item first = item("아산", "20.0", "10.0");
-        AsosDailyResponse.Item second = item("아산", "22.0", "20.0");
+    void averagesThreeYearsOfSameMonthAsExpectedWeather() {
+        AsosDailyResponse.Item first = item("아산", "15.0", "25.0", "10.0");
+        AsosDailyResponse.Item second = item("아산", "17.0", "27.0", "0.0");
         when(weatherApiClient.daily(eq("232"), any(LocalDate.class), any(LocalDate.class)))
                 .thenReturn(List.of(first, second));
         MonthlyWeatherService service = new MonthlyWeatherService(weatherApiClient,
-                new WeatherProperties("https://weather", "key", 5));
+                new WeatherProperties("https://weather", "key", 3));
 
         var result = service.estimate("133", LocalDate.of(2026, 9, 10));
 
         assertThat(result.getTargetMonth()).isEqualTo(9);
-        assertThat(result.getAvgTemp()).isEqualByComparingTo("21.0");
-        assertThat(result.getMonthlyPrecipitation()).isEqualByComparingTo("30.0");
-        assertThat(result.getHistoricalYears()).isEqualTo(5);
+        assertThat(result.getAverageMinTemp()).isEqualByComparingTo("16.0");
+        assertThat(result.getAverageMaxTemp()).isEqualByComparingTo("26.0");
+        assertThat(result.getAverageRainyDays()).isEqualTo(1);
+        assertThat(result.getMonthlyPrecipitation()).isEqualByComparingTo("10.0");
+        assertThat(result.getHistoricalYears()).isEqualTo(3);
         assertThat(result.getStationName()).isEqualTo("천안");
         assertThat(result.getBasis()).isEqualTo("ASOS_HISTORICAL_MONTHLY_AVERAGE");
-        verify(weatherApiClient, times(5)).daily(eq("232"), any(LocalDate.class), any(LocalDate.class));
+        verify(weatherApiClient, times(3)).daily(eq("232"), any(LocalDate.class), any(LocalDate.class));
     }
 
     @Test
@@ -50,10 +52,11 @@ class MonthlyWeatherServiceUnitTest {
         verifyNoInteractions(weatherApiClient);
     }
 
-    private AsosDailyResponse.Item item(String station, String temperature, String precipitation) {
+    private AsosDailyResponse.Item item(String station, String min, String max, String precipitation) {
         AsosDailyResponse.Item item = new AsosDailyResponse.Item();
         item.setStnNm(station);
-        item.setAvgTa(temperature);
+        item.setMinTa(min);
+        item.setMaxTa(max);
         item.setSumRn(precipitation);
         return item;
     }
