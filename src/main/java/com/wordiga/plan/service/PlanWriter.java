@@ -21,6 +21,10 @@ import java.time.LocalDateTime;
 import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
+import java.util.LinkedHashMap;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 import static com.wordiga.global.util.KtoUtils.parseKtoDateTime;
 
@@ -62,12 +66,20 @@ public class PlanWriter {
                 YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM"))
                         .atDay(1).plusDays(request.getStayDays() - 1L), request.getParticipantCount());
 
+        Map<String, com.wordiga.tourism.dto.detail.TourismContentDetailResponse> detailById = details.stream()
+                .collect(Collectors.toMap(detail -> detail.getCommon().getContentId(), Function.identity(),
+                        (first, ignored) -> first));
+        Map<String, Long> breakdown = new LinkedHashMap<>();
+        long total = 0;
+
         for (AiPlanResponse.Day day : ai.getDays()) {
             for (AiPlanResponse.Content c : day.getContents()) {
                 TourismContentSnapshot snapshot = snapshotRepository.findById(c.getContentId())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "콘텐츠 스냅샷을 찾을 수 없습니다."));
 
                 PlanContent planContent = PlanContent.create(plan, c.getSequence(), day.getDayNumber(), snapshot);
+                var detail = detailById.get(c.getContentId());
+                var cost = detail == null ? null : PlanCostPolicy.estimate(detail, request.getParticipantCount());
                 planContent.updateAiDetails(
                         null,
                         c.getDurationMinutes(),
@@ -75,16 +87,23 @@ public class PlanWriter {
                         c.getEndTime(),
                         c.getTravelTimeMinutes(),
                         c.getTravelDistanceMeters(),
-                        c.getEstimatedCost()
+                        cost == null ? null : cost.calculatedAmount()
                 );
                 plan.addContent(planContent);
+                if (cost != null) {
+                    total += cost.calculatedAmount();
+                    breakdown.merge(cost.category(), cost.calculatedAmount(), Long::sum);
+                }
             }
         }
 
-        AiPlanResponse.EstimatedCost budget = ai.getEstimatedCost();
-        plan.applyAiResult(ai.getScheduleId(), budget == null ? null : budget.getTotalAmount(),
-                budget == null ? null : budget.getPerPersonAmount(),
-                budget == null ? null : budget.getBreakdown());
+        AiPlanResponse.EstimatedCost aiBudget = ai.getEstimatedCost();
+        boolean calculatedByBackend = !details.isEmpty();
+        plan.applyAiResult(ai.getScheduleId(), calculatedByBackend ? Long.valueOf(total)
+                        : aiBudget == null ? null : aiBudget.getTotalAmount(),
+                calculatedByBackend ? Long.valueOf(total / request.getParticipantCount())
+                        : aiBudget == null ? null : aiBudget.getPerPersonAmount(),
+                calculatedByBackend ? breakdown : aiBudget == null ? null : aiBudget.getBreakdown());
 
         return PlanDetailResponse.from(planRepository.save(plan));
     }

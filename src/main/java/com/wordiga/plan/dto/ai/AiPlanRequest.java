@@ -3,6 +3,7 @@ package com.wordiga.plan.dto.ai;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.wordiga.plan.dto.PlanGenerateRequest;
+import com.wordiga.plan.service.PlanCostPolicy;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.dto.detail.TourismIntroDetailDto;
 
@@ -20,6 +21,7 @@ public record AiPlanRequest(
         @JsonProperty("saved_content_ids") List<String> savedContentIds,
         @JsonProperty("saved_contents") List<Content> savedContents,
         @JsonProperty("regional_contents") List<Content> regionalContents,
+        @JsonProperty("estimated_budget") EstimatedBudget estimatedBudget,
         @JsonProperty("age_groups") List<String> ageGroups,
         @JsonProperty("gender_ratio") Object genderRatio,
         Object preferences) {
@@ -37,10 +39,11 @@ public record AiPlanRequest(
                 request.getParticipantCount(),
                 request.getStayDays(),
                 request.getSelectedContentIds(),
-                savedDetails.stream().map(detail -> Content.from(
-                        detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
-                regionalDetails.stream().map(detail -> Content.from(
-                        detail, tagsByContentId.get(detail.getCommon().getContentId()))).toList(),
+                savedDetails.stream().map(detail -> Content.from(detail,
+                        tagsByContentId.get(detail.getCommon().getContentId()), request.getParticipantCount())).toList(),
+                regionalDetails.stream().map(detail -> Content.from(detail,
+                        tagsByContentId.get(detail.getCommon().getContentId()), request.getParticipantCount())).toList(),
+                budget(savedDetails, request.getParticipantCount()),
                 request.getAgeGroups(),
                 null,
                 null);
@@ -61,13 +64,13 @@ public record AiPlanRequest(
             String overview,
             String firstimage,
             String thumbnail,
-            @JsonProperty("avg_visit_duration_min") Integer averageVisitDurationMinutes,
+            @JsonProperty("estimated_cost") PlanCostPolicy.Estimate estimatedCost,
             Double dist,
             String eventstartdate,
             String eventenddate,
             @JsonProperty("is_outdoor") Boolean isOutdoor) {
 
-        static Content from(TourismContentDetailResponse detail, List<String> tags) {
+        static Content from(TourismContentDetailResponse detail, List<String> tags, int participantCount) {
             var common = detail.getCommon();
             var intro = detail.getIntro();
             return new Content(
@@ -75,7 +78,7 @@ public record AiPlanRequest(
                     join(common.getAddr1(), common.getAddr2()), common.getMapy(), common.getMapx(),
                     common.getLDongSignguCd(), operatingHours(intro), tags == null ? List.of() : tags,
                     common.getTel(), truncate(common.getOverview()), common.getFirstImage(), common.getFirstImage(),
-                    duration(intro), null,
+                    PlanCostPolicy.estimate(detail, participantCount), null,
                     intro == null ? null : intro.getEventStartDate(), intro == null ? null : intro.getEventEndDate(),
                     outdoor(tags));
         }
@@ -109,11 +112,6 @@ public record AiPlanRequest(
                     : new OperatingHours(null, null, List.of(), join(raw, intro.getRestDate()));
         }
 
-        private static Integer duration(TourismIntroDetailDto intro) {
-            if (intro == null || intro.getSpendTime() == null) return null;
-            var matcher = java.util.regex.Pattern.compile("\\d+").matcher(intro.getSpendTime());
-            return matcher.find() ? Integer.valueOf(matcher.group()) : null;
-        }
 
         private static String first(String... values) {
             return java.util.Arrays.stream(values).filter(value -> value != null && !value.isBlank()).findFirst().orElse(null);
@@ -131,6 +129,19 @@ public record AiPlanRequest(
 
     public record OperatingHours(String open, String close,
                                  @JsonProperty("closed_days") List<String> closedDays, String raw) {
+    }
+
+    public record EstimatedBudget(long total, @JsonProperty("per_person") long perPerson,
+                                  String currency, Map<String, Long> breakdown) {
+    }
+
+    private static EstimatedBudget budget(List<TourismContentDetailResponse> details, int participants) {
+        var estimates = details.stream().map(detail -> PlanCostPolicy.estimate(detail, participants)).toList();
+        long total = estimates.stream().mapToLong(PlanCostPolicy.Estimate::calculatedAmount).sum();
+        Map<String, Long> breakdown = estimates.stream().collect(java.util.stream.Collectors.groupingBy(
+                PlanCostPolicy.Estimate::category, java.util.LinkedHashMap::new,
+                java.util.stream.Collectors.summingLong(PlanCostPolicy.Estimate::calculatedAmount)));
+        return new EstimatedBudget(total, participants == 0 ? 0 : total / participants, "KRW", breakdown);
     }
 
 }
