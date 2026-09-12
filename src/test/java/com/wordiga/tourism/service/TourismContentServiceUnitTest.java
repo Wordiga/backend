@@ -339,7 +339,7 @@ class TourismContentServiceUnitTest {
         TourismContentListResponse empty = TourismContentListResponse.builder()
                 .items(List.of()).page(0).size(20).hasNext(false).build();
         when(personalizedTourismContentService.get(
-                1L, LocalDate.of(2026, 8, 20), List.of("30S"), null, null, List.of(), 0, 20)).thenReturn(empty);
+                1L, LocalDate.of(2026, 8, 20), List.of("30S"), null, null, null, List.of(), 0, 20)).thenReturn(empty);
 
         assertThat(tourismContentService.getContentList(1L, ListType.PERSONALIZED, LocalDate.of(2026, 8, 20),
                 null, null, null, null, null, List.of("30S"), 0, 20)).isSameAs(empty);

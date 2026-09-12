@@ -70,6 +70,14 @@ public class TourismContentDetailService {
         return common;
     }
 
+    public Boolean capacitySatisfied(String contentId, int participantCount) {
+        ContentDetailDto common = getCommonDetail(contentId);
+        if (!TourismContentType.LODGING.getCode().equals(common.getContenttypeid())) return null;
+        DetailIntroDto intro = tourismApiClient.fetchIntroDetail(contentId, common.getContenttypeid());
+        List<DetailInfoDto> details = tourismApiClient.fetchRepeatInfo(contentId, common.getContenttypeid(), 1, 100);
+        return capacitySatisfied(common.getContenttypeid(), intro, details, participantCount);
+    }
+
     public TourismContentDetailResponse getAiDetail(String contentId, LocalDate visitDate) {
         ContentDetailDto common = getCommonDetail(contentId);
         DetailIntroDto intro = tourismApiClient.fetchIntroDetail(contentId, common.getContenttypeid());
@@ -115,7 +123,7 @@ public class TourismContentDetailService {
         return parsed != null ? parsed : 0;
     }
 
-    private Map<String, BigDecimal> parseAgeRatios(List<String> ageGroups) {
+    static Map<String, BigDecimal> parseAgeRatios(List<String> ageGroups) {
         if (ageGroups == null || ageGroups.isEmpty()) return Map.of();
         BigDecimal ratio = BigDecimal.ONE.divide(BigDecimal.valueOf(ageGroups.size()), 2, RoundingMode.HALF_UP);
         Map<String, BigDecimal> ratios = new LinkedHashMap<>();

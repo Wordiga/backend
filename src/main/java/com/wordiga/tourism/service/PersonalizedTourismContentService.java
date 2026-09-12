@@ -18,11 +18,11 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Objects;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
 
@@ -36,15 +36,12 @@ public class PersonalizedTourismContentService {
     private final TourismApiClient tourismApiClient;
     private final WishPreferenceCacheService preferenceCacheService;
     private final TourismProperties tourismProperties;
+    private final TourismSatisfactionService satisfactionService;
+    private final TourismContentDetailService detailService;
 
     public TourismContentListResponse get(
-            Long memberId, LocalDate visitDate, List<String> ageGroups, Integer stayNights, int page, int size) {
-        return get(memberId, visitDate, ageGroups, stayNights, null, List.of(), page, size);
-    }
-
-    public TourismContentListResponse get(
-            Long memberId, LocalDate visitDate, List<String> ageGroups, Integer stayNights,
-            String theme, List<String> categories, int page, int size) {
+            Long memberId, LocalDate visitDate, List<String> ageGroups, Integer participantCount,
+            Boolean capacitySatisfied, String theme, List<String> categories, int page, int size) {
 
         if (memberId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
@@ -56,11 +53,15 @@ public class PersonalizedTourismContentService {
 
         String regionCode = tourismProperties.getRegion().getChungnamCode();
         Map<String, TourismContentDto> candidateMap = new LinkedHashMap<>();
+        Map<String, BigDecimal> ageRatios = TourismContentDetailService.parseAgeRatios(ageGroups);
+        Map<String, BigDecimal> ageScores = new HashMap<>();
+        int participants = participantCount == null ? 10 : participantCount;
 
         // 2-A. 위시 비중 데이터가 없는 신규/미등록 회원 -> Fallback 대표 시군구 조회
         if (sigunguRatios.isEmpty()) {
             fetchCandidatesForSigungus(
-                    DEFAULT_FALLBACK_SIGUNGUS, regionCode, candidateMap, sigunguRatios, categoryRatios, visitDate, 15
+                    DEFAULT_FALLBACK_SIGUNGUS, regionCode, candidateMap, sigunguRatios, categoryRatios,
+                    ageRatios, ageScores, visitDate, participants, 15
             );
         }
         // 2-B. 위시 비중 데이터가 있는 회원 -> 지분율(Ratio)에 비례하여 시군구별 API 호출 제한 조율
@@ -73,7 +74,8 @@ public class PersonalizedTourismContentService {
                 int fetchLimit = Math.max(ratio.multiply(BigDecimal.valueOf(TOTAL_CANDIDATE_LIMIT)).intValue(), 5);
 
                 fetchCandidatesForSigungus(
-                        List.of(sigunguCode), regionCode, candidateMap, sigunguRatios, categoryRatios, visitDate, fetchLimit
+                        List.of(sigunguCode), regionCode, candidateMap, sigunguRatios, categoryRatios,
+                        ageRatios, ageScores, visitDate, participants, fetchLimit
                 );
 
                 if (candidateMap.size() >= TOTAL_CANDIDATE_LIMIT) break;
@@ -89,6 +91,7 @@ public class PersonalizedTourismContentService {
                         && categories.stream().filter(java.util.Objects::nonNull)
                         .flatMap(value -> java.util.Arrays.stream(value.split(","))).map(String::trim)
                         .anyMatch(item.getCategory().code()::equals))
+                .filter(item -> eligibleForParticipants(item, participants, capacitySatisfied))
                 .sorted(Comparator.comparing(TourismContentDto::getRecommendationScore,
                                 Comparator.nullsLast(Comparator.reverseOrder()))
                         .thenComparingInt(item -> Objects.hash(LocalDate.now(), item.getContentId())))
@@ -107,10 +110,19 @@ public class PersonalizedTourismContentService {
                 .build();
     }
 
+    private boolean eligibleForParticipants(TourismContentDto item, int participants,
+                                            Boolean capacitySatisfied) {
+        if (!"32".equals(item.getContentTypeId())) return !Boolean.TRUE.equals(capacitySatisfied);
+        Boolean eligible = detailService.capacitySatisfied(item.getContentId(), participants);
+        return Boolean.TRUE.equals(capacitySatisfied) ? Boolean.TRUE.equals(eligible)
+                : !Boolean.FALSE.equals(eligible);
+    }
+
     private void fetchCandidatesForSigungus(
             List<String> sigungus, String regionCode, Map<String, TourismContentDto> candidateMap,
             Map<String, BigDecimal> sigunguRatios, Map<String, BigDecimal> categoryRatios,
-            LocalDate visitDate, int limitPerSigungu) {
+            Map<String, BigDecimal> ageRatios, Map<String, BigDecimal> ageScores,
+            LocalDate visitDate, int participantCount, int limitPerSigungu) {
 
         for (String sigungu : sigungus) {
             List<AreaBasedItem> items = tourismApiClient.fetchAreaBasedContent(regionCode, sigungu, limitPerSigungu);
@@ -118,23 +130,27 @@ public class PersonalizedTourismContentService {
             for (AreaBasedItem item : items) {
                 if (candidateMap.containsKey(item.getContentid())) continue;
 
-                BigDecimal score = personalizedScore(item, sigunguRatios, categoryRatios, visitDate);
-                candidateMap.put(item.getContentid(), buildContentDto(item, score));
+                BigDecimal ageScore = ageScores.computeIfAbsent(sigungu,
+                        code -> satisfactionService.ageFitForRegion(regionCode, code, ageRatios));
+                BigDecimal score = personalizedScore(item, sigunguRatios, categoryRatios, visitDate, ageScore);
+                candidateMap.put(item.getContentid(), buildContentDto(item, score, participantCount));
             }
         }
     }
     // ─── Helper Methods ───
 
     private BigDecimal personalizedScore(AreaBasedItem item, Map<String, BigDecimal> sigunguRatios,
-                                         Map<String, BigDecimal> categoryRatios, LocalDate visitDate) {
+                                         Map<String, BigDecimal> categoryRatios, LocalDate visitDate,
+                                         BigDecimal ageScore) {
         BigDecimal region = sigunguRatios.isEmpty() ? BigDecimal.valueOf(50)
                 : sigunguRatios.getOrDefault(item.getLDongSignguCd(), BigDecimal.ZERO).movePointRight(2);
         BigDecimal category = categoryRatios.isEmpty() ? BigDecimal.valueOf(50)
                 : categoryRatios.getOrDefault(item.getLclsSystm1(), BigDecimal.ZERO).movePointRight(2);
         int month = visitDate == null ? LocalDate.now().getMonthValue() : visitDate.getMonthValue();
         BigDecimal seasonal = BigDecimal.valueOf(seasonalFit(item.getContenttypeid(), month));
-        return region.multiply(BigDecimal.valueOf(0.5)).add(category.multiply(BigDecimal.valueOf(0.3)))
-                .add(seasonal.multiply(BigDecimal.valueOf(0.2))).setScale(1, RoundingMode.HALF_UP);
+        return region.multiply(BigDecimal.valueOf(0.4)).add(category.multiply(BigDecimal.valueOf(0.25)))
+                .add(seasonal.multiply(BigDecimal.valueOf(0.2)))
+                .add(ageScore.multiply(BigDecimal.valueOf(0.15))).setScale(1, RoundingMode.HALF_UP);
     }
 
     private int seasonalFit(String type, int month) {
@@ -144,7 +160,7 @@ public class PersonalizedTourismContentService {
         return List.of("14", "28", "32").contains(type) ? 100 : 50;
     }
 
-    private TourismContentDto buildContentDto(AreaBasedItem item, BigDecimal score) {
+    private TourismContentDto buildContentDto(AreaBasedItem item, BigDecimal score, int participantCount) {
         TourismCategory category = TourismCategory.resolve(
                 item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
         return TourismContentDto.builder()
@@ -160,7 +176,7 @@ public class PersonalizedTourismContentService {
                         category.getTheme().getCode(), category.getTheme().getDisplayName()))
                 .category(category == null ? null : new CodeNameDto(category.getCode(), category.getDisplayName()))
                 .recommendationScore(score)
-                .estimatedCost(PlanCostPolicy.defaultPerPersonAmount(item.getContenttypeid(), 10))
+                .estimatedCost(PlanCostPolicy.defaultPerPersonAmount(item.getContenttypeid(), participantCount))
                 .build();
     }
 

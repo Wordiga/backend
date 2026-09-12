@@ -63,6 +63,12 @@ class TourismSatisfactionServiceUnitTest {
     }
 
     @Test
+    void usesNeutralAgeFitForPersonalizedRegionWithoutSelectedAges() {
+        assertThat(service.ageFitForRegion("44", "200", Map.of())).isEqualByComparingTo("50");
+        verify(tourismApiClient, never()).fetchTouristDiversity(anyString(), anyString(), anyString(), anyString());
+    }
+
+    @Test
     void averagesConcentrationWithinRequestedMonth() {
         mockPopularity();
         mockStayFit();
