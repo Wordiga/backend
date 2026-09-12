@@ -81,7 +81,7 @@ public class TourismSatisfactionService {
                 .ageFitScore(ageFitComponent)
                 .stayFitScore(stayFitComponent)
                 .comfortScore(comfortComponent)
-                .reasons(reasons(popularityComponent, ageFitComponent, stayFitComponent, comfortComponent))
+                .reasons(reasons(request, popularityComponent, ageFitComponent, stayFitComponent, comfortComponent))
                 .calculatedAt(OffsetDateTime.now())
                 .build();
     }
@@ -208,11 +208,13 @@ public class TourismSatisfactionService {
         return total.setScale(1, RoundingMode.HALF_UP);
     }
 
-    private List<String> reasons(ScoreComponentDto popularity, ScoreComponentDto ageFit,
+    private List<String> reasons(SatisfactionRequestDto request, ScoreComponentDto popularity, ScoreComponentDto ageFit,
                                  ScoreComponentDto stayFit, ScoreComponentDto comfort) {
         return java.util.stream.Stream.of(
-                        reason("지역 인기도", popularity), reason("선택 연령대 적합도", ageFit),
-                        reason("체류 일정 적합도", stayFit), reason("방문 쾌적도", comfort))
+                        reason("지역 방문·소비 지수", popularity),
+                        reason(ageLabel(request) + " 방문·소비 적합도", ageFit),
+                        reason(stayLabel(request) + " 체류 적합도", stayFit),
+                        reason("예상 방문 쾌적도", comfort))
                 .filter(Objects::nonNull)
                 .sorted(java.util.Comparator.comparing(Reason::score).reversed())
                 .limit(2)
@@ -220,10 +222,19 @@ public class TourismSatisfactionService {
                 .toList();
     }
 
+    private String ageLabel(SatisfactionRequestDto request) {
+        if (CollectionUtils.isEmpty(request.ageGroupRatios())) return "선택 연령대";
+        return String.join("·", request.ageGroupRatios().keySet());
+    }
+
+    private String stayLabel(SatisfactionRequestDto request) {
+        return request.stayNights() == null ? "전체 여행" : (request.stayNights() + 1) + "일 일정";
+    }
+
     private Reason reason(String label, ScoreComponentDto component) {
         if (component.isImputed()) return null;
-        return new Reason(component.getScore(), label + "가 " + component.getScore().stripTrailingZeros().toPlainString()
-                + "점으로 산정되었습니다.");
+        return new Reason(component.getScore(), label + " " + component.getScore().stripTrailingZeros().toPlainString()
+                + "점으로 일정과 잘 맞습니다.");
     }
 
     private OptionalDouble averageValidValues(double... values) {

@@ -3,10 +3,8 @@ package com.wordiga.tourism.service;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.AreaBasedItem;
 import com.wordiga.global.config.TourismProperties;
-import com.wordiga.tourism.dto.SatisfactionRequestDto;
 import com.wordiga.tourism.dto.TourismContentDto;
 import com.wordiga.tourism.dto.TourismContentListResponse;
-import com.wordiga.tourism.dto.detail.SatisfactionDto;
 import com.wordiga.tourism.domain.TourismCategory;
 import com.wordiga.tourism.dto.CodeNameDto;
 import com.wordiga.wish.service.WishPreferenceCacheService;
@@ -19,6 +17,7 @@ import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
 import java.util.Comparator;
+import java.util.Objects;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -31,11 +30,10 @@ import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
 public class PersonalizedTourismContentService {
 
     private static final int TOTAL_CANDIDATE_LIMIT = 50;
-    private static final List<String> DEFAULT_FALLBACK_SIGUNGUS = List.of("150", "200", "010");
+    private static final List<String> DEFAULT_FALLBACK_SIGUNGUS = List.of("131", "200", "340");
 
     private final TourismApiClient tourismApiClient;
     private final WishPreferenceCacheService preferenceCacheService;
-    private final TourismSatisfactionService satisfactionService;
     private final TourismProperties tourismProperties;
 
     public TourismContentListResponse get(
@@ -47,15 +45,15 @@ public class PersonalizedTourismContentService {
 
         // 1. 인메모리 캐시에서 유저의 시군구별 비중(Map) 조회
         Map<String, BigDecimal> sigunguRatios = preferenceCacheService.getSigunguPreferenceRatios(memberId);
+        Map<String, BigDecimal> categoryRatios = preferenceCacheService.getCategoryPreferenceRatios(memberId);
 
         String regionCode = tourismProperties.getRegion().getChungnamCode();
         Map<String, TourismContentDto> candidateMap = new LinkedHashMap<>();
-        var cache = new TourismSatisfactionService.CalculationCache();
 
         // 2-A. 위시 비중 데이터가 없는 신규/미등록 회원 -> Fallback 대표 시군구 조회
         if (sigunguRatios.isEmpty()) {
             fetchCandidatesForSigungus(
-                    DEFAULT_FALLBACK_SIGUNGUS, regionCode, candidateMap, cache, visitDate, ageGroups, stayNights, 15
+                    DEFAULT_FALLBACK_SIGUNGUS, regionCode, candidateMap, sigunguRatios, categoryRatios, visitDate, 15
             );
         }
         // 2-B. 위시 비중 데이터가 있는 회원 -> 지분율(Ratio)에 비례하여 시군구별 API 호출 제한 조율
@@ -68,7 +66,7 @@ public class PersonalizedTourismContentService {
                 int fetchLimit = Math.max(ratio.multiply(BigDecimal.valueOf(TOTAL_CANDIDATE_LIMIT)).intValue(), 5);
 
                 fetchCandidatesForSigungus(
-                        List.of(sigunguCode), regionCode, candidateMap, cache, visitDate, ageGroups, stayNights, fetchLimit
+                        List.of(sigunguCode), regionCode, candidateMap, sigunguRatios, categoryRatios, visitDate, fetchLimit
                 );
 
                 if (candidateMap.size() >= TOTAL_CANDIDATE_LIMIT) break;
@@ -77,7 +75,10 @@ public class PersonalizedTourismContentService {
 
         // 3. 만족도 점수 기준 내림차순 정렬 및 메모리 페이징
         List<TourismContentDto> sortedList = candidateMap.values().stream()
-                .sorted(Comparator.comparing(TourismContentDto::getRecommendationScore, Comparator.nullsLast(Comparator.reverseOrder())))
+                .filter(item -> !"15".equals(item.getContentTypeId()))
+                .sorted(Comparator.comparing(TourismContentDto::getRecommendationScore,
+                                Comparator.nullsLast(Comparator.reverseOrder()))
+                        .thenComparingInt(item -> Objects.hash(LocalDate.now(), item.getContentId())))
                 .toList();
 
         int fromIndex = Math.min(page * size, sortedList.size());
@@ -87,14 +88,16 @@ public class PersonalizedTourismContentService {
                 .items(sortedList.subList(fromIndex, toIndex))
                 .page(page)
                 .size(size)
+                .totalCount(sortedList.size())
+                .totalPages((sortedList.size() + size - 1) / size)
                 .hasNext(toIndex < sortedList.size())
                 .build();
     }
 
     private void fetchCandidatesForSigungus(
             List<String> sigungus, String regionCode, Map<String, TourismContentDto> candidateMap,
-            TourismSatisfactionService.CalculationCache cache, LocalDate visitDate,
-            List<String> ageGroups, Integer stayNights, int limitPerSigungu) {
+            Map<String, BigDecimal> sigunguRatios, Map<String, BigDecimal> categoryRatios,
+            LocalDate visitDate, int limitPerSigungu) {
 
         for (String sigungu : sigungus) {
             List<AreaBasedItem> items = tourismApiClient.fetchAreaBasedContent(regionCode, sigungu, limitPerSigungu);
@@ -102,20 +105,33 @@ public class PersonalizedTourismContentService {
             for (AreaBasedItem item : items) {
                 if (candidateMap.containsKey(item.getContentid())) continue;
 
-                var request = new SatisfactionRequestDto(
-                        regionCode, item.getLDongSignguCd(), item.getTitle(), visitDate, parseAgeRatios(ageGroups), stayNights
-                );
-
-                SatisfactionDto satisfaction = satisfactionService.calculate(request, cache);
-                BigDecimal score = (satisfaction != null) ? satisfaction.getTotalScore() : BigDecimal.ZERO;
-
-                candidateMap.put(item.getContentid(), buildContentDto(item, score, satisfaction));
+                BigDecimal score = personalizedScore(item, sigunguRatios, categoryRatios, visitDate);
+                candidateMap.put(item.getContentid(), buildContentDto(item, score));
             }
         }
     }
     // ─── Helper Methods ───
 
-    private TourismContentDto buildContentDto(AreaBasedItem item, BigDecimal score, SatisfactionDto satisfaction) {
+    private BigDecimal personalizedScore(AreaBasedItem item, Map<String, BigDecimal> sigunguRatios,
+                                         Map<String, BigDecimal> categoryRatios, LocalDate visitDate) {
+        BigDecimal region = sigunguRatios.isEmpty() ? BigDecimal.valueOf(50)
+                : sigunguRatios.getOrDefault(item.getLDongSignguCd(), BigDecimal.ZERO).movePointRight(2);
+        BigDecimal category = categoryRatios.isEmpty() ? BigDecimal.valueOf(50)
+                : categoryRatios.getOrDefault(item.getLclsSystm1(), BigDecimal.ZERO).movePointRight(2);
+        int month = visitDate == null ? LocalDate.now().getMonthValue() : visitDate.getMonthValue();
+        BigDecimal seasonal = BigDecimal.valueOf(seasonalFit(item.getContenttypeid(), month));
+        return region.multiply(BigDecimal.valueOf(0.5)).add(category.multiply(BigDecimal.valueOf(0.3)))
+                .add(seasonal.multiply(BigDecimal.valueOf(0.2))).setScale(1, RoundingMode.HALF_UP);
+    }
+
+    private int seasonalFit(String type, int month) {
+        if (List.of(3, 4, 5).contains(month)) return List.of("12", "25").contains(type) ? 100 : 50;
+        if (List.of(6, 7, 8).contains(month)) return List.of("12", "28").contains(type) ? 100 : 50;
+        if (List.of(9, 10, 11).contains(month)) return List.of("12", "14", "25").contains(type) ? 100 : 50;
+        return List.of("14", "28", "32").contains(type) ? 100 : 50;
+    }
+
+    private TourismContentDto buildContentDto(AreaBasedItem item, BigDecimal score) {
         TourismCategory category = TourismCategory.resolve(
                 item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
         return TourismContentDto.builder()
@@ -131,14 +147,7 @@ public class PersonalizedTourismContentService {
                         category.getTheme().getCode(), category.getTheme().getDisplayName()))
                 .category(category == null ? null : new CodeNameDto(category.getCode(), category.getDisplayName()))
                 .recommendationScore(score)
-                .satisfaction(satisfaction)
                 .build();
-    }
-
-    private Map<String, BigDecimal> parseAgeRatios(List<String> ageGroups) {
-        if (ageGroups == null || ageGroups.isEmpty()) return Map.of();
-        BigDecimal equalRatio = BigDecimal.ONE.divide(BigDecimal.valueOf(ageGroups.size()), 2, RoundingMode.HALF_UP);
-        return ageGroups.stream().collect(Collectors.toMap(age -> age, age -> equalRatio, (a, b) -> a));
     }
 
 }

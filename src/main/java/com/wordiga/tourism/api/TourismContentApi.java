@@ -23,7 +23,7 @@ public interface TourismContentApi {
             description = "방문일과 검색 조건에 따라 충청남도 관광 콘텐츠를 조회합니다.")
     ResponseEntity<TourismContentListResponse> getTourismContentList(
             @Parameter(hidden = true) Long memberId,
-            @Parameter(description = "추천 타입 (SEASONAL / POPULAR / PERSONALIZED)") ListType type,
+            @Parameter(description = "목록 타입 (SEASONAL / POPULAR / PERSONALIZED / RELATED / FESTIVAL)") ListType type,
             @Parameter(description = "방문 월(YYYYMM)", example = "202609") String visitMonth,
             String keyword,
             String contentTypeId,

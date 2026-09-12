@@ -5,6 +5,7 @@ import com.wordiga.global.config.TourismProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
@@ -44,6 +45,7 @@ public class TourismApiClient {
 
     // ─── 지역별 관광 수요 강도 ───
 
+    @Cacheable(cacheNames = "tourismAnalytics", key = "'exp:' + #baseYm + ':' + #areaCd + ':' + #signguCd + ':' + #tarExpDsIxCd", sync = true)
     public AreaTarExpDsResponse fetchExpenditureIntensity(String baseYm, String areaCd,
                                                           String signguCd, String tarExpDsIxCd) {
         return execute(() -> client.fetchExpenditureIntensity(
@@ -54,6 +56,7 @@ public class TourismApiClient {
 
     // ─── 관광 체류 강도 ───
 
+    @Cacheable(cacheNames = "tourismAnalytics", key = "'stay:' + #baseYm + ':' + #areaCd + ':' + #signguCd + ':' + #tarSjrnDsIxCd", sync = true)
     public AreaTarSjrnDsResponse fetchStayIntensity(String baseYm, String areaCd,
                                                     String signguCd, String tarSjrnDsIxCd) {
         return execute(() -> client.fetchStayIntensity(
@@ -64,6 +67,7 @@ public class TourismApiClient {
 
     // ─── 지역별 관광 자원 수요 ───
 
+    @Cacheable(cacheNames = "tourismAnalytics", key = "'service:' + #baseYm + ':' + #areaCd + ':' + #signguCd + ':' + #tarSvcDemIxCd", sync = true)
     public AreaTarSvcDemResponse fetchServiceDemand(String baseYm, String areaCd,
                                                     String signguCd, String tarSvcDemIxCd) {
         return execute(() -> client.fetchServiceDemand(
@@ -74,6 +78,7 @@ public class TourismApiClient {
 
     // ─── 문화 자원 수요 ───
 
+    @Cacheable(cacheNames = "tourismAnalytics", key = "'culture:' + #baseYm + ':' + #areaCd + ':' + #signguCd + ':' + #culResDemIxCd", sync = true)
     public AreaCulResDemResponse fetchCulturalResourceDemand(String baseYm, String areaCd,
                                                              String signguCd, String culResDemIxCd) {
         return execute(() -> client.fetchCulturalResourceDemand(
@@ -84,6 +89,7 @@ public class TourismApiClient {
 
     // ─── 관광지 집중률 ───
 
+    @Cacheable(cacheNames = "tourismConcentration", key = "#areaCd + ':' + #signguCd + ':' + #tAtsNm", sync = true)
     public TatsCnctrRateResponse fetchConcentrationRate(String areaCd, String signguCd, String tAtsNm) {
         return execute(() -> client.fetchConcentrationRate(
                 serviceKey(), mobileOs(), mobileApp(), "json",
@@ -128,6 +134,7 @@ public class TourismApiClient {
         ));
     }
 
+    @Cacheable(cacheNames = "tourismCommon", key = "#contentId", sync = true)
     public ContentDetailDto fetchCommonDetail(String contentId) {
         ContentDetailResponse response = execute(() -> client.fetchCommonDetail(
                 serviceKey(), mobileOs(), mobileApp(), "json", contentId, 1, 1
@@ -136,6 +143,7 @@ public class TourismApiClient {
         return items.isEmpty() ? null : items.getFirst();
     }
 
+    @Cacheable(cacheNames = "tourismIntro", key = "#contentId + ':' + #contentTypeId", sync = true)
     public DetailIntroDto fetchIntroDetail(String contentId, String contentTypeId) {
         DetailIntroResponse response = execute(() -> client.fetchIntroDetail(
                 serviceKey(), mobileOs(), mobileApp(), "json", contentId, 1, 1, contentTypeId
@@ -144,6 +152,7 @@ public class TourismApiClient {
         return items.isEmpty() ? null : items.getFirst();
     }
 
+    @Cacheable(cacheNames = "tourismRepeat", key = "#contentId + ':' + #contentTypeId + ':' + #pageNo + ':' + #numOfRows", sync = true)
     public List<DetailInfoDto> fetchRepeatInfo(String contentId, String contentTypeId, int pageNo, int numOfRows) {
         DetailInfoResponse response = execute(() -> client.fetchRepeatInfo(
                 serviceKey(), mobileOs(), mobileApp(), "json", contentId, pageNo, numOfRows, contentTypeId
@@ -151,6 +160,7 @@ public class TourismApiClient {
         return extractItems(response);
     }
 
+    @Cacheable(cacheNames = "tourismImages", key = "#contentId + ':' + #imageYN + ':' + #pageNo + ':' + #numOfRows", sync = true)
     public List<DetailImageDto> fetchImages(String contentId, String imageYN, int pageNo, int numOfRows) {
         DetailImageResponse response = execute(() -> client.fetchImages(
                 serviceKey(), mobileOs(), mobileApp(), "json", contentId, pageNo, numOfRows, imageYN
