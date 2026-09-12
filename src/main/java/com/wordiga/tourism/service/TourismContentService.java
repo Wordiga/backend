@@ -292,8 +292,8 @@ public class TourismContentService {
                 .map(signguCode -> tourismApiClient.fetchAreaBasedContent(regionCode, signguCode, CONTENTS_PER_SIGNGU)
                         .stream().map(item -> new ScoredCandidate(item, score(
                                 scores.getOrDefault(regionCode + signguCode, 0D), item, month)))
-                        .sorted(Comparator.comparingInt(candidate ->
-                                Objects.hash(orderSeed, signguCode, candidate.item().getContentid())))
+                        .sorted(Comparator.comparingLong(candidate ->
+                                stableOrderKey(orderSeed, signguCode, candidate.item().getContentid())))
                         .toList())
                 .toList();
         List<ScoredCandidate> result = new ArrayList<>();
@@ -301,6 +301,15 @@ public class TourismContentService {
         for (int index = 0; index < maxSize; index++)
             for (List<ScoredCandidate> items : byRegion) if (index < items.size()) result.add(items.get(index));
         return result;
+    }
+
+    private long stableOrderKey(String... values) {
+        long value = Objects.hash((Object[]) values);
+        value ^= value >>> 33;
+        value *= 0xff51afd7ed558ccdL;
+        value ^= value >>> 33;
+        value *= 0xc4ceb9fe1a85ec53L;
+        return value ^ value >>> 33;
     }
 
     private boolean matchesCategory(AreaBasedItem item, String theme, List<String> categories) {
