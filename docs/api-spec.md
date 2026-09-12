@@ -40,7 +40,7 @@
   "fieldErrors": [
     {
       "field": "visitMonth",
-      "reason": "방문 월은 YYYYMM 형식이어야 합니다."
+      "reason": "방문 월은 YYYY-MM 형식이어야 합니다."
     }
   ]
 }
@@ -65,7 +65,7 @@ GET /api/v1/tourism/contents
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
 | `type` | Enum | N | `POPULAR`, `SEASONAL`, `RELATED`, `PERSONALIZED`; 기본값은 `POPULAR` | `POPULAR` |
-| `visitMonth` | String | N | 계절 정렬 기준 월 `YYYYMM`, 미입력 시 현재 월 | `202608` |
+| `visitMonth` | String | N | 계절 정렬 기준 월 `YYYY-MM`, 미입력 시 현재 월 | `2026-08` |
 | `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
 | `contentTypeId` | String | N | 관광타입 ID | `12` |
 | `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드 | `200` |
@@ -274,7 +274,7 @@ GET /api/v1/tourism/contents/{contentId}
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `visitMonth` | String | N | 쾌적도 판단 기준 월 `YYYYMM` | `202608` |
+| `visitMonth` | String | N | 쾌적도 판단 기준 월 `YYYY-MM` | `2026-08` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부 계산 인원, 기본값은 `10` | `8` |
 | `ageGroups` | String[] | N | 연령대 코드 `10S`~`70S` | `20S,30S` |
 | `stayDays` | Integer | N | 체류 일수 `1`~`3`; 체류 적합도 계산 시 숙박 일수 `stayDays-1`로 변환 | `2` |
@@ -1013,7 +1013,7 @@ POST /api/v1/plans/generate
 |---|---|---|---|
 | `title` | String | N | 일정 제목 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `visitMonth` | String | Y | 방문 월 `YYYY-MM` |
 | `stayDays` | Integer | Y | 체류 일수 `1`~`3` |
 | `ageGroups` | String[] | N | 참가자 연령대 |
 | `selectedContentIds` | String[] | Y | 선택 콘텐츠 ID, 배열 순서가 사용자 우선순위 |
@@ -1025,7 +1025,7 @@ POST /api/v1/plans/generate
 | `planId` | Long | Y | 저장된 일정 ID |
 | `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
-| `visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `visitMonth` | String | Y | 방문 월 `YYYY-MM` |
 | `stayDays` | Integer | Y | 체류 일수 |
 | `participantCount` | Integer | Y | 참가 인원 |
 | `estimatedBudget` | EstimatedCost | N | 예상 예산 |
@@ -1061,7 +1061,7 @@ POST /api/v1/plans/generate
   "planId": 77,
   "scheduleId": 1001,
   "title": "아산 역사 워크숍",
-  "visitMonth": "202608",
+  "visitMonth": "2026-08",
   "stayDays": 2,
   "participantCount": 10,
   "estimatedBudget": {
@@ -1117,7 +1117,7 @@ POST /api/v1/plans/generate
 ### Validation
 
 - 참가 인원은 10~50명입니다.
-- `visitMonth`는 실제 존재하는 `YYYYMM` 형식이어야 합니다.
+- `visitMonth`는 실제 존재하는 `YYYY-MM` 형식이어야 합니다.
 - `stayDays`는 1~3입니다.
 - AI 요청 JSON만 snake_case를 사용합니다. 애플리케이션 요청·응답 DTO는 lowerCamelCase를 유지합니다.
 - AI 요청에는 콘텐츠별 `is_outdoor`와 보충 후보 `regional_contents`를 전달합니다. 체류 기간은 `num_days` 하나로 전달합니다.
@@ -1177,7 +1177,7 @@ GET /api/v1/plans
 | `items[].planId` | Long | Y | 일정 ID |
 | `items[].scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `items[].title` | String | Y | 일정 제목 |
-| `items[].visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `items[].visitMonth` | String | Y | 방문 월 `YYYY-MM` |
 | `items[].stayDays` | Integer | Y | 체류 일수 |
 | `items[].participantCount` | Integer | Y | 참가 인원 |
 | `items[].thumbnailUrl` | String | N | 첫 일정 콘텐츠 대표 이미지 |
@@ -1198,7 +1198,7 @@ GET /api/v1/plans
       "planId": 77,
       "scheduleId": 1001,
       "title": "아산 역사 워크숍",
-      "visitMonth": "202608",
+      "visitMonth": "2026-08",
       "stayDays": 2,
       "participantCount": 10,
       "thumbnailUrl": "https://example.com/main.jpg",
@@ -1266,7 +1266,7 @@ GET /api/v1/plans/{planId}
 | `planId` | Long | Y | 일정 ID |
 | `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
-| `visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `visitMonth` | String | Y | 방문 월 `YYYY-MM` |
 | `stayDays` | Integer | Y | 체류 일수 |
 | `participantCount` | Integer | Y | 참가 인원 |
 | `estimatedBudget` | EstimatedCost | N | 예상 예산 |
@@ -1303,7 +1303,7 @@ GET /api/v1/plans/{planId}
   "planId": 77,
   "scheduleId": 1001,
   "title": "아산 역사 워크숍",
-  "visitMonth": "202608",
+  "visitMonth": "2026-08",
   "stayDays": 2,
   "participantCount": 10,
   "estimatedBudget": null,
@@ -1359,7 +1359,7 @@ GET /api/v1/plans/{planId}
 ## 9-1. 지역·방문 월 기준 월평균 기후 조회
 
 ```http
-GET /api/v1/weather?lDongSignguCd=133&visitMonth=202609
+GET /api/v1/weather?lDongSignguCd=133&visitMonth=2026-09
 ```
 
 시군구 코드와 방문 월을 사용해 최근 3개년 ASOS 평균을 반환합니다.
@@ -1371,7 +1371,7 @@ GET /api/v1/weather?lDongSignguCd=133&visitMonth=202609
 | 이름 | 타입 | 필수 | 설명 |
 |---|---|---|---|
 | `lDongSignguCd` | String | Y | 충청남도 법정동 시군구 코드 |
-| `visitMonth` | String | Y | 조회 월 `YYYYMM` |
+| `visitMonth` | String | Y | 조회 월 `YYYY-MM` |
 
 ### Response Body
 
@@ -1405,7 +1405,7 @@ GET /api/v1/weather?lDongSignguCd=133&visitMonth=202609
 
 ### Validation
 
-- `visitMonth`는 실제 존재하는 `YYYYMM` 형식이어야 합니다.
+- `visitMonth`는 실제 존재하는 `YYYY-MM` 형식이어야 합니다.
 - 지역 매핑 또는 기상 자료가 없으면 `WEATHER_API_UNAVAILABLE(503)`을 반환합니다.
 
 ## 10. 내 일정 기본정보 수정
@@ -1502,7 +1502,7 @@ PUT /api/v1/plans/{planId}/contents
 | `planId` | Long | Y | 일정 ID |
 | `scheduleId` | Long | N | AI 서버 일정 식별자 |
 | `title` | String | Y | 일정 제목 |
-| `visitMonth` | String | Y | 방문 월 `YYYYMM` |
+| `visitMonth` | String | Y | 방문 월 `YYYY-MM` |
 | `stayDays` | Integer | Y | 체류 일수 |
 | `participantCount` | Integer | Y | 참가 인원 |
 | `estimatedBudget` | EstimatedCost | N | 마지막 AI 생성 시 저장된 예상 예산이며 재생성 전까지 유지 |
@@ -1545,7 +1545,7 @@ PUT /api/v1/plans/{planId}/contents
 {
   "planId": 77,
   "title": "아산 역사 워크숍",
-  "visitMonth": "202608",
+  "visitMonth": "2026-08",
   "stayDays": 2,
   "days": [
     {
