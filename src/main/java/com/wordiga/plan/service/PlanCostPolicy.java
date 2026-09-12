@@ -41,6 +41,7 @@ public final class PlanCostPolicy {
     }
 
     public static long defaultPerPersonAmount(String contentTypeId, int participants) {
+        if (contentTypeId == null) return 0;
         DefaultCost cost = DEFAULTS.get(contentTypeId);
         if (cost == null) return 0;
         return switch (cost.unit()) {
