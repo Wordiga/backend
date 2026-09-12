@@ -81,8 +81,10 @@ public class PlanWriter {
                 PlanContent planContent = PlanContent.create(plan, c.getSequence(), day.getDayNumber(), snapshot);
                 var detail = detailById.get(c.getContentId());
                 var cost = detail == null ? null : PlanCostPolicy.estimate(detail, request.getParticipantCount());
-                Integer travelDistance = c.getTravelDistanceMeters() != null ? c.getTravelDistanceMeters()
-                        : previous == null ? 0 : distanceMeters(previous, snapshot);
+                Integer travelDistance;
+                if (c.getTravelDistanceMeters() != null) travelDistance = c.getTravelDistanceMeters();
+                else if (previous == null) travelDistance = 0;
+                else travelDistance = distanceMeters(previous, snapshot);
                 planContent.updateAiDetails(
                         null,
                         c.getDurationMinutes(),
