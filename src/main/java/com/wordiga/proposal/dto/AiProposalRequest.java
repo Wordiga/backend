@@ -28,7 +28,7 @@ public class AiProposalRequest {
                 .timetable(Timetable.from(plan))
                 .estimatedCost(EstimatedCost.from(plan.getEstimatedBudget()))
                 .workshopPurpose(null)
-                .visitMonth(plan.getVisitMonth() == null ? null : Integer.valueOf(plan.getVisitMonth().substring(4)))
+                .visitMonth(plan.getVisitMonth() == null ? null : Integer.valueOf(plan.getVisitMonth().substring(5)))
                 .numPeople(plan.getParticipantCount())
                 .build();
     }

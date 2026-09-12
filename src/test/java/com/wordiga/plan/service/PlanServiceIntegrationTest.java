@@ -11,6 +11,8 @@ import com.wordiga.plan.repository.PlanRepository;
 import com.wordiga.support.PostgresIntegrationTest;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
 import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
+import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
+import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.service.TourismContentDetailService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
@@ -18,6 +20,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -71,7 +74,7 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         Member member = memberRepository.save(Member.create("generated@test.com", "생성", OAuthProvider.GOOGLE, "generated", null));
         PlanGenerateRequest request = new PlanGenerateRequest();
         request.setTitle("AI 일정");
-        request.setVisitMonth("202608");
+        request.setVisitMonth("2026-08");
         request.setStayDays(1);
         request.setParticipantCount(2);
         AiPlanResponse.Content content = new AiPlanResponse.Content();
@@ -103,10 +106,44 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void calculatesMissingTravelDistanceAndPerPersonBudgetBreakdown() {
+        Member member = memberRepository.save(Member.create("calculation@test.com", "계산", OAuthProvider.GOOGLE,
+                "calculation", null));
+        PlanGenerateRequest request = new PlanGenerateRequest();
+        request.setVisitMonth("2026-08");
+        request.setStayDays(1);
+        request.setParticipantCount(10);
+
+        AiPlanResponse.Content first = aiContent(1, "culture");
+        AiPlanResponse.Content second = aiContent(2, "restaurant");
+        AiPlanResponse.Day day = new AiPlanResponse.Day();
+        day.setDayNumber(1);
+        day.setDate(LocalDate.of(2026, 8, 1));
+        day.setContents(List.of(first, second));
+        AiPlanResponse ai = new AiPlanResponse();
+        ai.setScheduleId(3L);
+        ai.setDays(List.of(day));
+
+        snapshotRepository.save(snapshot("culture", "14", "127.1000", "36.8000"));
+        snapshotRepository.save(snapshot("restaurant", "39", "127.1100", "36.8100"));
+        List<TourismContentDetailResponse> details = List.of(detail("culture", "14"), detail("restaurant", "39"));
+
+        PlanDetailResponse saved = planWriter.saveGenerated(member.getId(), request, ai, details, "천안시");
+
+        assertThat(saved.getDays().getFirst().getContents()).extracting(PlanDetailResponse.Content::getTravelDistanceMeters)
+                .first().isEqualTo(0);
+        assertThat(saved.getDays().getFirst().getContents().get(1).getTravelDistanceMeters()).isPositive();
+        assertThat(saved.getEstimatedBudget().totalAmount()).isEqualTo(250_000);
+        assertThat(saved.getEstimatedBudget().perPersonAmount()).isEqualTo(25_000);
+        assertThat(saved.getEstimatedBudget().breakdown())
+                .containsEntry("문화시설", 10_000L).containsEntry("음식점", 15_000L);
+    }
+
+    @Test
     void assignsRegionalDateTitleAndSuffixAndIncludesScheduleIdInList() {
         Member member = memberRepository.save(Member.create("title@test.com", "제목", OAuthProvider.GOOGLE, "title", null));
         PlanGenerateRequest request = new PlanGenerateRequest();
-        request.setVisitMonth("202608");
+        request.setVisitMonth("2026-08");
         request.setStayDays(1);
         request.setParticipantCount(2);
         AiPlanResponse ai = new AiPlanResponse();
@@ -136,6 +173,28 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
     private TourismContentSnapshot snapshot(String id) {
         return TourismContentSnapshot.builder().contentId(id).contentTypeId("12").title("현충사")
                 .updatedAt(java.time.LocalDateTime.now()).build();
+    }
+
+    private TourismContentSnapshot snapshot(String id, String type, String mapx, String mapy) {
+        return TourismContentSnapshot.builder().contentId(id).contentTypeId(type).title(id)
+                .mapx(new BigDecimal(mapx)).mapy(new BigDecimal(mapy))
+                .updatedAt(java.time.LocalDateTime.now()).build();
+    }
+
+    private TourismContentDetailResponse detail(String id, String type) {
+        return TourismContentDetailResponse.builder()
+                .common(TourismCommonDetailDto.builder().contentId(id).contentTypeId(type).title(id)
+                        .mapx(new BigDecimal("culture".equals(id) ? "127.1000" : "127.1100"))
+                        .mapy(new BigDecimal("culture".equals(id) ? "36.8000" : "36.8100")).build())
+                .details(List.of()).build();
+    }
+
+    private AiPlanResponse.Content aiContent(int sequence, String id) {
+        AiPlanResponse.Content content = new AiPlanResponse.Content();
+        content.setSequence(sequence);
+        content.setContentId(id);
+        content.setTitle(id);
+        return content;
     }
 
     private PlanContentsUpdateRequest.Day day(int number, String date, String id) {

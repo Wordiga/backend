@@ -24,9 +24,11 @@ public interface TourismContentApi {
     ResponseEntity<TourismContentListResponse> getTourismContentList(
             @Parameter(hidden = true) Long memberId,
             @Parameter(description = "목록 타입 (SEASONAL / POPULAR / PERSONALIZED / RELATED / FESTIVAL)") ListType type,
-            @Parameter(description = "방문 월(YYYYMM)", example = "202609") String visitMonth,
+            @Parameter(description = "방문 월(YYYY-MM)", example = "2026-09") String visitMonth,
             String keyword,
             String contentTypeId,
+            @Parameter(description = "화면 대분류 테마 코드") String theme,
+            @Parameter(description = "화면 세부 카테고리 코드 목록") List<String> category,
             String lDongSignguCd,
             String referenceContentId,
             Boolean capacitySatisfied,
@@ -40,7 +42,7 @@ public interface TourismContentApi {
             description = "공통정보, 타입별 소개·반복정보와 이미지를 통합하여 조회합니다.")
     ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
             @Parameter(description = "관광 콘텐츠 ID") String contentId,
-            @Parameter(description = "방문 월(YYYYMM)", example = "202609") String visitMonth,
+            @Parameter(description = "방문 월(YYYY-MM)", example = "2026-09") String visitMonth,
             List<String> ageGroups,
             @Min(1) @Max(3) Integer stayDays,
             @Min(1) @Max(50) Integer participantCount

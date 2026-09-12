@@ -28,13 +28,13 @@ public class WeatherController {
     @GetMapping
     public ResponseEntity<PlanWeatherResponse> getWeather(
             @RequestParam String lDongSignguCd,
-            @RequestParam @Pattern(regexp = "\\d{6}", message = "방문 월은 YYYYMM 형식이어야 합니다.")
+            @RequestParam @Pattern(regexp = "\\d{4}-(0[1-9]|1[0-2])", message = "방문 월은 YYYY-MM 형식이어야 합니다.")
             String visitMonth) {
         int month;
         try {
-            month = YearMonth.parse(visitMonth, DateTimeFormatter.ofPattern("yyyyMM")).getMonthValue();
+            month = YearMonth.parse(visitMonth).getMonthValue();
         } catch (RuntimeException exception) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "방문 월은 YYYYMM 형식이어야 합니다.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "방문 월은 YYYY-MM 형식이어야 합니다.");
         }
         var weather = monthlyWeatherService.estimate(lDongSignguCd, month);
         if (weather == null)

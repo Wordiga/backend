@@ -45,7 +45,7 @@ class AiServerContractUnitTest {
                 .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(11, 30)).travelTimeMinutes(0).build();
         PlanDetailResponse.Day day = PlanDetailResponse.Day.builder().dayNumber(1)
                 .contents(List.of(content)).build();
-        PlanDetailResponse plan = PlanDetailResponse.builder().planId(9L).visitMonth("202608")
+        PlanDetailResponse plan = PlanDetailResponse.builder().planId(9L).visitMonth("2026-08")
                 .participantCount(10).days(List.of(day)).build();
         String json = objectMapper.writeValueAsString(AiProposalRequest.from(plan));
 

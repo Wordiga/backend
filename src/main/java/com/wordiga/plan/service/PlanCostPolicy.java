@@ -40,6 +40,16 @@ public final class PlanCostPolicy {
                 actual == null, fallback.category(), references);
     }
 
+    public static long defaultPerPersonAmount(String contentTypeId, int participants) {
+        if (contentTypeId == null) return 0;
+        DefaultCost cost = DEFAULTS.get(contentTypeId);
+        if (cost == null) return 0;
+        return switch (cost.unit()) {
+            case PERSON -> cost.amount();
+            case ROOM, GROUP -> cost.amount() / Math.max(1, participants);
+        };
+    }
+
     private static List<Reference> references(TourismContentDetailResponse detail, String type) {
         List<Reference> result = new ArrayList<>();
         if (detail.getIntro() != null && List.of("14", "15", "28").contains(type))

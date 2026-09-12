@@ -40,6 +40,8 @@ public class TourismContentController implements TourismContentApi {
             @RequestParam(required = false) String visitMonth,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String contentTypeId,
+            @RequestParam(required = false) String theme,
+            @RequestParam(required = false) List<String> category,
             @RequestParam(required = false) String lDongSignguCd,
             @RequestParam(required = false) String referenceContentId,
             @RequestParam(required = false) Boolean capacitySatisfied,
@@ -49,7 +51,7 @@ public class TourismContentController implements TourismContentApi {
             @RequestParam(defaultValue = "20") int size) {
 
         return ResponseEntity.ok(tourismContentService.getContentList(
-                memberId, type, visitDate(visitMonth), keyword, contentTypeId, lDongSignguCd,
+                memberId, type, visitDate(visitMonth), keyword, contentTypeId, theme, category, lDongSignguCd,
                 referenceContentId, capacitySatisfied, participantCount, ageGroups, page, size));
     }
 
@@ -67,10 +69,10 @@ public class TourismContentController implements TourismContentApi {
     private LocalDate visitDate(String visitMonth) {
         if (visitMonth == null || visitMonth.isBlank()) return null;
         try {
-            return YearMonth.parse(visitMonth, DateTimeFormatter.ofPattern("yyyyMM")).atDay(1);
+            return YearMonth.parse(visitMonth).atDay(1);
         } catch (RuntimeException exception) {
             throw new org.springframework.web.server.ResponseStatusException(
-                    org.springframework.http.HttpStatus.BAD_REQUEST, "방문 월은 YYYYMM 형식이어야 합니다.");
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "방문 월은 YYYY-MM 형식이어야 합니다.");
         }
     }
 }

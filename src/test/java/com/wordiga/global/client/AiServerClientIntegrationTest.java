@@ -98,7 +98,7 @@ class AiServerClientIntegrationTest {
 
     private AiPlanRequest request(List<String> tags) {
         PlanGenerateRequest request = new PlanGenerateRequest();
-        request.setVisitMonth("202609");
+        request.setVisitMonth("2026-09");
         request.setStayDays(1);
         request.setParticipantCount(25);
         request.setSelectedContentIds(List.of("129790"));

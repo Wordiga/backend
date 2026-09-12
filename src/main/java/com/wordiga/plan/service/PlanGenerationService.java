@@ -32,7 +32,7 @@ public class PlanGenerationService {
     public PlanDetailResponse generate(Long memberId, PlanGenerateRequest request) {
         validateRequest(request);
         List<TourismContentDetailResponse> details = new ArrayList<>();
-        var visitDate = YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM")).atDay(1);
+        var visitDate = YearMonth.parse(request.getVisitMonth()).atDay(1);
         for (int index = 0; index < request.getSelectedContentIds().size(); index++)
             details.add(tourismContentDetailService.getAiDetail(
                     request.getSelectedContentIds().get(index), visitDate));
@@ -103,9 +103,9 @@ public class PlanGenerationService {
 
     private void validateRequest(PlanGenerateRequest r) {
         try {
-            YearMonth.parse(r.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM"));
+            YearMonth.parse(r.getVisitMonth());
         } catch (RuntimeException exception) {
-            invalid(HttpStatus.BAD_REQUEST, "방문 월은 YYYYMM 형식이어야 합니다.");
+            invalid(HttpStatus.BAD_REQUEST, "방문 월은 YYYY-MM 형식이어야 합니다.");
         }
         if (new HashSet<>(r.getSelectedContentIds()).size() != r.getSelectedContentIds().size())
             invalid(HttpStatus.BAD_REQUEST, "콘텐츠 ID는 중복될 수 없습니다.");

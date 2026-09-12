@@ -83,7 +83,7 @@ class PlanControllerTest {
                 ProposalResponse.builder().proposalId(3L).planId(9L).fileName("proposal.docx").build());
 
         mockMvc.perform(post("/api/v1/plans/generate").contentType("application/json").content("""
-                {"visitMonth":"202608","stayDays":2,"participantCount":10,
+                {"visitMonth":"2026-08","stayDays":2,"participantCount":10,
                  "selectedContentIds":["126508"]}
                 """)).andExpect(status().isOk()).andExpect(jsonPath("$.planId").value(9));
         mockMvc.perform(post("/api/v1/plans/9/proposals"))

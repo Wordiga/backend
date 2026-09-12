@@ -55,7 +55,7 @@ class TourismContentControllerTest {
                 .isWished(true)
                 .build();
         when(tourismContentService.getContentList(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
                 .thenReturn(TourismContentListResponse.builder()
                         .items(List.of(item))
                         .page(0)
@@ -65,6 +65,8 @@ class TourismContentControllerTest {
 
         mockMvc.perform(get("/api/v1/tourism/contents")
                         .param("type", "POPULAR")
+                        .param("theme", "ATTRACTION_EXPERIENCE")
+                        .param("category", "EX,HS")
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())
@@ -73,6 +75,9 @@ class TourismContentControllerTest {
                 .andExpect(jsonPath("$.items[0].isWished").value(true))
                 .andExpect(jsonPath("$.items[0].wished").doesNotExist())
                 .andExpect(jsonPath("$.hasNext").value(false));
+        verify(tourismContentService).getContentList(any(), eq(com.wordiga.tourism.dto.ListType.POPULAR),
+                any(), any(), any(), eq("ATTRACTION_EXPERIENCE"), eq(List.of("EX", "HS")), any(), any(),
+                any(), eq(10), any(), eq(0), eq(10));
     }
 
     @Test
@@ -120,7 +125,7 @@ class TourismContentControllerTest {
                         .build());
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
-                        .param("visitMonth", "202608")
+                        .param("visitMonth", "2026-08")
                         .param("ageGroups", "20S,30S")
                         .param("stayDays", "2"))
                 .andExpect(status().isOk())

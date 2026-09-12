@@ -3,6 +3,7 @@ package com.wordiga.tourism.service;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.AreaBasedItem;
 import com.wordiga.global.config.TourismProperties;
+import com.wordiga.plan.service.PlanCostPolicy;
 import com.wordiga.tourism.dto.TourismContentDto;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.domain.TourismCategory;
@@ -38,6 +39,12 @@ public class PersonalizedTourismContentService {
 
     public TourismContentListResponse get(
             Long memberId, LocalDate visitDate, List<String> ageGroups, Integer stayNights, int page, int size) {
+        return get(memberId, visitDate, ageGroups, stayNights, null, List.of(), page, size);
+    }
+
+    public TourismContentListResponse get(
+            Long memberId, LocalDate visitDate, List<String> ageGroups, Integer stayNights,
+            String theme, List<String> categories, int page, int size) {
 
         if (memberId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "로그인이 필요합니다.");
@@ -76,6 +83,12 @@ public class PersonalizedTourismContentService {
         // 3. 만족도 점수 기준 내림차순 정렬 및 메모리 페이징
         List<TourismContentDto> sortedList = candidateMap.values().stream()
                 .filter(item -> !"15".equals(item.getContentTypeId()))
+                .filter(item -> theme == null || theme.isBlank()
+                        || item.getTheme() != null && theme.equals(item.getTheme().code()))
+                .filter(item -> categories == null || categories.isEmpty() || item.getCategory() != null
+                        && categories.stream().filter(java.util.Objects::nonNull)
+                        .flatMap(value -> java.util.Arrays.stream(value.split(","))).map(String::trim)
+                        .anyMatch(item.getCategory().code()::equals))
                 .sorted(Comparator.comparing(TourismContentDto::getRecommendationScore,
                                 Comparator.nullsLast(Comparator.reverseOrder()))
                         .thenComparingInt(item -> Objects.hash(LocalDate.now(), item.getContentId())))
@@ -147,6 +160,7 @@ public class PersonalizedTourismContentService {
                         category.getTheme().getCode(), category.getTheme().getDisplayName()))
                 .category(category == null ? null : new CodeNameDto(category.getCode(), category.getDisplayName()))
                 .recommendationScore(score)
+                .estimatedCost(PlanCostPolicy.defaultPerPersonAmount(item.getContenttypeid(), 10))
                 .build();
     }
 
