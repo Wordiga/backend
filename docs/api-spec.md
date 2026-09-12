@@ -64,10 +64,12 @@ GET /api/v1/tourism/contents
 
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
-| `type` | Enum | N | `POPULAR`, `SEASONAL`, `RELATED`, `PERSONALIZED`; 기본값은 `POPULAR` | `POPULAR` |
+| `type` | Enum | N | `POPULAR`, `SEASONAL`, `RELATED`, `PERSONALIZED`, `FESTIVAL`; 기본값은 `POPULAR` | `POPULAR` |
 | `visitMonth` | String | N | 계절 정렬 기준 월 `YYYY-MM`, 미입력 시 현재 월 | `2026-08` |
 | `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
 | `contentTypeId` | String | N | 관광타입 ID | `12` |
+| `theme` | String | N | 화면 대분류 테마 코드 | `ATTRACTION_EXPERIENCE` |
+| `category` | String[] | N | 복수 세부 카테고리 코드. 쉼표 구분 또는 반복 파라미터 사용 | `EV,EX,HS` |
 | `lDongSignguCd` | String | N | 충청남도 법정동 시군구 코드 | `200` |
 | `referenceContentId` | String | C | `type=RELATED`일 때 필수인 기준 관광 콘텐츠 ID | `2717354` |
 | `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
@@ -102,6 +104,7 @@ GET /api/v1/tourism/contents
 | `items[].category.code` | String | Y | 필터와 선택 상태에 사용하는 분류 코드 |
 | `items[].category.name` | String | Y | 화면 표시용 분류명 |
 | `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수 |
+| `items[].estimatedCost` | Long | Y | 관광타입 기본 정책 기준 1인 예상 비용 |
 | `items[].isWished` | Boolean | Y | 현재 로그인 회원의 위시 등록 여부이며 비회원은 `false` |
 | `page` | Integer | Y | 현재 페이지 |
 | `size` | Integer | Y | 페이지 크기 |
@@ -126,6 +129,7 @@ GET /api/v1/tourism/contents
       "theme": {"code": "ATTRACTION_EXPERIENCE", "name": "관광지/체험"},
       "category": {"code": "HS", "name": "역사관광"},
       "recommendationScore": 88.3,
+      "estimatedCost": 10000,
       "isWished": true
     }
   ],
@@ -156,10 +160,10 @@ GET /api/v1/tourism/contents
 
 - 검색어가 있으면 한국관광공사 `searchKeyword2`, 없으면 `areaBasedList2`로 후보를 조회합니다.
 - `POPULAR` 기본 점수는 소비 강도 60%, 체류 강도 40%로 계산합니다.
-- `POPULAR`은 시군구별 콘텐츠를 교차 배치해 첫 화면의 지역 편중을 줄입니다.
-- `SEASONAL`은 전년도 동월 지역 관광 서비스 수요 70%와 관광타입 계절 적합도 30%를 사용합니다.
+- `POPULAR`은 시군구별 콘텐츠를 교차 배치하고 날짜 기반 순서를 적용해 첫 화면의 지역·콘텐츠 편중을 줄입니다.
+- `SEASONAL`은 전년도 동월 지역 관광 서비스 수요 70%와 관광타입 계절 적합도 30%를 사용하고 방문 월 기반 순서를 적용합니다.
 - `PERSONALIZED`는 위시 지역 50%, 위시 대분류 30%, 계절 적합도 20%로 계산하며 활동로그는 수집하지 않습니다.
-- `RELATED`는 기준 콘텐츠명과 지역으로 한국관광공사 연관 관광지를 조회한 뒤 충청남도 콘텐츠 ID로 매칭하며, 기준 콘텐츠와 중복 결과를 제외하고 원천 순위를 유지합니다.
+- `RELATED`는 기준 콘텐츠명과 지역으로 한국관광공사 연관 관광지를 조회한 뒤 충청남도 콘텐츠 ID로 매칭합니다. 매칭 결과가 없으면 같은 시군구의 동일 카테고리 콘텐츠를 우선해 대체합니다.
 - 일반 목록에서는 축제(`contentTypeId=15`)를 제외하고 `type=FESTIVAL`로 별도 조회합니다.
 - 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
 - `POPULAR`, `SEASONAL`은 원천 API 순위를 유지하고 `PERSONALIZED`는 `recommendationScore DESC`로 정렬합니다.
@@ -1032,7 +1036,7 @@ POST /api/v1/plans/generate
 | `estimatedBudget.totalAmount` | Long | N | 전체 예상 금액 |
 | `estimatedBudget.perPersonAmount` | Long | N | 1인당 예상 금액 |
 | `estimatedBudget.currency` | String | N | 통화 코드 |
-| `estimatedBudget.breakdown` | Map<String, Long> | N | 백엔드 관광타입 비용 정책으로 계산한 항목별 예상 금액 |
+| `estimatedBudget.breakdown` | Map<String, Long> | N | 백엔드 관광타입 비용 정책으로 계산한 카테고리별 1인 예상 금액 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1048,7 +1052,7 @@ POST /api/v1/plans/generate
 | `days[].contents[].endTime` | LocalTime | N | 종료 시각 |
 | `days[].contents[].durationMinutes` | Integer | N | AI가 정한 시작·종료 시각의 차이(분) |
 | `days[].contents[].travelTimeMinutes` | Integer | N | 이전 콘텐츠부터 이동시간(분) |
-| `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m) |
+| `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m). AI 값이 없으면 좌표 간 직선거리, 첫 콘텐츠는 0 |
 | `days[].contents[].estimatedCost` | Long | N | 관광공사 원천 금액 또는 유형별 기본값에 수량을 곱한 예상 비용 |
 | `days[].contents[].memo` | String | N | 일정 메모 |
 | `createdAt` | LocalDateTime | Y | 저장 시각 |
