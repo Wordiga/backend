@@ -45,7 +45,7 @@ public class PlanDetailResponse {
                     "KRW", breakdown);
         }
         return builder().planId(p.getId()).scheduleId(p.getScheduleId()).title(p.getTitle())
-                .visitMonth(p.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM")))
+                .visitMonth(p.getStartDate().format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM")))
                 .stayDays((int) java.time.temporal.ChronoUnit.DAYS.between(p.getStartDate(), p.getEndDate()) + 1)
                 .participantCount(p.getParticipantCount()).estimatedBudget(budget).days(days)
                 .proposal(proposalInfo)

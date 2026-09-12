@@ -35,7 +35,7 @@ public record AiPlanRequest(
                                      Map<String, List<String>> tagsByContentId) {
         return new AiPlanRequest(
                 System.currentTimeMillis(),
-                YearMonth.parse(request.getVisitMonth(), DateTimeFormatter.ofPattern("yyyyMM")).getMonthValue(),
+                YearMonth.parse(request.getVisitMonth()).getMonthValue(),
                 request.getParticipantCount(),
                 request.getStayDays(),
                 request.getSelectedContentIds(),

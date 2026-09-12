@@ -55,8 +55,7 @@ public class RegionalContentService {
                 if (added >= target.limit()) break;
                 try {
                     TourismContentDetailResponse detail = detailService.getAiDetail(
-                            candidate.item().getContentid(), YearMonth.parse(request.getVisitMonth(),
-                                    DateTimeFormatter.ofPattern("yyyyMM")).atDay(1));
+                            candidate.item().getContentid(), YearMonth.parse(request.getVisitMonth()).atDay(1));
                     if (hasRequiredAiFields(detail)) {
                         details.add(detail);
                         includedIds.add(candidate.item().getContentid());
