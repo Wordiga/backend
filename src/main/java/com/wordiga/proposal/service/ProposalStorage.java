@@ -1,6 +1,6 @@
 package com.wordiga.proposal.service;
 
-import com.wordiga.global.config.ProposalS3Properties;
+import com.wordiga.global.config.KtStorageProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -22,11 +22,13 @@ import java.nio.charset.StandardCharsets;
 @Component
 @RequiredArgsConstructor
 public class ProposalStorage {
+
     private static final String DOCX = "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
     private static final String PDF = "application/pdf";
+
     private final S3Client s3Client;
     private final S3Presigner presigner;
-    private final ProposalS3Properties properties;
+    private final KtStorageProperties properties;
 
     public void put(String key, byte[] bytes) {
         putWithContentType(key, bytes, DOCX);
@@ -43,7 +45,9 @@ public class ProposalStorage {
                     PutObjectRequest.builder().bucket(properties.bucket()).key(key).contentType(contentType).build(),
                     RequestBody.fromBytes(bytes));
         } catch (S3Exception e) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "제안서를 저장할 수 없습니다.", e);
+            log.error("[KT Cloud Storage Error] status={}, code={}, message={}",
+                    e.statusCode(), e.awsErrorDetails().errorCode(), e.awsErrorDetails().errorMessage(), e);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "스토리지 오류가 발생했습니다.", e);
         }
     }
 
@@ -61,7 +65,7 @@ public class ProposalStorage {
         try {
             s3Client.deleteObject(DeleteObjectRequest.builder().bucket(properties.bucket()).key(key).build());
         } catch (RuntimeException exception) {
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "제안서를 삭제할 수 없습니다.", exception);
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "스토리지 오류가 발생했습니다.", exception);
         }
     }
 
@@ -69,12 +73,12 @@ public class ProposalStorage {
         try {
             delete(key);
         } catch (RuntimeException exception) {
-            log.warn("제안서 보상 삭제에 실패했습니다. key={}", key, exception);
+            log.warn("파일 삭제 실패 key={}", key, exception);
         }
     }
 
     private void configured() {
         if (properties.bucket() == null || properties.bucket().isBlank())
-            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "제안서 저장소가 설정되지 않았습니다.");
+            throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "스토리지 설정이 올바르지 않습니다.");
     }
 }

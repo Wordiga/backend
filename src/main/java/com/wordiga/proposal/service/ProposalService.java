@@ -1,7 +1,7 @@
 package com.wordiga.proposal.service;
 
 import com.wordiga.global.client.AiServerClient;
-import com.wordiga.global.config.ProposalS3Properties;
+import com.wordiga.global.config.KtStorageProperties;
 import com.wordiga.plan.Plan;
 import com.wordiga.plan.service.PlanReader;
 import com.wordiga.proposal.Proposal;
@@ -31,7 +31,7 @@ public class ProposalService {
     private final ProposalStorage storage;
     private final ProposalWriter writer;
     private final ProposalPdfConverter pdfConverter;
-    private final ProposalS3Properties properties;
+    private final KtStorageProperties properties;
 
     public ProposalResponse create(Long memberId, Long planId) {
         PlanReader.Snapshot snapshot = planReader.read(memberId, planId);

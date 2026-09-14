@@ -72,13 +72,16 @@ ai:
     connect-timeout: ${AI_SERVER_CONNECT_TIMEOUT:2s}
     read-timeout: ${AI_SERVER_READ_TIMEOUT:100s}
 
-proposal:
-  s3:
-    bucket: ${PROPOSAL_S3_BUCKET:}
-    region: ${AWS_REGION:ap-northeast-2}
+storage:
+  kt:
+    bucket: ${KT_S3_BUCKET:wordiga-storage}
+    region: ${KT_S3_REGION:kr-standard}
+    endpoint: ${KT_S3_ENDPOINT:https://obj-e-1.ktcloud.com}
+    access-key: ${KT_S3_ACCESS_KEY:}
+    secret-key: ${KT_S3_SECRET_KEY:}
     url-validity: 1d
     retention: 30d
-
+    
 logging:
   level:
     org.springframework.security: DEBUG

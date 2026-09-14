@@ -1,7 +1,7 @@
 package com.wordiga.proposal.service;
 
 import com.wordiga.global.client.AiServerClient;
-import com.wordiga.global.config.ProposalS3Properties;
+import com.wordiga.global.config.KtStorageProperties;
 import com.wordiga.plan.Plan;
 import com.wordiga.plan.PlanContent;
 import com.wordiga.plan.service.PlanReader;
@@ -49,7 +49,7 @@ class ProposalServiceUnitTest {
     @BeforeEach
     void setUp() {
         service = new ProposalService(planReader, proposalRepository, aiServerClient, storage, writer, pdfConverter,
-                new ProposalS3Properties("bucket", "ap-northeast-2", Duration.ofMinutes(15), Duration.ofDays(30)));
+                new KtStorageProperties("bucket", "kr-standard", null, "accessKey", "secretKey", Duration.ofMinutes(15), Duration.ofDays(30)));
         plan = Plan.create(null, "아산 일정", LocalDate.now(), LocalDate.now(), 2);
         TourismContentSnapshot content = TourismContentSnapshot.builder()
                 .contentId("1").contentTypeId("12").title("현충사")
