@@ -1,5 +1,6 @@
 package com.wordiga.tourism.dto.detail;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Builder;
 import lombok.Getter;
 
@@ -16,4 +17,8 @@ public class TourismContentDetailResponse {
     private List<SeasonalImageDto> seasonalImages;
     private SatisfactionDto satisfaction;
     private Boolean capacitySatisfied;
+
+    @JsonProperty("isWished")
+    @Getter(onMethod_ = @JsonProperty("isWished"))
+    private boolean isWished;
 }

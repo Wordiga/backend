@@ -1,7 +1,7 @@
 package com.wordiga.global.client;
 
+
 import com.fasterxml.jackson.core.JsonProcessingException;
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.wordiga.global.config.AiServerProperties;
 import com.wordiga.plan.dto.ai.AiPlanRequest;
 import com.wordiga.plan.dto.ai.AiPlanResponse;
@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.databind.ObjectMapper;
 
 @Component
 @Slf4j

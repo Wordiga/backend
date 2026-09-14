@@ -3,9 +3,10 @@ package com.wordiga.global.client;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.http.HttpStatus;
-import org.springframework.stereotype.Component;
 import org.springframework.cache.annotation.Cacheable;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.client.ClientHttpResponse;
+import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.client.RestClient;
@@ -15,10 +16,10 @@ import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import java.util.List;
-import java.util.Objects;
 import java.net.URLDecoder;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
+import java.util.Objects;
 
 import static com.wordiga.global.util.KtoUtils.extractItems;
 
@@ -34,6 +35,10 @@ public class TourismApiClient {
 
         RestClient restClient = restClientBuilder
                 .baseUrl(properties.getApi().getBaseUrl())
+                .requestInterceptor((request, body, execution) -> {
+                    ClientHttpResponse response = execution.execute(request, body);
+                    return new BufferingClientHttpResponseWrapper(response);
+                })
                 .build();
 
         HttpServiceProxyFactory factory = HttpServiceProxyFactory
@@ -42,7 +47,6 @@ public class TourismApiClient {
 
         this.client = factory.createClient(TourismHttpExchangeClient.class);
     }
-
     // ─── 지역별 관광 수요 강도 ───
 
     @Cacheable(cacheNames = "tourismAnalytics", key = "'exp:' + #baseYm + ':' + #areaCd + ':' + #signguCd + ':' + #tarExpDsIxCd", sync = true)
@@ -418,5 +422,55 @@ public class TourismApiClient {
                 @RequestParam("keyword") String keyword, @RequestParam("pageNo") int pageNo,
                 @RequestParam("numOfRows") int numOfRows, @RequestParam("arrange") String arrange
         );
+    }
+
+    /**
+     * 관광공사 API 응답 본문의 결함("items": "")을 "items": null로 치환하는 래퍼
+     */
+    private static class BufferingClientHttpResponseWrapper implements org.springframework.http.client.ClientHttpResponse {
+        private final org.springframework.http.client.ClientHttpResponse response;
+        private byte[] body;
+
+        public BufferingClientHttpResponseWrapper(org.springframework.http.client.ClientHttpResponse response) {
+            this.response = response;
+        }
+
+        @Override
+        public org.springframework.http.HttpStatusCode getStatusCode() throws java.io.IOException {
+            return response.getStatusCode();
+        }
+
+        @Override
+        public String getStatusText() throws java.io.IOException {
+            return response.getStatusText();
+        }
+
+        @Override
+        public void close() {
+            response.close();
+        }
+
+        @Override
+        public java.io.InputStream getBody() throws java.io.IOException {
+            if (this.body == null) {
+                byte[] rawBody = response.getBody().readAllBytes();
+                String content = new String(rawBody, java.nio.charset.StandardCharsets.UTF_8);
+
+                // 관광공사의 결함 응답 패턴을 "items": null 로 치환
+                if (content.contains("\"items\":\"\"") || content.contains("\"items\": \"\"")) {
+                    content = content.replace("\"items\":\"\"", "\"items\":null")
+                            .replace("\"items\": \"\"", "\"items\": null");
+                    this.body = content.getBytes(java.nio.charset.StandardCharsets.UTF_8);
+                } else {
+                    this.body = rawBody;
+                }
+            }
+            return new java.io.ByteArrayInputStream(this.body);
+        }
+
+        @Override
+        public org.springframework.http.HttpHeaders getHeaders() {
+            return response.getHeaders();
+        }
     }
 }

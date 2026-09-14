@@ -1,5 +1,6 @@
 package com.wordiga.tourism.controller;
 
+import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.tourism.api.TourismContentApi;
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.SigunguResponse;
@@ -15,7 +16,6 @@ import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDate;
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 
 
@@ -57,13 +57,14 @@ public class TourismContentController implements TourismContentApi {
 
     @GetMapping("/{contentId}")
     public ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
+            @CurrentMemberId Long memberId,
             @PathVariable String contentId,
             @RequestParam(required = false) String visitMonth,
             @RequestParam(required = false) List<String> ageGroups,
             @RequestParam(required = false) Integer stayDays,
             @RequestParam(defaultValue = "10") Integer participantCount) {
         return ResponseEntity.ok(tourismContentDetailService.getDetail(
-                contentId, visitDate(visitMonth), ageGroups, stayDays == null ? null : stayDays - 1, participantCount));
+                memberId, contentId, visitDate(visitMonth), ageGroups, stayDays == null ? null : stayDays - 1, participantCount));
     }
 
     private LocalDate visitDate(String visitMonth) {

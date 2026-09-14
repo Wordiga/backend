@@ -1,18 +1,30 @@
 package com.wordiga.global.config;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.global.client.dto.AreaBasedItem;
+import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.global.client.dto.PhotoGalleryResponse;
 import com.wordiga.global.client.dto.SigunguItem;
-import com.wordiga.global.config.RestClientConfig;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.DeserializationFeature;
+import tools.jackson.databind.ObjectMapper;
+import tools.jackson.databind.cfg.CoercionAction;
+import tools.jackson.databind.cfg.CoercionInputShape;
+import tools.jackson.databind.json.JsonMapper;
+import tools.jackson.databind.type.LogicalType;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class TourismResponseMappingUnitTest {
 
-    private final ObjectMapper objectMapper = new RestClientConfig().objectMapper();
+    private final ObjectMapper objectMapper = JsonMapper.builder()
+            .configure(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES, false)
+            .configure(DeserializationFeature.ACCEPT_SINGLE_VALUE_AS_ARRAY, true)
+            .configure(DeserializationFeature.ACCEPT_EMPTY_STRING_AS_NULL_OBJECT, true)
+            .withCoercionConfig(LogicalType.POJO, cfg ->
+                    cfg.setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsNull))
+            .withCoercionConfig(LogicalType.Collection, cfg ->
+                    cfg.setCoercion(CoercionInputShape.EmptyString, CoercionAction.AsNull))
+            .build();
 
     @Test
     void mapsLowerCamelCaseLegalDistrictCodes() throws Exception {

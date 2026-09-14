@@ -1,8 +1,9 @@
 package com.wordiga.tourism.api;
 
+import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.tourism.dto.ListType;
-import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.dto.SigunguResponse;
+import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,11 +39,12 @@ public interface TourismContentApi {
             @Min(1) @Max(50) int size
     );
 
-    @Operation(summary = "관광 콘텐츠 통합 상세 조회",
-            description = "공통정보, 타입별 소개·반복정보와 이미지를 통합하여 조회합니다.")
+    @Operation(summary = "관광 콘텐츠 상세 조회",
+            description = "공통/소개/반복 정보, 계절 이미지, 만족도 분석, 수용 인원 적합도를 통합 반환합니다.")
     ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
-            @Parameter(description = "관광 콘텐츠 ID") String contentId,
-            @Parameter(description = "방문 월(YYYY-MM)", example = "2026-09") String visitMonth,
+            @CurrentMemberId Long memberId,
+            @Parameter(description = "콘텐츠 ID") String contentId,
+            @Parameter(description = "방문 예정월 (YYYY-MM)", example = "2026-09") String visitMonth,
             List<String> ageGroups,
             @Min(1) @Max(3) Integer stayDays,
             @Min(1) @Max(50) Integer participantCount

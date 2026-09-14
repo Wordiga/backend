@@ -8,6 +8,7 @@ import com.wordiga.tourism.domain.TourismContentType;
 import com.wordiga.tourism.dto.SatisfactionRequestDto;
 import com.wordiga.tourism.dto.detail.SeasonalImageDto;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
+import com.wordiga.wish.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
@@ -31,12 +32,28 @@ public class TourismContentDetailService {
     private final TourismApiClient tourismApiClient;
     private final TourismDetailMapper detailMapper;
     private final TourismSatisfactionService satisfactionService;
+    private final WishRepository wishRepository;
+
+    static Map<String, BigDecimal> parseAgeRatios(List<String> ageGroups) {
+        if (ageGroups == null || ageGroups.isEmpty()) return Map.of();
+        BigDecimal ratio = BigDecimal.ONE.divide(BigDecimal.valueOf(ageGroups.size()), 2, RoundingMode.HALF_UP);
+        Map<String, BigDecimal> ratios = new LinkedHashMap<>();
+        for (String age : ageGroups) {
+            if (age != null && age.toLowerCase(Locale.ROOT).replace("_", "-").equals("50s-plus")) {
+                BigDecimal half = ratio.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
+                ratios.merge("50S", half, BigDecimal::add);
+                ratios.merge("60S", half, BigDecimal::add);
+            } else if (age != null) {
+                ratios.merge(age, ratio, BigDecimal::add);
+            }
+        }
+        return ratios;
+    }
 
     public TourismContentDetailResponse getDetail(
+            Long memberId,
             String contentId, LocalDate visitDate, List<String> ageGroups, Integer stayNights, Integer participantCount) {
-
         ContentDetailDto common = getCommonDetail(contentId);
-
         DetailIntroDto intro = tourismApiClient.fetchIntroDetail(contentId, common.getContenttypeid());
         List<DetailInfoDto> details = tourismApiClient.fetchRepeatInfo(contentId, common.getContenttypeid(), 1, 100);
         List<DetailImageDto> images = tourismApiClient.fetchImages(contentId, "Y", 1, 100);
@@ -51,6 +68,8 @@ public class TourismContentDetailService {
                 stayNights
         );
 
+        boolean isWished = memberId != null && wishRepository.existsByMemberIdAndContent_ContentId(memberId, contentId);
+
         return TourismContentDetailResponse.builder()
                 .common(detailMapper.toCommon(common))
                 .intro(detailMapper.toIntro(intro))
@@ -59,7 +78,13 @@ public class TourismContentDetailService {
                 .seasonalImages(seasonalImages)
                 .satisfaction(satisfactionService.calculate(satisfactionRequest, null))
                 .capacitySatisfied(capacitySatisfied(common.getContenttypeid(), intro, details, participantCount))
+                .isWished(isWished)
                 .build();
+    }
+
+    public TourismContentDetailResponse getDetail(
+            String contentId, LocalDate visitDate, List<String> ageGroups, Integer stayNights, Integer participantCount) {
+        return getDetail(null, contentId, visitDate, ageGroups, stayNights, participantCount);
     }
 
     public ContentDetailDto getCommonDetail(String contentId) {
@@ -78,6 +103,8 @@ public class TourismContentDetailService {
         return capacitySatisfied(common.getContenttypeid(), intro, details, participantCount);
     }
 
+    // ─── Helper Methods ───
+
     public TourismContentDetailResponse getAiDetail(String contentId, LocalDate visitDate) {
         ContentDetailDto common = getCommonDetail(contentId);
         DetailIntroDto intro = tourismApiClient.fetchIntroDetail(contentId, common.getContenttypeid());
@@ -91,8 +118,6 @@ public class TourismContentDetailService {
                 .seasonalImages(List.of())
                 .build();
     }
-
-    // ─── Helper Methods ───
 
     private Boolean capacitySatisfied(String contentTypeId, DetailIntroDto intro, List<DetailInfoDto> details, Integer participantCount) {
         if (!TourismContentType.LODGING.getCode().equals(contentTypeId)) return null;
@@ -121,21 +146,5 @@ public class TourismContentDetailService {
     private int parseCapacity(String value) {
         Integer parsed = KtoUtils.parseInteger(value);
         return parsed != null ? parsed : 0;
-    }
-
-    static Map<String, BigDecimal> parseAgeRatios(List<String> ageGroups) {
-        if (ageGroups == null || ageGroups.isEmpty()) return Map.of();
-        BigDecimal ratio = BigDecimal.ONE.divide(BigDecimal.valueOf(ageGroups.size()), 2, RoundingMode.HALF_UP);
-        Map<String, BigDecimal> ratios = new LinkedHashMap<>();
-        for (String age : ageGroups) {
-            if (age != null && age.toLowerCase(Locale.ROOT).replace("_", "-").equals("50s-plus")) {
-                BigDecimal half = ratio.divide(BigDecimal.valueOf(2), 2, RoundingMode.HALF_UP);
-                ratios.merge("50S", half, BigDecimal::add);
-                ratios.merge("60S", half, BigDecimal::add);
-            } else if (age != null) {
-                ratios.merge(age, ratio, BigDecimal::add);
-            }
-        }
-        return ratios;
     }
 }

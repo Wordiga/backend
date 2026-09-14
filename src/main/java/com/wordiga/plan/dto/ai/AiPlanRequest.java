@@ -8,7 +8,6 @@ import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.dto.detail.TourismIntroDetailDto;
 
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.Map;
 
@@ -47,6 +46,15 @@ public record AiPlanRequest(
                 request.getAgeGroups(),
                 null,
                 null);
+    }
+
+    private static EstimatedBudget budget(List<TourismContentDetailResponse> details, int participants) {
+        var estimates = details.stream().map(detail -> PlanCostPolicy.estimate(detail, participants)).toList();
+        long total = estimates.stream().mapToLong(PlanCostPolicy.Estimate::calculatedAmount).sum();
+        Map<String, Long> breakdown = estimates.stream().collect(java.util.stream.Collectors.groupingBy(
+                PlanCostPolicy.Estimate::category, java.util.LinkedHashMap::new,
+                java.util.stream.Collectors.summingLong(PlanCostPolicy.Estimate::calculatedAmount)));
+        return new EstimatedBudget(total, participants == 0 ? 0 : total / participants, "KRW", breakdown);
     }
 
     @JsonInclude(JsonInclude.Include.ALWAYS)
@@ -133,15 +141,6 @@ public record AiPlanRequest(
 
     public record EstimatedBudget(long total, @JsonProperty("per_person") long perPerson,
                                   String currency, Map<String, Long> breakdown) {
-    }
-
-    private static EstimatedBudget budget(List<TourismContentDetailResponse> details, int participants) {
-        var estimates = details.stream().map(detail -> PlanCostPolicy.estimate(detail, participants)).toList();
-        long total = estimates.stream().mapToLong(PlanCostPolicy.Estimate::calculatedAmount).sum();
-        Map<String, Long> breakdown = estimates.stream().collect(java.util.stream.Collectors.groupingBy(
-                PlanCostPolicy.Estimate::category, java.util.LinkedHashMap::new,
-                java.util.stream.Collectors.summingLong(PlanCostPolicy.Estimate::calculatedAmount)));
-        return new EstimatedBudget(total, participants == 0 ? 0 : total / participants, "KRW", breakdown);
     }
 
 }
