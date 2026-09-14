@@ -1,11 +1,10 @@
 package com.wordiga.global.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.wordiga.global.security.RestAuthenticationEntryPoint;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.authentication.BadCredentialsException;
+import tools.jackson.databind.ObjectMapper;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

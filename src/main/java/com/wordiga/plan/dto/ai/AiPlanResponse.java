@@ -3,9 +3,9 @@ package com.wordiga.plan.dto.ai;
 import com.fasterxml.jackson.annotation.JsonAlias;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import lombok.Data;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 
 import java.time.Duration;
 import java.time.LocalDate;
@@ -95,10 +95,15 @@ public class AiPlanResponse {
 
     @Data
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
+    @JsonIgnoreProperties(ignoreUnknown = true)
     public static class EstimatedCost {
-        @JsonAlias("total")
+        @JsonAlias({"total", "total_amount"})
         private Long totalAmount;
+
+        //        @JsonAlias("per_person_amount")
+//        @JsonProperty("per_person_amount")
         private Long perPersonAmount;
+
         private String currency;
         private Map<String, Long> breakdown;
     }

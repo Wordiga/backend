@@ -27,5 +27,11 @@ public abstract class PostgresIntegrationTest {
         registry.add("spring.security.oauth2.client.registration.google.client-secret", () -> "test");
         registry.add("spring.security.oauth2.client.registration.kakao.client-id", () -> "test");
         registry.add("spring.security.oauth2.client.registration.kakao.client-secret", () -> "test");
+
+        registry.add("storage.kt.access-key", () -> "dummy-access-key");
+        registry.add("storage.kt.secret-key", () -> "dummy-secret-key");
+        registry.add("storage.kt.bucket", () -> "wordiga-test-storage");
+        registry.add("ai.server.base-url", () -> "http://localhost:8000");
+        registry.add("app.frontend-url", () -> "http://localhost:3000");
     }
 }

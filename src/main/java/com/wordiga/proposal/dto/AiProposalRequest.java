@@ -1,10 +1,10 @@
 package com.wordiga.proposal.dto;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
 import com.wordiga.plan.dto.PlanDetailResponse;
 import lombok.Builder;
 import lombok.Data;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 
 import java.util.List;
 import java.util.Map;
@@ -22,13 +22,28 @@ public class AiProposalRequest {
     private Integer numPeople;
 
     public static AiProposalRequest from(PlanDetailResponse plan) {
+        Integer formattedVisitMonth = null;
+        if (plan.getVisitMonth() != null && !plan.getVisitMonth().isBlank()) {
+            String sanitized = plan.getVisitMonth().replaceAll("[^0-9]", "");
+            if (sanitized.length() == 6 && sanitized.startsWith("20")) {
+                int value = Integer.parseInt(sanitized);
+                int currentYm = Integer.parseInt(java.time.YearMonth.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM")));
+                if (value < currentYm) {
+                    throw new IllegalArgumentException("과거 연월(" + value + ")은 제안서 생성 대상이 될 수 없습니다.");
+                }
+                formattedVisitMonth = value;
+            } else {
+                throw new IllegalArgumentException("visitMonth는 20으로 시작하는 6자리 숫자여야 합니다: " + plan.getVisitMonth());
+            }
+        }
+
         return builder()
                 .planId(plan.getPlanId())
                 .companyInfo(new CompanyInfo("Wordiga"))
                 .timetable(Timetable.from(plan))
                 .estimatedCost(EstimatedCost.from(plan.getEstimatedBudget()))
                 .workshopPurpose(null)
-                .visitMonth(plan.getVisitMonth() == null ? null : Integer.valueOf(plan.getVisitMonth().substring(5)))
+                .visitMonth(formattedVisitMonth)
                 .numPeople(plan.getParticipantCount())
                 .build();
     }

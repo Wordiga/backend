@@ -1,20 +1,19 @@
 package com.wordiga.global.client;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.wordiga.plan.dto.PlanDetailResponse;
 import com.wordiga.plan.dto.ai.AiPlanResponse;
 import com.wordiga.proposal.dto.AiProposalRequest;
 import org.junit.jupiter.api.Test;
+import tools.jackson.databind.ObjectMapper;
 
-import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 class AiServerContractUnitTest {
-    private final ObjectMapper objectMapper = JsonMapper.builder().findAndAddModules().build();
+
+    private ObjectMapper objectMapper = new ObjectMapper();
 
     @Test
     void mapsCurrentScheduleResponseContract() throws Exception {
@@ -39,13 +38,16 @@ class AiServerContractUnitTest {
 
     @Test
     void writesCurrentProposalRequestContract() throws Exception {
+        String dynamicVisitMonth = java.time.YearMonth.now().plusMonths(1)
+                .format(java.time.format.DateTimeFormatter.ofPattern("yyyy-MM"));
+
         PlanDetailResponse.Content content = PlanDetailResponse.Content.builder().sequence(1).contentId("126508")
                 .title("현충사").contentTypeId("12").addr1("충청남도 아산시")
                 .thumbnailUrl("https://image.example/126508.jpg")
                 .startTime(LocalTime.of(10, 0)).endTime(LocalTime.of(11, 30)).travelTimeMinutes(0).build();
         PlanDetailResponse.Day day = PlanDetailResponse.Day.builder().dayNumber(1)
                 .contents(List.of(content)).build();
-        PlanDetailResponse plan = PlanDetailResponse.builder().planId(9L).visitMonth("2026-08")
+        PlanDetailResponse plan = PlanDetailResponse.builder().planId(9L).visitMonth(dynamicVisitMonth)
                 .participantCount(10).days(List.of(day)).build();
         String json = objectMapper.writeValueAsString(AiProposalRequest.from(plan));
 

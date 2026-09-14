@@ -1,7 +1,6 @@
 package com.wordiga.global.client;
 
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.wordiga.global.config.AiServerProperties;
 import com.wordiga.plan.dto.ai.AiPlanRequest;
 import com.wordiga.plan.dto.ai.AiPlanResponse;
@@ -14,6 +13,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientResponseException;
 import org.springframework.web.server.ResponseStatusException;
+import tools.jackson.core.JacksonException;
 import tools.jackson.databind.ObjectMapper;
 
 @Component
@@ -97,7 +97,7 @@ public class AiServerClient {
         return new ResponseStatusException(HttpStatus.BAD_GATEWAY, "AI 응답이 올바르지 않습니다.");
     }
 
-    private byte[] serialize(Object request) throws JsonProcessingException {
+    private byte[] serialize(Object request) throws JacksonException {
         return objectMapper.writeValueAsBytes(request);
     }
 

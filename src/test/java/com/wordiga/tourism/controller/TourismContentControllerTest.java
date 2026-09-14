@@ -1,12 +1,12 @@
 package com.wordiga.tourism.controller;
 
-import com.wordiga.tourism.dto.TourismContentDto;
-import com.wordiga.tourism.dto.TourismContentListResponse;
-import com.wordiga.tourism.dto.SigunguResponse;
-import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
-import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.global.security.JwtTokenProvider;
 import com.wordiga.member.repository.MemberRepository;
+import com.wordiga.tourism.dto.SigunguResponse;
+import com.wordiga.tourism.dto.TourismContentDto;
+import com.wordiga.tourism.dto.TourismContentListResponse;
+import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
+import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.service.TourismContentDetailService;
 import com.wordiga.tourism.service.TourismContentService;
 import org.junit.jupiter.api.Test;
@@ -17,13 +17,14 @@ import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.IntStream;
 
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.when;
+import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -112,11 +113,15 @@ class TourismContentControllerTest {
 
     @Test
     void returnsIntegratedDetail() throws Exception {
+        String visitMonth = YearMonth.now().plusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM"));
+        LocalDate visitDate = YearMonth.now().plusMonths(1).atDay(1);
+
         TourismCommonDetailDto common = TourismCommonDetailDto.builder()
                 .contentId("126508")
                 .title("현충사")
                 .build();
-        when(tourismContentDetailService.getDetail(eq("126508"), any(), any(), any(), any()))
+
+        when(tourismContentDetailService.getDetail(any(), eq("126508"), any(), any(), any(), any()))
                 .thenReturn(TourismContentDetailResponse.builder()
                         .common(common)
                         .details(List.of())
@@ -125,14 +130,15 @@ class TourismContentControllerTest {
                         .build());
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508")
-                        .param("visitMonth", "2026-08")
+                        .param("visitMonth", visitMonth)
                         .param("ageGroups", "20S,30S")
                         .param("stayDays", "2"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.common.contentId").value("126508"))
                 .andExpect(jsonPath("$.common.title").value("현충사"));
-        verify(tourismContentDetailService).getDetail("126508", LocalDate.of(2026, 8, 1),
-                List.of("20S", "30S"), 1, 10);
+
+        verify(tourismContentDetailService).getDetail(isNull(), eq("126508"), eq(visitDate),
+                eq(List.of("20S", "30S")), eq(1), eq(10));
 
         mockMvc.perform(get("/api/v1/tourism/contents/126508"))
                 .andExpect(status().isOk());

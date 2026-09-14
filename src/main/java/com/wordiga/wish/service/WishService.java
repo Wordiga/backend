@@ -1,16 +1,16 @@
 package com.wordiga.wish.service;
 
+import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.global.client.dto.ContentDetailDto;
+import com.wordiga.tourism.domain.TourismContentSnapshot;
+import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
+import com.wordiga.tourism.service.TourismContentDetailService;
+import com.wordiga.tourism.service.TourismContentSnapshotService;
+import com.wordiga.wish.Wish;
 import com.wordiga.wish.dto.WishFolderResponse;
 import com.wordiga.wish.dto.WishRequest;
 import com.wordiga.wish.dto.WishResponse;
-import com.wordiga.global.client.TourismApiClient;
-import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.wish.repository.WishRepository;
-import com.wordiga.tourism.service.TourismContentDetailService;
-import com.wordiga.tourism.service.TourismContentSnapshotService;
-import com.wordiga.tourism.domain.TourismContentSnapshot;
-import com.wordiga.tourism.domain.TourismContentSnapshotRepository;
-import com.wordiga.wish.Wish;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -52,26 +52,26 @@ public class WishService {
         }
 
         ContentDetailDto content = tourismContentDetailService.getCommonDetail(request.getContentId());
-
         String sigunguName = resolveSigunguName(content.getLDongSignguCd());
         String folderName = sigunguName != null ? sigunguName : "기본 위시리스트";
 
-        TourismContentSnapshot contentSnapshot = snapshotRepository.save(TourismContentSnapshot.builder()
-                .contentId(content.getContentid())
-                .contentTypeId(content.getContenttypeid())
-                .title(content.getTitle())
-                .firstimage(content.getFirstimage())
-                .addr1(content.getAddr1())
-                .mapx(parseBigDecimal(content.getMapx()))
-                .mapy(parseBigDecimal(content.getMapy()))
-                .sigunguCode(content.getLDongSignguCd())
-                .sigunguName(sigunguName)
-                .lclsSystem1Code(content.getLclsSystm1())
-                .lclsSystem2Code(content.getLclsSystm2())
-                .lclsSystem3Code(content.getLclsSystm3())
-                .sourceModifiedAt(parseKtoDateTime(content.getModifiedtime()))
-                .updatedAt(java.time.LocalDateTime.now())
-                .build());
+        TourismContentSnapshot contentSnapshot = snapshotRepository.findById(content.getContentid())
+                .orElseGet(() -> snapshotRepository.save(TourismContentSnapshot.builder()
+                        .contentId(content.getContentid())
+                        .contentTypeId(content.getContenttypeid())
+                        .title(content.getTitle())
+                        .firstimage(content.getFirstimage())
+                        .addr1(content.getAddr1())
+                        .mapx(parseBigDecimal(content.getMapx()))
+                        .mapy(parseBigDecimal(content.getMapy()))
+                        .sigunguCode(content.getLDongSignguCd())
+                        .sigunguName(sigunguName)
+                        .lclsSystem1Code(content.getLclsSystm1())
+                        .lclsSystem2Code(content.getLclsSystm2())
+                        .lclsSystem3Code(content.getLclsSystm3())
+                        .sourceModifiedAt(parseKtoDateTime(content.getModifiedtime()))
+                        .updatedAt(java.time.LocalDateTime.now())
+                        .build()));
 
         Wish wish = Wish.create(
                 memberId,
@@ -80,7 +80,6 @@ public class WishService {
         );
 
         Wish saved = wishRepository.save(wish);
-
         preferenceCacheService.evictUserPreferenceCache(memberId);
         return WishResponse.from(saved);
     }

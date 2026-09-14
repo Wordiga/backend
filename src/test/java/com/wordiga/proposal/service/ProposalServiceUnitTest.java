@@ -6,6 +6,7 @@ import com.wordiga.plan.Plan;
 import com.wordiga.plan.PlanContent;
 import com.wordiga.plan.service.PlanReader;
 import com.wordiga.proposal.Proposal;
+import com.wordiga.proposal.dto.AiProposalRequest;
 import com.wordiga.proposal.dto.ProposalResponse;
 import com.wordiga.proposal.repository.ProposalRepository;
 import com.wordiga.tourism.domain.TourismContentSnapshot;
@@ -74,9 +75,11 @@ class ProposalServiceUnitTest {
         assertThat(response.getDocxUrl()).isEqualTo("https://signed");
         verify(storage).put(anyString(), same(docx));
         verify(storage).putPdf(anyString(), any());
-        ArgumentCaptor<com.wordiga.proposal.dto.AiProposalRequest> payload = ArgumentCaptor.forClass(com.wordiga.proposal.dto.AiProposalRequest.class);
+        ArgumentCaptor<AiProposalRequest> payload = ArgumentCaptor.forClass(AiProposalRequest.class);
         verify(aiServerClient).generateProposal(payload.capture());
-        assertThat(payload.getValue().getVisitMonth()).isEqualTo(LocalDate.now().getMonthValue());
+
+        int currentYm = Integer.parseInt(LocalDate.now().format(java.time.format.DateTimeFormatter.ofPattern("yyyyMM")));
+        assertThat(payload.getValue().getVisitMonth()).isEqualTo(currentYm);
         assertThat(payload.getValue().getNumPeople()).isEqualTo(2);
     }
 

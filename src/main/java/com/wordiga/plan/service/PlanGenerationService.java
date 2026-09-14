@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.YearMonth;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 @Slf4j
@@ -102,13 +101,26 @@ public class PlanGenerationService {
     }
 
     private void validateRequest(PlanGenerateRequest r) {
+        YearMonth visitYearMonth;
         try {
-            YearMonth.parse(r.getVisitMonth());
+            visitYearMonth = YearMonth.parse(r.getVisitMonth());
+            if (!r.getVisitMonth().startsWith("20")) {
+                invalid(HttpStatus.BAD_REQUEST, "방문 월은 20으로 시작하는 YYYY-MM 형식이어야 합니다.");
+            }
         } catch (RuntimeException exception) {
             invalid(HttpStatus.BAD_REQUEST, "방문 월은 YYYY-MM 형식이어야 합니다.");
+            return;
         }
-        if (new HashSet<>(r.getSelectedContentIds()).size() != r.getSelectedContentIds().size())
-            invalid(HttpStatus.BAD_REQUEST, "콘텐츠 ID는 중복될 수 없습니다.");
+
+        // 현재 연월 기준으로 이전 달(과거)은 거절
+        YearMonth currentYearMonth = YearMonth.now();
+        if (visitYearMonth.isBefore(currentYearMonth)) {
+            invalid(HttpStatus.BAD_REQUEST, "과거 연월은 제안서 생성 대상이 될 수 없습니다.");
+        }
+
+        if (new HashSet<>(r.getSelectedContentIds()).size() != r.getSelectedContentIds().size()) {
+            invalid(HttpStatus.BAD_REQUEST, "중복된 관광지가 포함되어 있습니다.");
+        }
     }
 
     private void validateResponse(PlanGenerateRequest r, List<TourismContentDetailResponse> regional,

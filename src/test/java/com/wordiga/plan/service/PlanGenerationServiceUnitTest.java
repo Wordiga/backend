@@ -1,11 +1,11 @@
 package com.wordiga.plan.service;
 
-import com.wordiga.plan.dto.ai.AiPlanRequest;
-import com.wordiga.plan.dto.ai.AiPlanResponse;
-import com.wordiga.plan.dto.PlanDetailResponse;
-import com.wordiga.plan.dto.PlanGenerateRequest;
 import com.wordiga.global.client.AiServerClient;
 import com.wordiga.global.client.TourismApiClient;
+import com.wordiga.plan.dto.PlanDetailResponse;
+import com.wordiga.plan.dto.PlanGenerateRequest;
+import com.wordiga.plan.dto.ai.AiPlanRequest;
+import com.wordiga.plan.dto.ai.AiPlanResponse;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.service.RegionalContentService;
 import com.wordiga.tourism.service.TourismContentDetailService;
@@ -16,6 +16,9 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.time.YearMonth;
+import java.time.format.DateTimeFormatter;
+import java.util.ArrayList;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -171,25 +174,28 @@ class PlanGenerationServiceUnitTest {
     @Test
     void leavesWeatherOutOfPlanGenerationContentCalls() {
         PlanGenerateRequest request = request("A", "B");
-        when(tourismContentDetailService.getAiDetail("A", LocalDate.of(2026, 8, 1)))
+        LocalDate targetDate = visitDate();
+
+        when(tourismContentDetailService.getAiDetail("A", targetDate))
                 .thenReturn(detail("A", "A 관광지"));
-        when(tourismContentDetailService.getAiDetail("B", LocalDate.of(2026, 8, 1)))
+        when(tourismContentDetailService.getAiDetail("B", targetDate))
                 .thenReturn(detail("B", "B 관광지"));
         when(aiServerClient.generatePlan(any())).thenReturn(response("A", "B"));
 
         service.generate(1L, request);
 
-        verify(tourismContentDetailService).getAiDetail("A", LocalDate.of(2026, 8, 1));
-        verify(tourismContentDetailService).getAiDetail("B", LocalDate.of(2026, 8, 1));
+        verify(tourismContentDetailService).getAiDetail("A", targetDate);
+        verify(tourismContentDetailService).getAiDetail("B", targetDate);
     }
 
-    private PlanGenerateRequest request(String... ids) {
-        PlanGenerateRequest r = new PlanGenerateRequest();
-        r.setVisitMonth("2026-08");
-        r.setStayDays(1);
-        r.setParticipantCount(2);
-        r.setSelectedContentIds(List.of(ids));
-        return r;
+    private PlanGenerateRequest request(String... contentIds) {
+        PlanGenerateRequest request = new PlanGenerateRequest();
+        request.setTitle("테스트 일정");
+        request.setVisitMonth(visitMonth());
+        request.setStayDays(1);
+        request.setParticipantCount(10);
+        request.setSelectedContentIds(new ArrayList<>(List.of(contentIds)));
+        return request;
     }
 
     private AiPlanResponse response(String id) {
@@ -240,5 +246,13 @@ class PlanGenerationServiceUnitTest {
                         .mapx(java.math.BigDecimal.valueOf(127.1)).mapy(java.math.BigDecimal.valueOf(36.8))
                         .lDongSignguCd("131")
                         .lclsSystm1("AC").lclsSystm2("AC01").build()).build();
+    }
+
+    private String visitMonth() {
+        return YearMonth.now().plusMonths(1).format(DateTimeFormatter.ofPattern("yyyy-MM"));
+    }
+
+    private LocalDate visitDate() {
+        return YearMonth.now().plusMonths(1).atDay(1);
     }
 }
