@@ -111,7 +111,11 @@ jobs:
             ./render-env.sh
             echo '[2/7] Postgres 시작...'
             docker compose up -d postgres
-            echo '[3/7] DB 스키마 반영...'
+            echo '[3/7] DB 준비 대기 및 스키마 반영...'
+            until docker compose exec -T postgres pg_isready -U wordiga -d wordiga; do
+              echo "Postgres 초기화 대기 중..."
+              sleep 2
+            done
             docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
             ALTER TABLE proposals ADD COLUMN IF NOT EXISTS s3_key_pdf VARCHAR(500);
             ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS source_modified_at TIMESTAMP;
