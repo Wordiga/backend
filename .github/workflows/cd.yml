@@ -95,11 +95,11 @@ jobs:
           username: glosona
           password: ${{ secrets.DOCKERHUB_TOKEN }}
 
-      - name: Build and push ARM64 image
+      - name: Build and push AMD64 image
         uses: docker/build-push-action@v6
         with:
           context: .
-          platforms: linux/arm64
+          platforms: linux/amd64
           push: true
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
