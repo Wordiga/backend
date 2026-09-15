@@ -3,6 +3,7 @@ package com.wordiga.plan.service;
 import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.plan.Plan;
 import com.wordiga.plan.PlanContent;
+import com.wordiga.plan.CostSource;
 import com.wordiga.plan.dto.*;
 import com.wordiga.plan.repository.PlanRepository;
 import com.wordiga.proposal.repository.ProposalRepository;
@@ -22,7 +23,11 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
+import java.util.ArrayDeque;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.stream.Collectors;
 
 import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
 import static com.wordiga.global.util.KtoUtils.parseKtoDateTime;
@@ -69,6 +74,9 @@ public class PlanService {
     public PlanDetailResponse updateContents(Long memberId, Long planId, PlanContentsUpdateRequest request) {
         Plan plan = owned(memberId, planId);
         validateDays(plan, request.getDays());
+        Map<String, ArrayDeque<PlanContent>> existingByContentId = plan.getPlanContents().stream()
+                .collect(Collectors.groupingBy(content -> content.getContent().getContentId(),
+                        LinkedHashMap::new, Collectors.toCollection(ArrayDeque::new)));
         List<PlanContent> contents = new ArrayList<>();
         int contentCount = 0;
         for (PlanContentsUpdateRequest.Day day : request.getDays()) {
@@ -93,12 +101,19 @@ public class PlanService {
                         .build());
 
                 PlanContent planContent = PlanContent.create(plan, sequence++, day.getDayNumber(), snapshot);
+                PlanContent existing = existingByContentId.getOrDefault(c.getContentid(), new ArrayDeque<>()).pollFirst();
+                if (existing != null) planContent.copyDetailsFrom(existing);
+                if (planContent.getUnitAmount() == null) {
+                    if (planContent.getEstimatedCost() == null) applyDefaultCost(planContent, plan.getParticipantCount());
+                    else preserveLegacyCost(planContent, plan.getParticipantCount());
+                }
                 contents.add(planContent);
                 contentCount++;
             }
         }
         if (contentCount > 10) invalid("콘텐츠는 최대 10개까지 저장할 수 있습니다.");
         plan.replaceContents(contents);
+        recalculateBudget(plan);
         return detail(plan);
     }
 
@@ -140,6 +155,34 @@ public class PlanService {
         }
         if (days.size() != java.time.temporal.ChronoUnit.DAYS.between(p.getStartDate(), p.getEndDate()) + 1)
             invalid("모든 일정 일차를 전달해야 합니다.");
+    }
+
+    private void applyDefaultCost(PlanContent content, int participants) {
+        var cost = PlanCostPolicy.defaultEstimate(content.getContent().getContentTypeId(), participants);
+        content.updateCost(cost.amount(), cost.unit(), cost.quantity(), cost.calculatedAmount(),
+                cost.calculatedAmount() / Math.max(1, participants), CostSource.DEFAULT);
+    }
+
+    private void preserveLegacyCost(PlanContent content, int participants) {
+        var policy = PlanCostPolicy.defaultEstimate(content.getContent().getContentTypeId(), participants);
+        int quantity = policy.unit() == com.wordiga.plan.CostUnit.PERSON ? participants : 1;
+        content.updateCost(content.getEstimatedCost() / Math.max(1, quantity), policy.unit(), quantity,
+                content.getEstimatedCost(), content.getEstimatedCost() / Math.max(1, participants), null);
+    }
+
+    private void recalculateBudget(Plan plan) {
+        Map<String, Long> breakdown = new LinkedHashMap<>();
+        long total = 0;
+        long perPerson = 0;
+        for (PlanContent content : plan.getPlanContents()) {
+            if (content.getEstimatedCost() != null) total += content.getEstimatedCost();
+            if (content.getPerPersonShare() != null) {
+                perPerson += content.getPerPersonShare();
+                breakdown.merge(PlanCostPolicy.category(content.getContent().getContentTypeId()),
+                        content.getPerPersonShare(), Long::sum);
+            }
+        }
+        plan.applyAiResult(plan.getScheduleId(), total, perPerson, breakdown);
     }
 
     private void invalid(String message) {

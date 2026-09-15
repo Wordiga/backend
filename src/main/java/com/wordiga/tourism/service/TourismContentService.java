@@ -4,6 +4,7 @@ import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
 import com.wordiga.plan.service.PlanCostPolicy;
+import com.wordiga.plan.dto.ContentCostDto;
 import com.wordiga.wish.repository.WishRepository;
 import com.wordiga.tourism.domain.TourismContentType;
 import com.wordiga.tourism.domain.TourismCategory;
@@ -343,6 +344,7 @@ public class TourismContentService {
 
     private TourismContentDto toDto(
             AreaBasedItem item, BigDecimal recommendationScore, Integer participantCount) {
+        int participants = participantCount == null ? DEFAULT_PARTICIPANT_COUNT : participantCount;
         TourismCategory category = TourismCategory.resolve(
                 item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
         return TourismContentDto.builder()
@@ -357,8 +359,9 @@ public class TourismContentService {
                 .theme(category == null ? null : codeName(category.getTheme()))
                 .category(category == null ? null : codeName(category))
                 .recommendationScore(recommendationScore)
-                .estimatedCost(PlanCostPolicy.defaultPerPersonAmount(item.getContenttypeid(),
-                        participantCount == null ? DEFAULT_PARTICIPANT_COUNT : participantCount))
+                .estimatedCost(PlanCostPolicy.defaultPerPersonAmount(item.getContenttypeid(), participants))
+                .cost(ContentCostDto.from(PlanCostPolicy.defaultEstimate(item.getContenttypeid(), participants),
+                        participants))
                 .build();
     }
 

@@ -2,6 +2,9 @@ package com.wordiga.plan.service;
 
 import com.wordiga.global.client.dto.ContentDetailDto;
 import com.wordiga.plan.Plan;
+import com.wordiga.plan.CostSource;
+import com.wordiga.plan.CostUnit;
+import com.wordiga.plan.PlanContent;
 import com.wordiga.plan.dto.PlanContentsUpdateRequest;
 import com.wordiga.plan.dto.PlanDetailResponse;
 import com.wordiga.plan.dto.PlanSort;
@@ -131,6 +134,32 @@ class PlanServiceUnitTest {
         assertThat(result.getDays()).hasSize(2);
         assertThat(result.getDays().get(1).getContents()).extracting(PlanDetailResponse.Content::getContentId)
                 .containsExactly("A");
+        assertThat(result.getDays().getFirst().getContents().getFirst().getCost().perPersonShare())
+                .isEqualTo(10_000L);
+        assertThat(result.getEstimatedBudget().breakdown()).containsEntry("관광지", 30_000L);
+    }
+
+    @Test
+    void preservesStoredCostWhenContentsAreReordered() {
+        TourismContentSnapshot snapshot = TourismContentSnapshot.builder()
+                .contentId("A").contentTypeId("14").title("박물관").build();
+        PlanContent stored = PlanContent.create(plan, 1, 1, snapshot);
+        stored.updateCost(7_000L, CostUnit.PERSON, 2, 14_000L, 7_000L, CostSource.TOUR_API);
+        plan.addContent(stored);
+        when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
+        when(tourismContentDetailService.getCommonDetail("A")).thenReturn(content("A", "14"));
+        when(snapshotRepository.save(any(TourismContentSnapshot.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        PlanContentsUpdateRequest request = new PlanContentsUpdateRequest();
+        request.setDays(List.of(day(1, "2026-08-20"), day(2, "2026-08-21", "A")));
+
+        var result = service.updateContents(1L, 9L, request);
+
+        var cost = result.getDays().getFirst().getContents().getFirst().getCost();
+        assertThat(cost.unitAmount()).isEqualTo(7_000L);
+        assertThat(cost.totalAmount()).isEqualTo(14_000L);
+        assertThat(cost.source()).isEqualTo(CostSource.TOUR_API);
+        assertThat(result.getEstimatedBudget().breakdown()).containsExactly(entry("문화시설", 7_000L));
     }
 
     @Test
@@ -154,5 +183,13 @@ class PlanServiceUnitTest {
         day.setDayNumber(number);
         day.setContentIds(List.of(ids));
         return day;
+    }
+
+    private ContentDetailDto content(String id, String type) {
+        ContentDetailDto content = new ContentDetailDto();
+        content.setContentid(id);
+        content.setContenttypeid(type);
+        content.setTitle(id);
+        return content;
     }
 }

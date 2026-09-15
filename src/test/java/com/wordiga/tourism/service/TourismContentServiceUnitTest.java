@@ -74,6 +74,9 @@ class TourismContentServiceUnitTest {
         assertThat(result.getItems().getFirst().getContentId()).isEqualTo("126508");
         assertThat(result.getItems().getFirst().getFirstImage()).isNull();
         assertThat(result.getItems().getFirst().getEstimatedCost()).isEqualTo(10_000);
+        assertThat(result.getItems().getFirst().getCost().unitAmount()).isEqualTo(10_000);
+        assertThat(result.getItems().getFirst().getCost().totalAmount()).isEqualTo(100_000);
+        assertThat(result.getItems().getFirst().getCost().source()).isEqualTo(com.wordiga.plan.CostSource.DEFAULT);
         assertThat(result.isHasNext()).isTrue();
         assertThat(result.getTotalCount()).isEqualTo(21);
         assertThat(result.getTotalPages()).isEqualTo(2);
@@ -108,7 +111,12 @@ class TourismContentServiceUnitTest {
     }
 
     @ParameterizedTest
-    @CsvSource({"4,12,93.0", "10,14,93.0", "1,32,93.0"})
+    @CsvSource({
+            "4,12,93.0", "4,14,78.0",
+            "7,28,93.0", "7,32,78.0",
+            "10,14,93.0", "10,32,78.0",
+            "1,32,93.0", "1,12,78.0"
+    })
     void combinesRegionalDemandWithSeasonalContentTypeFit(int month, String contentType, String expectedScore) {
         AreaTarSvcDemItem demand = new AreaTarSvcDemItem();
         demand.setSignguCd("44200");

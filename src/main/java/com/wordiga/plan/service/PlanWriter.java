@@ -5,6 +5,7 @@ import com.wordiga.member.Member;
 import com.wordiga.member.repository.MemberRepository;
 import com.wordiga.plan.Plan;
 import com.wordiga.plan.PlanContent;
+import com.wordiga.plan.CostSource;
 import com.wordiga.plan.dto.PlanDetailResponse;
 import com.wordiga.plan.dto.PlanGenerateRequest;
 import com.wordiga.plan.dto.ai.AiPlanResponse;
@@ -94,6 +95,9 @@ public class PlanWriter {
                         travelDistance,
                         cost == null ? null : cost.calculatedAmount()
                 );
+                if (cost != null) planContent.updateCost(cost.amount(), cost.unit(), cost.quantity(),
+                        cost.calculatedAmount(), cost.calculatedAmount() / request.getParticipantCount(),
+                        cost.fallbackApplied() ? CostSource.DEFAULT : CostSource.TOUR_API);
                 plan.addContent(planContent);
                 previous = snapshot;
                 if (cost != null) {
