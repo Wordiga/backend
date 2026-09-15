@@ -53,7 +53,7 @@
 | `PlanControllerExceptionTest` | 예외 | 일정·제안서 요청값 오류 | Body 누락, DTO validation, 페이지 범위와 잘못된 enum의 400 공통 오류 응답 |
 | `AiPlanRequestTest` | 성공 | AI 요청 계약 | visit_month·num_people·num_days와 saved/regional 콘텐츠의 snake_case 직렬화 및 한글 tags 전달 |
 | `PlanGenerationServiceUnitTest` | 성공/외부 오류 | 관광공사 분류명 변환 | 한글 분류명을 AI tags로 전달하고 변환 API 실패 시 tags를 null로 전달 |
-| `MonthlyWeatherServiceUnitTest` | 성공 | 일정 월 기후 예상치 | 대표 시군구 관측소의 최근 5개년 동일 월 평균기온·월 강수량 평균 |
+| `MonthlyWeatherServiceUnitTest` | 성공 | 일정 월 기후 예상치 | 요청 시군구 관측소의 직전 연도 동일 월 평균기온·강수일수·월 강수량 |
 | `ProposalServiceUnitTest` | 성공·예외 | 제안서 삭제 | 소유 제안서 S3 영구삭제 후 DB 삭제와 미존재 404 |
 | `PlanControllerTest` | 성공 | 제안서 삭제 HTTP | DELETE 요청의 204 응답과 사용자·일정·제안서 ID 전달 |
 | `AiPlanRequestTest` | 성공 | Plan B 입력 계약 | num_days·is_outdoor 직렬화 |
