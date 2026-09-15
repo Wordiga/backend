@@ -1,6 +1,6 @@
 package com.wordiga.global.client;
 
-import com.wordiga.global.client.dto.AsosDailyResponse;
+import com.wordiga.global.client.dto.AwsDailyResponse;
 import com.wordiga.global.config.WeatherProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
@@ -13,10 +13,6 @@ import org.springframework.web.service.annotation.GetExchange;
 import org.springframework.web.service.annotation.HttpExchange;
 import org.springframework.web.service.invoker.HttpServiceProxyFactory;
 
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
-import java.net.URLDecoder;
-import java.nio.charset.StandardCharsets;
 import java.util.List;
 
 @Component
@@ -39,20 +35,18 @@ public class WeatherApiClient {
         this.client = factory.createClient(AsosHttpExchangeClient.class);
     }
 
-    public List<AsosDailyResponse.Item> daily(String stationId, LocalDate start, LocalDate end) {
+    public List<AwsDailyResponse.DailyObservation> daily(String stationId, int year, int month) {
         validateServiceKey();
 
         try {
-            AsosDailyResponse response = client.fetchDailyWeather(
-                    URLDecoder.decode(properties.serviceKey(), StandardCharsets.UTF_8),
+            AwsDailyResponse response = client.fetchDailyWeather(
+                    properties.serviceKey(),
                     1,
                     100,
                     "JSON",
-                    "ASOS",
-                    "DAY",
-                    stationId,
-                    start.format(DateTimeFormatter.BASIC_ISO_DATE),
-                    end.format(DateTimeFormatter.BASIC_ISO_DATE)
+                    year,
+                    String.format("%02d", month),
+                    stationId
             );
 
             return extractItems(response);
@@ -70,7 +64,7 @@ public class WeatherApiClient {
         }
     }
 
-    private List<AsosDailyResponse.Item> extractItems(AsosDailyResponse response) {
+    private List<AwsDailyResponse.DailyObservation> extractItems(AwsDailyResponse response) {
         if (response == null || response.getResponse() == null) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "기상청 API 응답이 올바르지 않습니다.");
         }
@@ -84,23 +78,23 @@ public class WeatherApiClient {
         if (body == null || body.getItems() == null || body.getItems().getItem() == null) {
             return List.of();
         }
-
-        return body.getItems().getItem();
+        return body.getItems().getItem().stream()
+                .filter(item -> item.getAwsmdays() != null && item.getAwsmdays().getInfo() != null)
+                .flatMap(item -> item.getAwsmdays().getInfo().stream())
+                .toList();
     }
 
     @HttpExchange
     private interface AsosHttpExchangeClient {
-        @GetExchange("/getWthrDataList")
-        AsosDailyResponse fetchDailyWeather(
-                @RequestParam("serviceKey") String serviceKey,
+        @GetExchange("/getDailyAwsData")
+        AwsDailyResponse fetchDailyWeather(
+                @RequestParam("authKey") String serviceKey,
                 @RequestParam("pageNo") int pageNo,
                 @RequestParam("numOfRows") int numOfRows,
                 @RequestParam("dataType") String dataType,
-                @RequestParam("dataCd") String dataCd,
-                @RequestParam("dateCd") String dateCd,
-                @RequestParam("stnIds") String stationId,
-                @RequestParam("startDt") String startDt,
-                @RequestParam("endDt") String endDt
+                @RequestParam("year") int year,
+                @RequestParam("month") String month,
+                @RequestParam("station") String stationId
         );
     }
 }
