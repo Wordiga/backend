@@ -50,16 +50,10 @@ jobs:
           until docker exec wd-postgres-dev pg_isready -U wordiga -d wordiga; do sleep 2; done
 
           docker run -d --name wordiga-backend-smoke --network wordiga-smoke -p 8080:8080 \
-            -e SPRING_PROFILES_ACTIVE=prod \
+            -e SPRING_PROFILES_ACTIVE=prod,smoke \
             -e POSTGRES_DB=wordiga \
             -e POSTGRES_USER=wordiga \
             -e POSTGRES_PASSWORD=wordiga-smoke-password \
-            -e GOOGLE_CLIENT_ID=smoke \
-            -e GOOGLE_CLIENT_SECRET=smoke \
-            -e KAKAO_CLIENT_ID=smoke \
-            -e KAKAO_CLIENT_SECRET=smoke \
-            -e JWT_SECRET=wordiga-smoke-jwt-secret-at-least-32-bytes \
-            -e TOUR_API_SERVICE_KEY=smoke \
             wordiga-backend:smoke
 
           for _ in {1..30}; do
@@ -96,17 +90,36 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
+      - name: Prepare backend environment
+        shell: bash
+        env:
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
+        run: |
+          set -euo pipefail
+          [ -n "$BACKEND_ENV" ]
+          BACKEND_ENV_B64=$(printf '%s' "$BACKEND_ENV" | base64 | tr -d '\n')
+          echo "::add-mask::$BACKEND_ENV_B64"
+          echo "BACKEND_ENV_B64=$BACKEND_ENV_B64" >> "$GITHUB_ENV"
+
       - name: Deploy to KT Cloud via SSH
         uses: appleboy/ssh-action@v1.0.3
+        env:
+          BACKEND_ENV_B64: ${{ env.BACKEND_ENV_B64 }}
         with:
           host: ${{ vars.KT_HOST }}
           username: ${{ vars.KT_USER }}
           key: ${{ secrets.KT_SSH_KEY }}
-          envs: GITHUB_SHA
+          envs: GITHUB_SHA,BACKEND_ENV_B64
           script: |
             set -eu
-            trap 'rm -rf /run/wordiga' EXIT
             cd /opt/wordiga
+            install -d -m 700 secrets
+            BACKEND_ENV_TMP=$(mktemp secrets/backend.env.XXXXXX)
+            trap 'rm -f "$BACKEND_ENV_TMP"; rm -rf /run/wordiga' EXIT
+            printf '%s' "$BACKEND_ENV_B64" | base64 -d > "$BACKEND_ENV_TMP"
+            test -s "$BACKEND_ENV_TMP"
+            chmod 600 "$BACKEND_ENV_TMP"
+            mv "$BACKEND_ENV_TMP" secrets/backend.env
             echo '[1/7] 환경변수 렌더링...'
             ./render-env.sh
             echo '[2/7] Postgres 시작...'

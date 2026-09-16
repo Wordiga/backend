@@ -32,7 +32,7 @@ jwt:
   refresh-expiration: 604800000
 
 kakao:
-  admin-key: ${KAKAO_ADMIN_KEY:}
+  admin-key: ${KAKAO_ADMIN_KEY}
   url:
     unlink: https://apis.kakao.com/v1/user/unlink
 
@@ -55,33 +55,29 @@ tourism:
     service-key: ${TOUR_API_SERVICE_KEY}
     mobile-os: ETC
     mobile-app: WordigaApp
-    default-num-of-rows: ${TOUR_API_DEFAULT_ROWS:10}
+    default-num-of-rows: 10
 
 weather:
   api:
     base-url: https://apis.data.go.kr/1360000/AsosDalyInfoService
-    service-key: ${WEATHER_API_SERVICE_KEY:${TOUR_API_SERVICE_KEY:}}
+    service-key: ${WEATHER_API_SERVICE_KEY}
     historical-years: 3
 
 app:
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  frontend-url: ${FRONTEND_URL}
 
 ai:
   server:
-    base-url: ${AI_SERVER_BASE_URL:http://127.0.0.1:8000}
+    base-url: ${AI_SERVER_BASE_URL}
     connect-timeout: ${AI_SERVER_CONNECT_TIMEOUT:2s}
     read-timeout: ${AI_SERVER_READ_TIMEOUT:100s}
 
 storage:
   kt:
-    bucket: ${KT_S3_BUCKET:wordiga-storage}
+    bucket: ${KT_S3_BUCKET}
     region: ${KT_S3_REGION:kr-standard}
-    endpoint: ${KT_S3_ENDPOINT:https://obj-e-1.ktcloud.com}
-    access-key: ${KT_S3_ACCESS_KEY:}
-    secret-key: ${KT_S3_SECRET_KEY:}
+    endpoint: ${KT_S3_ENDPOINT}
+    access-key: ${KT_S3_ACCESS_KEY}
+    secret-key: ${KT_S3_SECRET_KEY}
     url-validity: 1d
     retention: 30d
-    
-logging:
-  level:
-    org.springframework.security: DEBUG
