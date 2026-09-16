@@ -40,6 +40,16 @@ class PlanCostPolicyUnitTest {
         assertThat(result.calculatedAmount()).isEqualTo(240_000);
     }
 
+    @Test
+    void returnsListSafeDefaultEstimateWithoutDetailCalls() {
+        var result = PlanCostPolicy.defaultEstimate("39", 10);
+
+        assertThat(result.amount()).isEqualTo(15_000);
+        assertThat(result.quantity()).isEqualTo(10);
+        assertThat(result.calculatedAmount()).isEqualTo(150_000);
+        assertThat(result.fallbackApplied()).isTrue();
+    }
+
     private TourismContentDetailResponse detail(String type, List<TourismDetailInfoDto> details) {
         return TourismContentDetailResponse.builder()
                 .common(TourismCommonDetailDto.builder().contentId("1").contentTypeId(type).build())

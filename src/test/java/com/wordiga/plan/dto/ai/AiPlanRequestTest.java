@@ -1,6 +1,6 @@
 package com.wordiga.plan.dto.ai;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
+import tools.jackson.databind.json.JsonMapper;
 import com.wordiga.plan.dto.PlanGenerateRequest;
 import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
@@ -31,7 +31,7 @@ class AiPlanRequestTest {
                 .intro(TourismIntroDetailDto.builder().checkInTime("15:00").build())
                 .build();
 
-        var objectMapper = new ObjectMapper();
+        var objectMapper = JsonMapper.builder().build();
         var aiRequest = AiPlanRequest.from(
                 request, List.of(detail), List.of(detail), Map.of("CT001", List.of("숙박", "호텔")));
         var json = objectMapper.readTree(objectMapper.writeValueAsString(aiRequest));
@@ -54,6 +54,7 @@ class AiPlanRequestTest {
         assertThat(json.get("saved_contents").get(0).has("avg_visit_duration_min")).isFalse();
         assertThat(json.get("saved_contents").get(0).get("estimated_cost").get("quantity").asInt()).isEqualTo(1);
         assertThat(json.get("estimated_budget").get("currency").asText()).isEqualTo("KRW");
+        assertThat(json.get("estimated_budget").get("breakdown").get("숙박").asLong()).isEqualTo(4_000);
         assertThat(json.has("monthly_weather")).isFalse();
     }
 }

@@ -1,5 +1,6 @@
 package com.wordiga.tourism.dto;
 
+import com.wordiga.plan.dto.ContentCostDto;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -50,6 +51,9 @@ public class TourismContentDto {
 
     @Schema(description = "관광타입 기본 정책 기준 1인 예상 비용")
     private Long estimatedCost;
+
+    @Schema(description = "콘텐츠 유형별 기본 예상 비용")
+    private ContentCostDto cost;
 
     @Schema(description = "현재 로그인 회원의 위시 등록 여부")
     @JsonProperty("isWished")

@@ -14,6 +14,6 @@ public class MonthlyWeatherDto {
     private Integer averageRainyDays;           // 월평균 강수일수 (0.1mm 이상)
     private BigDecimal monthlyPrecipitation;    // 월평균 누적 강수량 (mm)
     private Integer historicalYears;            // 참조 과거 년수
-    private String stationName;                 // 참조 ASOS 관측소명
-    private String basis;                       // 데이터 산출 근거 식별자
+    private String stationName;                 // 참조 관측소명
+    private String description;                 // 데이터 산출 기준 설명
 }

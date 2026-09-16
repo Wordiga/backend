@@ -59,9 +59,8 @@ tourism:
 
 weather:
   api:
-    base-url: https://apis.data.go.kr/1360000/AsosDalyInfoService
+    base-url: https://apihub.kma.go.kr/api/typ02/openApi/AwsMtlyInfoService
     service-key: ${WEATHER_API_SERVICE_KEY}
-    historical-years: 3
 
 app:
   frontend-url: ${FRONTEND_URL}

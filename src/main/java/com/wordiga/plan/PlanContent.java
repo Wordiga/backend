@@ -47,6 +47,18 @@ public class PlanContent {
 
     private Long estimatedCost;
 
+    private Long unitAmount;
+
+    @Enumerated(EnumType.STRING)
+    private CostUnit costUnit;
+
+    private Integer costQuantity;
+
+    private Long perPersonShare;
+
+    @Enumerated(EnumType.STRING)
+    private CostSource costSource;
+
     private PlanContent(Plan plan, Integer sequence, Integer dayNumber, TourismContentSnapshot content) {
         this.plan = plan;
         this.sequence = sequence;
@@ -67,5 +79,22 @@ public class PlanContent {
         this.travelTimeMinutes = travelTimeMinutes;
         this.travelDistanceMeters = travelDistanceMeters;
         this.estimatedCost = estimatedCost;
+    }
+
+    public void updateCost(Long unitAmount, CostUnit unit, Integer quantity, Long totalAmount,
+                           Long perPersonShare, CostSource source) {
+        this.unitAmount = unitAmount;
+        this.costUnit = unit;
+        this.costQuantity = quantity;
+        this.estimatedCost = totalAmount;
+        this.perPersonShare = perPersonShare;
+        this.costSource = source;
+    }
+
+    public void copyDetailsFrom(PlanContent source) {
+        updateAiDetails(source.scheduledTime, source.duration, source.startTime, source.endTime,
+                source.travelTimeMinutes, source.travelDistanceMeters, source.estimatedCost);
+        updateCost(source.unitAmount, source.costUnit, source.costQuantity, source.estimatedCost,
+                source.perPersonShare, source.costSource);
     }
 }

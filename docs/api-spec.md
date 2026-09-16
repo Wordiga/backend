@@ -105,6 +105,14 @@ GET /api/v1/tourism/contents
 | `items[].category.name` | String | Y | 화면 표시용 분류명 |
 | `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수 |
 | `items[].estimatedCost` | Long | Y | 관광타입 기본 정책 기준 1인 예상 비용 |
+| `items[].cost` | ContentCost | Y | 상세 API 추가 호출 없이 관광타입 기본값으로 계산한 예상 비용 |
+| `items[].cost.unitAmount` | Long | Y | 과금 단위 1개의 예상 금액 |
+| `items[].cost.unit` | String | Y | 과금 단위 `PERSON`, `ROOM`, `GROUP` |
+| `items[].cost.quantity` | Integer | Y | 참가 인원 또는 객실·그룹 수량 |
+| `items[].cost.totalAmount` | Long | Y | 단위 금액과 수량을 곱한 콘텐츠 전체 예상 금액 |
+| `items[].cost.perPersonShare` | Long | Y | 전체 금액을 참가 인원으로 나눈 1인 분담 예상 금액 |
+| `items[].cost.currency` | String | Y | 통화 코드 `KRW` |
+| `items[].cost.source` | String | Y | 목록에서는 관광타입 기본값을 뜻하는 `DEFAULT` |
 | `items[].isWished` | Boolean | Y | 현재 로그인 회원의 위시 등록 여부이며 비회원은 `false` |
 | `page` | Integer | Y | 현재 페이지 |
 | `size` | Integer | Y | 페이지 크기 |
@@ -1054,7 +1062,15 @@ POST /api/v1/plans/generate
 | `days[].contents[].durationMinutes` | Integer | N | AI가 정한 시작·종료 시각의 차이(분) |
 | `days[].contents[].travelTimeMinutes` | Integer | N | 이전 콘텐츠부터 이동시간(분) |
 | `days[].contents[].travelDistanceMeters` | Integer | N | 이전 콘텐츠부터 이동거리(m). AI 값이 없으면 좌표 간 직선거리, 첫 콘텐츠는 0 |
-| `days[].contents[].estimatedCost` | Long | N | 관광공사 원천 금액 또는 유형별 기본값에 수량을 곱한 예상 비용 |
+| `days[].contents[].estimatedCost` | Long | N | 호환성을 위해 유지하는 콘텐츠 전체 예상 비용 |
+| `days[].contents[].cost` | ContentCost | N | 일정 생성 시점에 저장한 구조화된 콘텐츠 비용 |
+| `days[].contents[].cost.unitAmount` | Long | N | 과금 단위 1개의 금액 |
+| `days[].contents[].cost.unit` | String | N | 과금 단위 `PERSON`, `ROOM`, `GROUP` |
+| `days[].contents[].cost.quantity` | Integer | N | 참가 인원 또는 객실·그룹 수량 |
+| `days[].contents[].cost.totalAmount` | Long | N | 콘텐츠 전체 예상 금액 |
+| `days[].contents[].cost.perPersonShare` | Long | N | 예산 합산에 사용하는 1인 분담 금액 |
+| `days[].contents[].cost.currency` | String | N | 통화 코드 `KRW` |
+| `days[].contents[].cost.source` | String | N | `TOUR_API` 또는 `DEFAULT`. 기존 비용 데이터는 출처가 없을 수 있음 |
 | `days[].contents[].memo` | String | N | 일정 메모 |
 | `createdAt` | LocalDateTime | Y | 저장 시각 |
 | `updatedAt` | LocalDateTime | Y | 수정 시각 |
@@ -1070,13 +1086,13 @@ POST /api/v1/plans/generate
   "stayDays": 2,
   "participantCount": 10,
   "estimatedBudget": {
-    "totalAmount": 640000,
+    "totalAmount": 800000,
     "perPersonAmount": 80000,
     "currency": "KRW",
     "breakdown": {
-      "accommodation": 300000,
-      "food": 240000,
-      "activity": 100000
+      "숙박": 60000,
+      "음식점": 15000,
+      "관광지": 5000
     }
   },
   "days": [
@@ -1096,7 +1112,16 @@ POST /api/v1/plans/generate
           "durationMinutes": 90,
           "travelTimeMinutes": null,
           "travelDistanceMeters": null,
-          "estimatedCost": 0,
+          "estimatedCost": 100000,
+          "cost": {
+            "unitAmount": 10000,
+            "unit": "PERSON",
+            "quantity": 10,
+            "totalAmount": 100000,
+            "perPersonShare": 10000,
+            "currency": "KRW",
+            "source": "DEFAULT"
+          },
           "memo": null
         }
       ]
@@ -1369,7 +1394,7 @@ GET /api/v1/plans/{planId}
 GET /api/v1/weather?lDongSignguCd=133&visitMonth=2026-09
 ```
 
-시군구 코드와 방문 월을 사용해 최근 3개년 ASOS 평균을 반환합니다.
+시군구 코드와 방문 월을 사용해 해당 지역 관측소의 직전 연도 동일 월 관측값을 반환합니다.
 
 인증: 불필요
 
@@ -1386,13 +1411,13 @@ GET /api/v1/weather?lDongSignguCd=133&visitMonth=2026-09
 |---|---|---|---|
 | `locationName` | String | N | 일정 대표 시군구명 |
 | `targetMonth` | Integer | Y | 조회 월 |
-| `averageMinTemp` | BigDecimal | N | 최근 3개년 해당 월 일 최저기온의 평균, 소수점 첫째 자리 반올림 |
-| `averageMaxTemp` | BigDecimal | N | 최근 3개년 해당 월 일 최고기온의 평균, 소수점 첫째 자리 반올림 |
-| `averageRainyDays` | Integer | Y | 일 강수량 0.1mm 이상인 날의 연평균, 정수 반올림 |
-| `monthlyPrecipitation` | BigDecimal | N | 최근 3개년 해당 월 누적강수량의 연평균, 소수점 첫째 자리 반올림 |
-| `historicalYears` | Integer | Y | 집계 연도 수, 기본 3년 |
-| `stationName` | String | Y | 대표 시군구에 대응하는 ASOS 관측소명 |
-| `basis` | String | Y | `ASOS_HISTORICAL_MONTHLY_AVERAGE` |
+| `averageMinTemp` | BigDecimal | N | 직전 연도 동일 월 일 최저기온의 평균, 소수점 첫째 자리 반올림 |
+| `averageMaxTemp` | BigDecimal | N | 직전 연도 동일 월 일 최고기온의 평균, 소수점 첫째 자리 반올림 |
+| `averageRainyDays` | Integer | Y | 직전 연도 동일 월 중 일 강수량 0.1mm 이상인 날의 수 |
+| `monthlyPrecipitation` | BigDecimal | N | 직전 연도 동일 월의 누적강수량, 소수점 첫째 자리 반올림 |
+| `historicalYears` | Integer | Y | 레거시 집계 연도 수, 고정값 `1` |
+| `stationName` | String | Y | 요청 시군구에 대응하는 관측소명 |
+| `description` | String | Y | 산출 기준 설명 `직전 연도 동일 월 관측값` |
 
 ### Response Example
 
@@ -1404,9 +1429,9 @@ GET /api/v1/weather?lDongSignguCd=133&visitMonth=2026-09
   "averageMaxTemp": 29.0,
   "averageRainyDays": 9,
   "monthlyPrecipitation": 210.0,
-  "historicalYears": 3,
+  "historicalYears": 1,
   "stationName": "부여",
-  "basis": "ASOS_HISTORICAL_MONTHLY_AVERAGE"
+  "description": "직전 연도 동일 월 관측값"
 }
 ```
 

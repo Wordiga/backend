@@ -4,6 +4,7 @@ import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.AreaBasedItem;
 import com.wordiga.global.config.TourismProperties;
 import com.wordiga.plan.service.PlanCostPolicy;
+import com.wordiga.plan.dto.ContentCostDto;
 import com.wordiga.tourism.dto.TourismContentDto;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.domain.TourismCategory;
@@ -177,6 +178,8 @@ public class PersonalizedTourismContentService {
                 .category(category == null ? null : new CodeNameDto(category.getCode(), category.getDisplayName()))
                 .recommendationScore(score)
                 .estimatedCost(PlanCostPolicy.defaultPerPersonAmount(item.getContenttypeid(), participantCount))
+                .cost(ContentCostDto.from(PlanCostPolicy.defaultEstimate(item.getContenttypeid(), participantCount),
+                        participantCount))
                 .build();
     }
 

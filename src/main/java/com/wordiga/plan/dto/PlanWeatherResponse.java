@@ -13,12 +13,12 @@ public record PlanWeatherResponse(
         BigDecimal monthlyPrecipitation,
         Integer historicalYears,
         String stationName,
-        String basis) {
+        String description) {
 
     public static PlanWeatherResponse from(String locationName, MonthlyWeatherDto weather) {
         return new PlanWeatherResponse(locationName, weather.getTargetMonth(), weather.getAverageMinTemp(),
                 weather.getAverageMaxTemp(), weather.getAverageRainyDays(),
                 weather.getMonthlyPrecipitation(), weather.getHistoricalYears(), weather.getStationName(),
-                weather.getBasis());
+                weather.getDescription());
     }
 }
