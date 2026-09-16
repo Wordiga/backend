@@ -1,0 +1,46 @@
+spring:
+  config:
+    activate:
+      on-profile: smoke
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: smoke-google-client-id
+            client-secret: smoke-google-client-secret
+          kakao:
+            client-id: smoke-kakao-client-id
+            client-secret: smoke-kakao-client-secret
+
+jwt:
+  secret: wordiga-smoke-jwt-secret-at-least-32-bytes
+
+kakao:
+  admin-key: smoke-kakao-admin-key
+
+tourism:
+  api:
+    service-key: smoke-tour-api-service-key
+
+weather:
+  api:
+    service-key: smoke-weather-api-service-key
+
+app:
+  frontend-url: http://localhost:3000
+
+ai:
+  server:
+    base-url: http://127.0.0.1:8000
+    connect-timeout: 2s
+    read-timeout: 100s
+
+storage:
+  kt:
+    bucket: wordiga-smoke-storage
+    region: kr-standard
+    endpoint: https://obj-e-1.ktcloud.com
+    access-key: smoke-access-key
+    secret-key: smoke-secret-key

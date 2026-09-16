@@ -61,6 +61,7 @@ class PlanServiceUnitTest {
         when(planRepository.findByMemberId(eq(1L), any())).thenReturn(new PageImpl<>(List.of(plan)));
         var list = service.getPlans(1L, 0, 20, PlanSort.LATEST);
         assertThat(list.getItems()).hasSize(1);
+        assertThat(list.getTotalCount()).isEqualTo(1);
         assertThat(list.getTotalPages()).isEqualTo(1);
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         PlanUpdateRequest request = new PlanUpdateRequest();

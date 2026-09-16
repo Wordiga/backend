@@ -9,6 +9,7 @@ public class PlanListResponse {
     private List<PlanSummaryResponse> items;
     private int page;
     private int size;
+    private long totalCount;
     private int totalPages;
     private boolean hasNext;
 }

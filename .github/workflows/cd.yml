@@ -57,16 +57,10 @@ jobs:
           until docker exec wd-postgres-dev pg_isready -U wordiga -d wordiga; do sleep 2; done
 
           docker run -d --name wordiga-backend-smoke --network wordiga-smoke -p 8080:8080 \
-            -e SPRING_PROFILES_ACTIVE=prod \
+            -e SPRING_PROFILES_ACTIVE=prod,smoke \
             -e POSTGRES_DB=wordiga \
             -e POSTGRES_USER=wordiga \
             -e POSTGRES_PASSWORD=wordiga-smoke-password \
-            -e GOOGLE_CLIENT_ID=smoke \
-            -e GOOGLE_CLIENT_SECRET=smoke \
-            -e KAKAO_CLIENT_ID=smoke \
-            -e KAKAO_CLIENT_SECRET=smoke \
-            -e JWT_SECRET=wordiga-smoke-jwt-secret-at-least-32-bytes \
-            -e TOUR_API_SERVICE_KEY=smoke \
             wordiga-backend:smoke
 
           for _ in {1..30}; do

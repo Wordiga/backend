@@ -60,12 +60,13 @@ class PlanControllerTest {
     @Test
     void handlesPlanCrudEndpoints() throws Exception {
         when(planService.getPlans(1L, 0, 20, PlanSort.LATEST)).thenReturn(
-                PlanListResponse.builder().items(List.of()).page(0).size(20).hasNext(false).build());
+                PlanListResponse.builder().items(List.of()).page(0).size(20).totalCount(3).hasNext(false).build());
         when(planService.getPlan(1L, 9L)).thenReturn(detail());
         when(planService.updatePlan(eq(1L), eq(9L), any())).thenReturn(detail());
         when(planService.updateContents(eq(1L), eq(9L), any())).thenReturn(detail());
 
-        mockMvc.perform(get("/api/v1/plans")).andExpect(status().isOk()).andExpect(jsonPath("$.page").value(0));
+        mockMvc.perform(get("/api/v1/plans")).andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(0)).andExpect(jsonPath("$.totalCount").value(3));
         mockMvc.perform(get("/api/v1/plans/9")).andExpect(status().isOk()).andExpect(jsonPath("$.planId").value(9));
         mockMvc.perform(patch("/api/v1/plans/9").contentType("application/json")
                 .content("{\"title\":\"수정 일정\",\"participantCount\":4}")).andExpect(status().isOk());

@@ -31,6 +31,8 @@ public abstract class PostgresIntegrationTest {
         registry.add("storage.kt.access-key", () -> "dummy-access-key");
         registry.add("storage.kt.secret-key", () -> "dummy-secret-key");
         registry.add("storage.kt.bucket", () -> "wordiga-test-storage");
+        registry.add("storage.kt.region", () -> "kr-standard");
+        registry.add("storage.kt.endpoint", () -> "https://obj-e-1.ktcloud.com");
         registry.add("ai.server.base-url", () -> "http://localhost:8000");
         registry.add("app.frontend-url", () -> "http://localhost:3000");
     }

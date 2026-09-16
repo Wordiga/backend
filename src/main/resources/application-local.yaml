@@ -18,6 +18,13 @@ spring:
         dialect: org.hibernate.dialect.PostgreSQLDialect
         format_sql: true
 
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+
+ai:
+  server:
+    base-url: ${AI_SERVER_BASE_URL:http://127.0.0.1:8000}
+
 logging:
   level:
     root: info
