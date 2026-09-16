@@ -12,7 +12,6 @@ services:
       TZ: Asia/Seoul
     volumes:
       - pgdata_local:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
 
 volumes:
   pgdata_local:

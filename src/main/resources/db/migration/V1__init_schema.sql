@@ -111,12 +111,7 @@ CREATE TABLE plan_contents
     end_time               TIME        NULL,
     travel_time_minutes    INT         NULL,
     travel_distance_meters INT         NULL,
-    estimated_cost         BIGINT      NULL,
-    unit_amount            BIGINT      NULL,
-    cost_unit              VARCHAR(20) NULL,
-    cost_quantity          INT         NULL,
-    per_person_share       BIGINT      NULL,
-    cost_source            VARCHAR(20) NULL
+    estimated_cost         BIGINT      NULL
 );
 
 ALTER TABLE plan_contents

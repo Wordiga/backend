@@ -12,7 +12,6 @@ services:
       TZ: Asia/Seoul
     volumes:
       - pgdata_dev:/var/lib/postgresql/data
-      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
     networks:
       - backend-network
     healthcheck:

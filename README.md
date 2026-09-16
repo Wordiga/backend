@@ -5,7 +5,7 @@
 | 분류   | 스택                                              |
 |------|-------------------------------------------------|
 | Core | Java 25 / Spring Boot 4.0.6 / Gradle            |
-| DB   | PostgreSQL 17 / Spring Data JPA / Spring Cache  |
+| DB   | PostgreSQL 17 / Spring Data JPA / Flyway / Spring Cache  |
 | Auth | Spring Security / OAuth2 Client (Kakao, Google) |
 | Docs | Springdoc OpenAPI 2.8.8 / Jakarta Validation    |
 
@@ -62,7 +62,7 @@ http://localhost:8080/swagger-ui.html
 
 ## 🗃️️ DB 초기화
 
-볼륨 삭제 후 `init.sql`부터 재생성:
+볼륨 삭제 후 재생성:
 
 ```bash
 # Local

@@ -28,7 +28,7 @@ jobs:
             set -euo pipefail
             cd /opt/wordiga
 
-            echo '[1/5] 환경변수 파일 동기화...'
+            echo '[1/4] 환경변수 파일 동기화...'
             mkdir -p secrets
             printf '%s\n' "$BACKEND_ENV" > secrets/backend.env
             chmod 600 secrets/backend.env
@@ -37,25 +37,18 @@ jobs:
               ./render-env.sh
             fi
 
-            echo '[2/5] DB 서비스 기동 및 헬스 대기...'
+            echo '[2/4] DB 서비스 기동 및 헬스 대기...'
             docker compose up -d postgres
             until docker compose exec -T postgres pg_isready -U wordiga -d wordiga; do
               sleep 2
             done
 
-            echo '[3/5] DB 스키마 마이그레이션 적용...'
-            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE proposals ADD COLUMN IF NOT EXISTS s3_key_pdf VARCHAR(500);"'
-            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS source_modified_at TIMESTAMP;"'
-            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP;"'
-            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "WITH ranked AS (SELECT id, ROW_NUMBER() OVER (PARTITION BY plan_id ORDER BY created_at DESC, id DESC) AS row_number FROM proposals) DELETE FROM proposals WHERE id IN (SELECT id FROM ranked WHERE row_number > 1);"'
-            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE UNIQUE INDEX IF NOT EXISTS uk_proposals_plan ON proposals (plan_id);"'
-
-            echo '[4/5] Docker Hub 이미지 갱신 및 컨테이너 재배포...'
+            echo '[3/4] Docker Hub 이미지 갱신 및 컨테이너 재배포...'
             docker compose pull backend
             docker compose up -d --no-deps backend
             docker compose up -d --no-deps caddy
 
-            echo '[5/5] 백엔드 헬스체크 검증...'
+            echo '[4/4] 백엔드 헬스체크 검증...'
             for attempt in $(seq 1 30); do
               if curl --fail --silent http://127.0.0.1:8080/api/v1/health >/dev/null; then
                 echo "배포 정상 완료 (소요: $((attempt * 2))초)"
