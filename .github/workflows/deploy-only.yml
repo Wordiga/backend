@@ -44,11 +44,11 @@ jobs:
             done
 
             echo '[3/5] DB 스키마 마이그레이션 적용...'
-            docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE proposals ADD COLUMN IF NOT EXISTS s3_key_pdf VARCHAR(500);"
-            docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS source_modified_at TIMESTAMP;"
-            docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP;"
-            docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "WITH ranked AS (SELECT id, ROW_NUMBER() OVER (PARTITION BY plan_id ORDER BY created_at DESC, id DESC) AS row_number FROM proposals) DELETE FROM proposals WHERE id IN (SELECT id FROM ranked WHERE row_number > 1);"
-            docker compose exec -T postgres psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE UNIQUE INDEX IF NOT EXISTS uk_proposals_plan ON proposals (plan_id);"
+            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE proposals ADD COLUMN IF NOT EXISTS s3_key_pdf VARCHAR(500);"'
+            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS source_modified_at TIMESTAMP;"'
+            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS last_synced_at TIMESTAMP;"'
+            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "WITH ranked AS (SELECT id, ROW_NUMBER() OVER (PARTITION BY plan_id ORDER BY created_at DESC, id DESC) AS row_number FROM proposals) DELETE FROM proposals WHERE id IN (SELECT id FROM ranked WHERE row_number > 1);"'
+            docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c "CREATE UNIQUE INDEX IF NOT EXISTS uk_proposals_plan ON proposals (plan_id);"'
 
             echo '[4/5] Docker Hub 이미지 갱신 및 컨테이너 재배포...'
             docker compose pull backend
