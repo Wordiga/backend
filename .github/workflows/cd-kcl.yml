@@ -33,7 +33,7 @@ jobs:
         run: ./gradlew clean check --stacktrace
 
       - name: Build smoke-test image
-        run: docker build -t wordiga-backend:smoke .
+        run: docker build --no-cache -t wordiga-backend:smoke .
 
       - name: Run container smoke test
         shell: bash
