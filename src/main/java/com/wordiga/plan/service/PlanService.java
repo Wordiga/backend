@@ -45,7 +45,8 @@ public class PlanService {
         Page<Plan> result = planRepository.findByMemberId(memberId, PageRequest.of(page, size, order));
         synchronize(result.getContent());
         return PlanListResponse.builder().items(result.map(PlanSummaryResponse::from).getContent())
-                .page(page).size(size).totalPages(result.getTotalPages()).hasNext(result.hasNext()).build();
+                .page(page).size(size).totalCount(result.getTotalElements())
+                .totalPages(result.getTotalPages()).hasNext(result.hasNext()).build();
     }
 
     @Transactional

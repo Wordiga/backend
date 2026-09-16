@@ -1191,6 +1191,7 @@ GET /api/v1/plans
 | `items[].updatedAt` | LocalDateTime | Y | 수정 시각 |
 | `page` | Integer | Y | 현재 페이지 번호 |
 | `size` | Integer | Y | 페이지 크기 |
+| `totalCount` | Long | Y | 전체 일정 수 |
 | `totalPages` | Integer | Y | 전체 페이지 수 |
 | `hasNext` | Boolean | Y | 다음 페이지 존재 여부 |
 
@@ -1214,6 +1215,7 @@ GET /api/v1/plans
   ],
   "page": 0,
   "size": 20,
+  "totalCount": 1,
   "totalPages": 1,
   "hasNext": false
 }
