@@ -53,7 +53,8 @@ public record AiPlanRequest(
         long total = estimates.stream().mapToLong(PlanCostPolicy.Estimate::calculatedAmount).sum();
         Map<String, Long> breakdown = estimates.stream().collect(java.util.stream.Collectors.groupingBy(
                 PlanCostPolicy.Estimate::category, java.util.LinkedHashMap::new,
-                java.util.stream.Collectors.summingLong(PlanCostPolicy.Estimate::calculatedAmount)));
+                java.util.stream.Collectors.summingLong(estimate ->
+                        participants == 0 ? 0 : estimate.calculatedAmount() / participants)));
         return new EstimatedBudget(total, participants == 0 ? 0 : total / participants, "KRW", breakdown);
     }
 

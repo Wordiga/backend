@@ -1,8 +1,7 @@
 package com.wordiga.tourism.service;
 
 import com.wordiga.global.client.WeatherApiClient;
-import com.wordiga.global.client.dto.AsosDailyResponse;
-import com.wordiga.global.config.WeatherProperties;
+import com.wordiga.global.client.dto.AwsDailyResponse;
 import com.wordiga.tourism.dto.detail.MonthlyWeatherDto;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -10,8 +9,6 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.YearMonth;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
@@ -20,33 +17,27 @@ import static com.wordiga.global.util.KtoUtils.parseBigDecimal;
 @Service
 @RequiredArgsConstructor
 public class MonthlyWeatherService {
-    /**
-     * 한국관광공사 법정동 시군구 코드에 대응하는 기상청 ASOS 관측소
-     * 해당 시군구에 ASOS 관측소가 없으면 인접 지역의 대표 관측소를 사용
-     */
-    private static final Map<String, AsosStation> ASOS_STATION_BY_SIGUNGU_CODE = Map.ofEntries(
-            Map.entry("110", new AsosStation("236", "부여")), // 공주시 -> 부여/대전 인접
-            Map.entry("120", new AsosStation("238", "금산")), // 금산군 -> 금산 관측소
-            Map.entry("131", new AsosStation("232", "천안")), // 천안시 동남구
-            Map.entry("133", new AsosStation("232", "천안")), // 천안시 서북구
-            Map.entry("150", new AsosStation("236", "부여")), // 논산시 -> 부여 인접
-            Map.entry("180", new AsosStation("129", "서산")), // 당진시 -> 서산 인접
-            Map.entry("200", new AsosStation("235", "보령")), // 보령시 -> 보령 관측소
-            Map.entry("210", new AsosStation("236", "부여")), // 부여군 -> 부여 관측소
-            Map.entry("230", new AsosStation("235", "보령")), // 서천군 -> 보령/군산 인접
-            Map.entry("250", new AsosStation("232", "천안")), // 아산시 -> 천안 인접
-            Map.entry("270", new AsosStation("129", "서산")), // 예산군 -> 서산/홍성 인접
-            Map.entry("310", new AsosStation("232", "천안")), // 천안시 -> 천안 관측소
-            Map.entry("330", new AsosStation("236", "부여")), // 청양군 -> 부여 인접
-            Map.entry("340", new AsosStation("235", "보령")), // 태안군 -> 보령/서산 인접
-            Map.entry("350", new AsosStation("129", "서산")), // 홍성군 -> 서산 인접
-            Map.entry("360", new AsosStation("236", "부여")), // 계룡시 -> 부여/대전 인접
-            Map.entry("370", new AsosStation("232", "천안")), // 세종시 -> 천안/대전 인접
-            Map.entry("380", new AsosStation("129", "서산"))  // 당진시 등 -> 서산 인접
+    private static final Map<String, WeatherStation> STATION_BY_SIGUNGU_CODE = Map.ofEntries(
+            Map.entry("130", new WeatherStation("232", "천안")),
+            Map.entry("131", new WeatherStation("232", "천안")),
+            Map.entry("133", new WeatherStation("617", "성거")),
+            Map.entry("150", new WeatherStation("612", "공주")),
+            Map.entry("180", new WeatherStation("235", "보령")),
+            Map.entry("200", new WeatherStation("634", "아산")),
+            Map.entry("210", new WeatherStation("129", "서산")),
+            Map.entry("230", new WeatherStation("615", "논산")),
+            Map.entry("250", new WeatherStation("636", "계룡")),
+            Map.entry("270", new WeatherStation("616", "당진")),
+            Map.entry("710", new WeatherStation("238", "금산")),
+            Map.entry("760", new WeatherStation("236", "부여")),
+            Map.entry("770", new WeatherStation("614", "서천")),
+            Map.entry("790", new WeatherStation("618", "청양")),
+            Map.entry("800", new WeatherStation("177", "홍성")),
+            Map.entry("810", new WeatherStation("628", "예산")),
+            Map.entry("825", new WeatherStation("627", "태안"))
     );
 
     private final WeatherApiClient weatherApiClient;
-    private final WeatherProperties properties;
 
     /** 최근 완료된 연도의 같은 달 관측값으로 최저·최고기온, 강수일수, 강수량을 계산한다. */
     public MonthlyWeatherDto estimate(String sigunguCode, LocalDate visitDate) {
@@ -54,17 +45,12 @@ public class MonthlyWeatherService {
     }
 
     public MonthlyWeatherDto estimate(String sigunguCode, int month) {
-        AsosStation station = ASOS_STATION_BY_SIGUNGU_CODE.get(sigunguCode);
+        WeatherStation station = STATION_BY_SIGUNGU_CODE.get(sigunguCode);
         if (station == null) return null;
 
-        int years = properties.historicalYears();
-        int currentYear = LocalDate.now().getYear();
-        List<AsosDailyResponse.Item> observations = new ArrayList<>();
-
-        for (int offset = 1; offset <= years; offset++) {
-            YearMonth target = YearMonth.of(currentYear - offset, month);
-            observations.addAll(weatherApiClient.daily(station.id(), target.atDay(1), target.atEndOfMonth()));
-        }
+        int referenceYear = LocalDate.now().getYear() - 1;
+        List<AwsDailyResponse.DailyObservation> observations =
+                weatherApiClient.daily(station.id(), referenceYear, month);
         if (observations.isEmpty()) return null;
 
         // 1. 단일 순회 집계 (Single-pass Aggregation)
@@ -75,19 +61,19 @@ public class MonthlyWeatherService {
         long maxTempCount = 0;
         long rainyDays = 0;
 
-        for (AsosDailyResponse.Item item : observations) {
-            BigDecimal minTemp = parseBigDecimal(item.getMinTa());
+        for (AwsDailyResponse.DailyObservation item : observations) {
+            BigDecimal minTemp = parseBigDecimal(item.getMinTemperature());
             if (minTemp != null) {
                 totalMinTemp = totalMinTemp.add(minTemp);
                 minTempCount++;
             }
-            BigDecimal maxTemp = parseBigDecimal(item.getMaxTa());
+            BigDecimal maxTemp = parseBigDecimal(item.getMaxTemperature());
             if (maxTemp != null) {
                 totalMaxTemp = totalMaxTemp.add(maxTemp);
                 maxTempCount++;
             }
 
-            BigDecimal rn = parseBigDecimal(item.getSumRn());
+            BigDecimal rn = parseBigDecimal(item.getDailyPrecipitation());
             if (rn != null) {
                 totalPrecipitation = totalPrecipitation.add(rn);
                 if (rn.compareTo(BigDecimal.valueOf(0.1)) >= 0) rainyDays++;
@@ -99,22 +85,18 @@ public class MonthlyWeatherService {
         BigDecimal averageMaxTemp = maxTempCount == 0 ? null
                 : totalMaxTemp.divide(BigDecimal.valueOf(maxTempCount), 1, RoundingMode.HALF_UP);
 
-        BigDecimal avgMonthlyPrecipitation = totalPrecipitation.divide(
-                BigDecimal.valueOf(years), 1, RoundingMode.HALF_UP);
-
         return MonthlyWeatherDto.builder()
                 .targetMonth(month)
                 .averageMinTemp(averageMinTemp)
                 .averageMaxTemp(averageMaxTemp)
-                .averageRainyDays(BigDecimal.valueOf(rainyDays).divide(
-                        BigDecimal.valueOf(years), 0, RoundingMode.HALF_UP).intValue())
-                .monthlyPrecipitation(avgMonthlyPrecipitation)
-                .historicalYears(years)
+                .averageRainyDays(Math.toIntExact(rainyDays))
+                .monthlyPrecipitation(totalPrecipitation.setScale(1, RoundingMode.HALF_UP))
+                .historicalYears(1)
                 .stationName(station.name())
-                .basis("ASOS_HISTORICAL_MONTHLY_AVERAGE")
+                .description("직전 연도 동일 월 관측값")
                 .build();
     }
 
-    private record AsosStation(String id, String name) {
+    private record WeatherStation(String id, String name) {
     }
 }

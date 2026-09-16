@@ -77,6 +77,7 @@ class PersonalizedTourismContentServiceUnitTest {
 
         assertThat(ten.getItems()).hasSize(1);
         assertThat(ten.getItems().getFirst().getEstimatedCost()).isEqualTo(10_000);
+        assertThat(ten.getItems().getFirst().getCost().totalAmount()).isEqualTo(100_000);
         assertThat(twentyFive.getItems()).isEmpty();
         assertThat(twentyFive.getTotalCount()).isZero();
     }

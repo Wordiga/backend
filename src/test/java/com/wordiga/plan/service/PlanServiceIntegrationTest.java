@@ -137,6 +137,11 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         assertThat(saved.getEstimatedBudget().perPersonAmount()).isEqualTo(25_000);
         assertThat(saved.getEstimatedBudget().breakdown())
                 .containsEntry("문화시설", 10_000L).containsEntry("음식점", 15_000L);
+        assertThat(saved.getDays().getFirst().getContents()).allSatisfy(content -> {
+            assertThat(content.getCost()).isNotNull();
+            assertThat(content.getCost().source()).isEqualTo(com.wordiga.plan.CostSource.DEFAULT);
+            assertThat(content.getCost().totalAmount()).isEqualTo(content.getEstimatedCost());
+        });
     }
 
     @Test

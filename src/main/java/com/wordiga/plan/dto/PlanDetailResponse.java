@@ -83,6 +83,7 @@ public class PlanDetailResponse {
         private Integer travelTimeMinutes;
         private Integer travelDistanceMeters;
         private Long estimatedCost;
+        private ContentCostDto cost;
         private String memo;
 
         static Content from(PlanContent c) {
@@ -93,7 +94,7 @@ public class PlanDetailResponse {
                     .mapx(content.getMapx()).mapy(content.getMapy())
                     .startTime(c.getStartTime()).endTime(c.getEndTime()).durationMinutes(c.getDuration())
                     .travelTimeMinutes(c.getTravelTimeMinutes()).travelDistanceMeters(c.getTravelDistanceMeters())
-                    .estimatedCost(c.getEstimatedCost()).build();
+                    .estimatedCost(c.getEstimatedCost()).cost(ContentCostDto.from(c)).build();
         }
     }
 }

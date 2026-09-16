@@ -1,9 +1,10 @@
 package com.wordiga.plan.service;
 
-import com.fasterxml.jackson.databind.PropertyNamingStrategies;
-import com.fasterxml.jackson.databind.annotation.JsonNaming;
+import com.wordiga.plan.CostUnit;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.dto.detail.TourismDetailInfoDto;
+import tools.jackson.databind.PropertyNamingStrategies;
+import tools.jackson.databind.annotation.JsonNaming;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -14,30 +15,38 @@ public final class PlanCostPolicy {
     private static final Pattern AMOUNT = Pattern.compile("(?<!\\d)(\\d{1,3}(?:,\\d{3})+|\\d+)(?=\\s*원)");
     private static final Pattern COST_NAME = Pattern.compile("입장료|관람료|이용료|요금|비용");
     private static final Map<String, DefaultCost> DEFAULTS = Map.of(
-            "12", new DefaultCost(10_000, Unit.PERSON, "관광지"),
-            "14", new DefaultCost(10_000, Unit.PERSON, "문화시설"),
-            "15", new DefaultCost(20_000, Unit.PERSON, "축제/행사"),
-            "25", new DefaultCost(0, Unit.GROUP, "여행코스"),
-            "28", new DefaultCost(30_000, Unit.PERSON, "레포츠"),
-            "32", new DefaultCost(100_000, Unit.ROOM, "숙박"),
-            "38", new DefaultCost(0, Unit.GROUP, "쇼핑"),
-            "39", new DefaultCost(15_000, Unit.PERSON, "음식점"));
+            "12", new DefaultCost(10_000, CostUnit.PERSON, "관광지"),
+            "14", new DefaultCost(10_000, CostUnit.PERSON, "문화시설"),
+            "15", new DefaultCost(20_000, CostUnit.PERSON, "축제/행사"),
+            "25", new DefaultCost(0, CostUnit.GROUP, "여행코스"),
+            "28", new DefaultCost(30_000, CostUnit.PERSON, "레포츠"),
+            "32", new DefaultCost(100_000, CostUnit.ROOM, "숙박"),
+            "38", new DefaultCost(0, CostUnit.GROUP, "쇼핑"),
+            "39", new DefaultCost(15_000, CostUnit.PERSON, "음식점"));
 
     private PlanCostPolicy() {
     }
 
     public static Estimate estimate(TourismContentDetailResponse detail, int participants) {
         String type = detail.getCommon().getContentTypeId();
-        DefaultCost fallback = DEFAULTS.getOrDefault(type, new DefaultCost(0, Unit.GROUP, "기타"));
+        DefaultCost fallback = DEFAULTS.getOrDefault(type, new DefaultCost(0, CostUnit.GROUP, "기타"));
         List<Reference> references = references(detail, type);
         Long actual = references.stream().map(Reference::amount).filter(java.util.Objects::nonNull)
                 .min(Long::compareTo).orElse(null);
-        Unit unit = "32".equals(type) ? Unit.ROOM : fallback.unit();
-        int quantity = unit == Unit.PERSON ? participants
-                : unit == Unit.ROOM ? roomQuantity(detail, participants) : 1;
+        CostUnit unit = "32".equals(type) ? CostUnit.ROOM : fallback.unit();
+        int quantity = unit == CostUnit.PERSON ? participants
+                : unit == CostUnit.ROOM ? roomQuantity(detail, participants) : 1;
         long unitAmount = actual == null ? fallback.amount() : actual;
         return new Estimate(unitAmount, unit, quantity, unitAmount * quantity,
                 actual == null, fallback.category(), references);
+    }
+
+    public static Estimate defaultEstimate(String contentTypeId, int participants) {
+        DefaultCost fallback = contentTypeId == null ? new DefaultCost(0, CostUnit.GROUP, "기타")
+                : DEFAULTS.getOrDefault(contentTypeId, new DefaultCost(0, CostUnit.GROUP, "기타"));
+        int quantity = fallback.unit() == CostUnit.PERSON ? participants : 1;
+        return new Estimate(fallback.amount(), fallback.unit(), quantity, fallback.amount() * quantity,
+                true, fallback.category(), List.of());
     }
 
     public static long defaultPerPersonAmount(String contentTypeId, int participants) {
@@ -48,6 +57,11 @@ public final class PlanCostPolicy {
             case PERSON -> cost.amount();
             case ROOM, GROUP -> cost.amount() / Math.max(1, participants);
         };
+    }
+
+    public static String category(String contentTypeId) {
+        return contentTypeId == null ? "기타"
+                : DEFAULTS.getOrDefault(contentTypeId, new DefaultCost(0, CostUnit.GROUP, "기타")).category();
     }
 
     private static List<Reference> references(TourismContentDetailResponse detail, String type) {
@@ -93,9 +107,7 @@ public final class PlanCostPolicy {
         }
     }
 
-    public enum Unit { PERSON, ROOM, GROUP }
-
-    private record DefaultCost(long amount, Unit unit, String category) {
+    private record DefaultCost(long amount, CostUnit unit, String category) {
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
@@ -103,7 +115,7 @@ public final class PlanCostPolicy {
     }
 
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
-    public record Estimate(long amount, Unit unit, int quantity, long calculatedAmount,
+    public record Estimate(long amount, CostUnit unit, int quantity, long calculatedAmount,
                            boolean fallbackApplied, String category, List<Reference> references) {
     }
 }

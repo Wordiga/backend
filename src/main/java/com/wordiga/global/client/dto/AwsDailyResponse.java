@@ -1,6 +1,7 @@
 package com.wordiga.global.client.dto;
 
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -9,7 +10,7 @@ import java.util.List;
 @Getter
 @Setter
 @JsonIgnoreProperties(ignoreUnknown = true)
-public class AsosDailyResponse {
+public class AwsDailyResponse {
     private Response response;
 
     @Getter
@@ -46,12 +47,30 @@ public class AsosDailyResponse {
     @Setter
     @JsonIgnoreProperties(ignoreUnknown = true)
     public static class Item {
+        private AwsMonthDays awsmdays;
+    }
+
+    @Getter
+    @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class AwsMonthDays {
+        @JsonProperty("stn_id")
+        private String stationId;
+        @JsonProperty("stn_ko")
+        private String stationName;
+        private List<DailyObservation> info;
+    }
+
+    @Getter
+    @Setter
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    public static class DailyObservation {
         private String tm;
-        private String stnId;
-        private String stnNm;
-        private String avgTa;
-        private String minTa;
-        private String maxTa;
-        private String sumRn;
+        @JsonProperty("ta_min")
+        private String minTemperature;
+        @JsonProperty("ta_max")
+        private String maxTemperature;
+        @JsonProperty("rn_day")
+        private String dailyPrecipitation;
     }
 }
