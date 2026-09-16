@@ -40,27 +40,27 @@ jobs:
         run: |
           set -euo pipefail
           docker network create wordiga-smoke
-          
+
           docker run -d --name wd-postgres-dev --network wordiga-smoke --network-alias postgres \
             -e POSTGRES_HOST_AUTH_METHOD=trust \
             -v "$PWD/init.sql:/docker-entrypoint-initdb.d/init.sql:ro" \
             postgres:17-alpine
-          
+
           until docker exec wd-postgres-dev pg_isready -U postgres -d postgres; do
             sleep 2
           done
-          
+
           docker run -d --name wordiga-backend-smoke --network wordiga-smoke -p 8080:8080 \
             -e SPRING_PROFILES_ACTIVE=prod,smoke \
             wordiga-backend:smoke
-          
+
           for _ in {1..30}; do
             if curl --fail --silent http://127.0.0.1:8080/api/v1/health; then
               exit 0
             fi
             sleep 2
           done
-          
+
           docker logs wordiga-backend-smoke
           exit 1
 
@@ -97,7 +97,7 @@ jobs:
           host: ${{ vars.KT_HOST }}
           username: ${{ vars.KT_USER }}
           key: ${{ secrets.KT_SSH_KEY }}
-          envs: GITHUB_SHA
+          envs: GITHUB_SHA,BACKEND_ENV
           script_stop: true
           script: |
             set -euo pipefail
@@ -105,18 +105,7 @@ jobs:
 
             echo '[1/6] 환경변수 파일 동기화...'
             mkdir -p secrets
-            
-            # Repository Secret(BACKEND_ENV) 주입 및 이스케이프 오류 방지
-            cat <<'EOF' > secrets/backend.env.raw
-            ${{ secrets.BACKEND_ENV }}
-            EOF
-
-            # 평문 .env인지 Base64인지 판별하여 최종 파일(secrets/backend.env) 생성
-            if base64 -d secrets/backend.env.raw > secrets/backend.env 2>/dev/null && [ -s secrets/backend.env ]; then
-              rm -f secrets/backend.env.raw
-            else
-              mv secrets/backend.env.raw secrets/backend.env
-            fi
+            printf '%s\n' "$BACKEND_ENV" > secrets/backend.env
             chmod 600 secrets/backend.env
 
             if [ -f "./render-env.sh" ]; then
@@ -162,3 +151,5 @@ jobs:
             echo "배포 실패: 헬스체크 응답 없음. 백엔드 로그 확인:"
             docker compose logs --tail=200 backend
             exit 1
+        env:
+          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
