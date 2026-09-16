@@ -15,7 +15,6 @@ env:
 
 jobs:
   build-push-deploy:
-    environment: production
     runs-on: ubuntu-latest
     timeout-minutes: 30
 
@@ -41,26 +40,27 @@ jobs:
         run: |
           set -euo pipefail
           docker network create wordiga-smoke
+          
           docker run -d --name wd-postgres-dev --network wordiga-smoke --network-alias postgres \
-            -e POSTGRES_DB=wordiga \
-            -e POSTGRES_USER=wordiga \
-            -e POSTGRES_PASSWORD=wordiga-smoke-password \
+            -e POSTGRES_HOST_AUTH_METHOD=trust \
             -v "$PWD/init.sql:/docker-entrypoint-initdb.d/init.sql:ro" \
             postgres:17-alpine
-
-          until docker exec wd-postgres-dev pg_isready -U wordiga -d wordiga; do sleep 2; done
-
-          docker run -d --name wordiga-backend-smoke --network wordiga-smoke -p 8080:8080 \
-            -e SPRING_PROFILES_ACTIVE=prod,smoke \
-            -e POSTGRES_DB=wordiga \
-            -e POSTGRES_USER=wordiga \
-            -e POSTGRES_PASSWORD=wordiga-smoke-password \
-            wordiga-backend:smoke
-
-          for _ in {1..30}; do
-            if curl --fail --silent http://127.0.0.1:8080/api/v1/health; then exit 0; fi
+          
+          until docker exec wd-postgres-dev pg_isready -U postgres -d postgres; do
             sleep 2
           done
+          
+          docker run -d --name wordiga-backend-smoke --network wordiga-smoke -p 8080:8080 \
+            -e SPRING_PROFILES_ACTIVE=prod,smoke \
+            wordiga-backend:smoke
+          
+          for _ in {1..30}; do
+            if curl --fail --silent http://127.0.0.1:8080/api/v1/health; then
+              exit 0
+            fi
+            sleep 2
+          done
+          
           docker logs wordiga-backend-smoke
           exit 1
 
@@ -91,45 +91,45 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
-      - name: Prepare backend environment
-        shell: bash
-        env:
-          BACKEND_ENV: ${{ secrets.BACKEND_ENV }}
-        run: |
-          set -euo pipefail
-          [ -n "$BACKEND_ENV" ]
-          BACKEND_ENV_B64=$(printf '%s' "$BACKEND_ENV" | base64 | tr -d '\n')
-          echo "::add-mask::$BACKEND_ENV_B64"
-          echo "BACKEND_ENV_B64=$BACKEND_ENV_B64" >> "$GITHUB_ENV"
-
       - name: Deploy to KT Cloud via SSH
         uses: appleboy/ssh-action@v1.0.3
-        env:
-          BACKEND_ENV_B64: ${{ env.BACKEND_ENV_B64 }}
         with:
           host: ${{ vars.KT_HOST }}
           username: ${{ vars.KT_USER }}
           key: ${{ secrets.KT_SSH_KEY }}
-          envs: GITHUB_SHA,BACKEND_ENV_B64
+          envs: GITHUB_SHA
+          script_stop: true
           script: |
-            set -eu
+            set -euo pipefail
             cd /opt/wordiga
-            install -d -m 700 secrets
-            BACKEND_ENV_TMP=$(mktemp secrets/backend.env.XXXXXX)
-            trap 'rm -f "$BACKEND_ENV_TMP"; rm -rf /run/wordiga' EXIT
-            printf '%s' "$BACKEND_ENV_B64" | base64 -d > "$BACKEND_ENV_TMP"
-            test -s "$BACKEND_ENV_TMP"
-            chmod 600 "$BACKEND_ENV_TMP"
-            mv "$BACKEND_ENV_TMP" secrets/backend.env
-            echo '[1/7] 환경변수 렌더링...'
-            ./render-env.sh
-            echo '[2/7] Postgres 시작...'
+
+            echo '[1/6] 환경변수 파일 동기화...'
+            mkdir -p secrets
+            
+            # Repository Secret(BACKEND_ENV) 주입 및 이스케이프 오류 방지
+            cat <<'EOF' > secrets/backend.env.raw
+            ${{ secrets.BACKEND_ENV }}
+            EOF
+
+            # 평문 .env인지 Base64인지 판별하여 최종 파일(secrets/backend.env) 생성
+            if base64 -d secrets/backend.env.raw > secrets/backend.env 2>/dev/null && [ -s secrets/backend.env ]; then
+              rm -f secrets/backend.env.raw
+            else
+              mv secrets/backend.env.raw secrets/backend.env
+            fi
+            chmod 600 secrets/backend.env
+
+            if [ -f "./render-env.sh" ]; then
+              ./render-env.sh
+            fi
+
+            echo '[2/6] DB 서비스 기동 및 헬스 대기...'
             docker compose up -d postgres
-            echo '[3/7] DB 준비 대기 및 스키마 반영...'
             until docker compose exec -T postgres pg_isready -U wordiga -d wordiga; do
-              echo "Postgres 초기화 대기 중..."
               sleep 2
             done
+
+            echo '[3/6] DB 스키마 마이그레이션 적용...'
             docker compose exec -T postgres sh -c 'psql -v ON_ERROR_STOP=1 -U "$POSTGRES_USER" -d "$POSTGRES_DB"' <<'SQL'
             ALTER TABLE proposals ADD COLUMN IF NOT EXISTS s3_key_pdf VARCHAR(500);
             ALTER TABLE tourism_content_snapshots ADD COLUMN IF NOT EXISTS source_modified_at TIMESTAMP;
@@ -142,20 +142,23 @@ jobs:
             WHERE id IN (SELECT id FROM ranked WHERE row_number > 1);
             CREATE UNIQUE INDEX IF NOT EXISTS uk_proposals_plan ON proposals (plan_id);
             SQL
-            echo '[4/7] 백엔드 이미지 다운로드...'
+
+            echo '[4/6] 백엔드 이미지 갱신 및 컨테이너 재배포...'
             BACKEND_IMAGE_TAG=$GITHUB_SHA docker compose pull backend
-            echo '[5/7] 백엔드 시작...'
             BACKEND_IMAGE_TAG=$GITHUB_SHA docker compose up -d --no-deps backend
-            echo '[6/7] Caddy 기동 확인...'
+
+            echo '[5/6] Caddy 리버스 프록시 상태 확인...'
             docker compose up -d --no-deps caddy
-            echo '[7/7] 백엔드 상태 확인...'
+
+            echo '[6/6] 백엔드 헬스체크 검증...'
             for attempt in $(seq 1 30); do
               if curl --fail --silent http://127.0.0.1:8080/api/v1/health >/dev/null; then
-                echo '배포 성공'
+                echo "배포 정상 완료 (소요: $((attempt * 2))초)"
                 exit 0
               fi
               sleep 2
             done
-            docker compose ps backend
+
+            echo "배포 실패: 헬스체크 응답 없음. 백엔드 로그 확인:"
             docker compose logs --tail=200 backend
             exit 1

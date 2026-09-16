@@ -3,6 +3,12 @@ spring:
     activate:
       on-profile: smoke
 
+  datasource:
+    url: jdbc:postgresql://postgres:5432/postgres
+    username: postgres
+    password: ""
+    driver-class-name: org.postgresql.Driver
+
   security:
     oauth2:
       client:
