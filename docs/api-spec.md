@@ -1537,7 +1537,7 @@ PUT /api/v1/plans/{planId}/contents
 | `visitMonth` | String | Y | 방문 월 `YYYY-MM` |
 | `stayDays` | Integer | Y | 체류 일수 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedBudget` | EstimatedCost | N | 마지막 AI 생성 시 저장된 예상 예산이며 재생성 전까지 유지 |
+| `estimatedBudget` | EstimatedCost | N | 편집 후 콘텐츠별 저장 비용을 다시 합산한 예상 예산 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |

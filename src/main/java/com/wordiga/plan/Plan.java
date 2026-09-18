@@ -9,8 +9,11 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 
 @Entity
 @Table(name = "plans")
@@ -88,10 +91,18 @@ public class Plan extends BaseTimeEntity {
         this.scheduleId = scheduleId;
         this.estimatedTotalAmount = totalAmount;
         this.estimatedPerPersonAmount = perPersonAmount;
-        budgetBreakdowns.clear();
-        if (breakdown != null) breakdown.forEach((category, amount) -> {
-            if (category != null && !category.isBlank() && amount != null)
-                budgetBreakdowns.add(PlanBudgetBreakdown.create(this, category, amount));
+        Map<String, Long> validBreakdown = breakdown == null ? Map.of() : breakdown.entrySet().stream()
+                .filter(entry -> entry.getKey() != null && !entry.getKey().isBlank() && entry.getValue() != null)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                        (first, ignored) -> first, LinkedHashMap::new));
+        Map<String, PlanBudgetBreakdown> existingByCategory = budgetBreakdowns.stream()
+                .collect(Collectors.toMap(PlanBudgetBreakdown::getCategory, Function.identity()));
+
+        budgetBreakdowns.removeIf(item -> !validBreakdown.containsKey(item.getCategory()));
+        validBreakdown.forEach((category, amount) -> {
+            PlanBudgetBreakdown existing = existingByCategory.get(category);
+            if (existing == null) budgetBreakdowns.add(PlanBudgetBreakdown.create(this, category, amount));
+            else existing.updateAmount(amount);
         });
     }
 }
