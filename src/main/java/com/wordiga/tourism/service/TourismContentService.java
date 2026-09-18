@@ -54,9 +54,10 @@ public class TourismContentService {
             String lDongSignguCd, String referenceContentId, Boolean capacitySatisfied,
             Integer participantCount, List<String> ageGroups, int page, int size) {
         if (type == ListType.PERSONALIZED)
-            return personalizedTourismContentService.get(
-                    memberId, visitDate, ageGroups, participantCount, capacitySatisfied,
-                    theme, categories, page, size);
+            return enrichMemberData(memberId, visitDate, ageGroups,
+                    personalizedTourismContentService.get(
+                            memberId, visitDate, ageGroups, participantCount, capacitySatisfied,
+                            theme, categories, page, size));
         if (type == ListType.RELATED)
             return enrichMemberData(memberId, visitDate, ageGroups,
                     related(referenceContentId, page, size));

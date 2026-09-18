@@ -343,15 +343,21 @@ class TourismContentServiceUnitTest {
     }
 
     @Test
-    void delegatesPersonalizedRecommendationsWithoutReloadingWishes() {
-        TourismContentListResponse empty = TourismContentListResponse.builder()
-                .items(List.of()).page(0).size(20).hasNext(false).build();
+    void enrichesPersonalizedRecommendationsWithWishes() {
+        var wished = com.wordiga.tourism.dto.TourismContentDto.builder().contentId("wished").build();
+        var other = com.wordiga.tourism.dto.TourismContentDto.builder().contentId("other").build();
+        TourismContentListResponse recommendations = TourismContentListResponse.builder()
+                .items(List.of(wished, other)).page(0).size(20).hasNext(false).build();
         when(personalizedTourismContentService.get(
-                1L, LocalDate.of(2026, 8, 20), List.of("30S"), null, null, null, List.of(), 0, 20)).thenReturn(empty);
+                1L, LocalDate.of(2026, 8, 20), List.of("30S"), null, null, null, List.of(), 0, 20))
+                .thenReturn(recommendations);
+        when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of(Wish.create(1L,
+                snapshot("wished", "위시 콘텐츠", null), "기본 위시리스트")));
 
-        assertThat(tourismContentService.getContentList(1L, ListType.PERSONALIZED, LocalDate.of(2026, 8, 20),
-                null, null, null, null, null, List.of("30S"), 0, 20)).isSameAs(empty);
-        verify(wishRepository, org.mockito.Mockito.never()).findByMemberIdOrderByCreatedAtDescIdDesc(1L);
+        var result = tourismContentService.getContentList(1L, ListType.PERSONALIZED, LocalDate.of(2026, 8, 20),
+                null, null, null, null, null, List.of("30S"), 0, 20);
+
+        assertThat(result.getItems()).extracting("wished").containsExactly(true, false);
     }
 
     private AreaBasedItem classified(String id, String large) {
