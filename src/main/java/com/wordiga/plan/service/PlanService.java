@@ -78,12 +78,16 @@ public class PlanService {
         validateDays(plan, request.getDays());
         Map<String, ArrayDeque<ExistingContent>> existingByContentId = existingByContentId(plan);
         List<PlanContent> contents = new ArrayList<>();
-        int contentCount = 0;
+        java.util.Set<String> lodgingIds = new java.util.HashSet<>();
         for (PlanContentsUpdateRequest.Day day : request.getDays()) {
             int sequence = 1;
             String previousContentId = null;
             for (String contentId : day.getContentIds()) {
                 ContentDetailDto c = tourismContentDetailService.getCommonDetail(contentId);
+                if ("32".equals(c.getContenttypeid())) {
+                    lodgingIds.add(c.getContentid());
+                    if (lodgingIds.size() > 1) invalid("전체 일정에는 하나의 숙소만 사용할 수 있습니다.");
+                }
 
                 TourismContentSnapshot snapshot = snapshotRepository.save(TourismContentSnapshot.builder()
                         .contentId(c.getContentid())
@@ -114,11 +118,9 @@ public class PlanService {
                     else preserveLegacyCost(planContent, plan.getParticipantCount());
                 }
                 contents.add(planContent);
-                contentCount++;
                 previousContentId = c.getContentid();
             }
         }
-        if (contentCount > 10) invalid("콘텐츠는 최대 10개까지 저장할 수 있습니다.");
         plan.replaceContents(contents);
         recalculateBudget(plan);
         return detail(plan);

@@ -202,6 +202,20 @@ class PlanServiceUnitTest {
     }
 
     @Test
+    void rejectsDifferentLodgingsAcrossEditedDays() {
+        when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
+        when(tourismContentDetailService.getCommonDetail("hotel-a")).thenReturn(content("hotel-a", "32"));
+        when(tourismContentDetailService.getCommonDetail("hotel-b")).thenReturn(content("hotel-b", "32"));
+        when(snapshotRepository.save(any(TourismContentSnapshot.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        PlanContentsUpdateRequest request = new PlanContentsUpdateRequest();
+        request.setDays(List.of(day(1, "2026-08-20", "hotel-a"), day(2, "2026-08-21", "hotel-b")));
+
+        assertThatThrownBy(() -> service.updateContents(1L, 9L, request))
+                .hasMessageContaining("하나의 숙소");
+    }
+
+    @Test
     void deleteIsIdempotentOnlyForOwnedExistingPlan() {
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
         service.deletePlan(1L, 9L);
