@@ -97,4 +97,9 @@ public class PlanContent {
         updateCost(source.unitAmount, source.costUnit, source.costQuantity, source.estimatedCost,
                 source.perPersonShare, source.costSource);
     }
+
+    public void clearTravel() {
+        this.travelTimeMinutes = null;
+        this.travelDistanceMeters = null;
+    }
 }

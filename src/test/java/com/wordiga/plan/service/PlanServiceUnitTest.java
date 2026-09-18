@@ -24,6 +24,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.List;
 import java.util.Optional;
 
@@ -164,6 +165,34 @@ class PlanServiceUnitTest {
     }
 
     @Test
+    void clearsOnlyTravelDetailsWhosePreviousContentChanged() {
+        PlanContent first = routeContent("A", 1, 1, 0, 0);
+        PlanContent unchanged = routeContent("B", 2, 1, 12, 6_000);
+        PlanContent affected = routeContent("C", 3, 1, 18, 9_000);
+        plan.addContent(first);
+        plan.addContent(unchanged);
+        plan.addContent(affected);
+        when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
+        when(tourismContentDetailService.getCommonDetail(anyString()))
+                .thenAnswer(invocation -> content(invocation.getArgument(0), "12"));
+        when(snapshotRepository.save(any(TourismContentSnapshot.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+        PlanContentsUpdateRequest request = new PlanContentsUpdateRequest();
+        request.setDays(List.of(day(1, "2026-08-20", "A", "B", "D", "C"),
+                day(2, "2026-08-21")));
+
+        var result = service.updateContents(1L, 9L, request);
+
+        var updated = result.getDays().getFirst().getContents();
+        assertThat(updated.get(0).getTravelTimeMinutes()).isNull();
+        assertThat(updated.get(1).getTravelTimeMinutes()).isEqualTo(12);
+        assertThat(updated.get(1).getTravelDistanceMeters()).isEqualTo(6_000);
+        assertThat(updated.get(2).getTravelTimeMinutes()).isNull();
+        assertThat(updated.get(3).getTravelTimeMinutes()).isNull();
+        assertThat(updated.get(3).getTravelDistanceMeters()).isNull();
+    }
+
+    @Test
     void rejectsOtherMembersPlanAndInvalidDaySequence() {
         assertThatThrownBy(() -> service.getPlan(1L, 9L)).hasMessageContaining("404");
         when(planRepository.findByIdAndMemberId(9L, 1L)).thenReturn(Optional.of(plan));
@@ -191,6 +220,15 @@ class PlanServiceUnitTest {
         content.setContentid(id);
         content.setContenttypeid(type);
         content.setTitle(id);
+        return content;
+    }
+
+    private PlanContent routeContent(String id, int sequence, int day, int travelMinutes, int travelMeters) {
+        TourismContentSnapshot snapshot = TourismContentSnapshot.builder()
+                .contentId(id).contentTypeId("12").title(id).build();
+        PlanContent content = PlanContent.create(plan, sequence, day, snapshot);
+        content.updateAiDetails(null, 90, LocalTime.of(10, 0), LocalTime.of(11, 30),
+                travelMinutes, travelMeters, 0L);
         return content;
     }
 }

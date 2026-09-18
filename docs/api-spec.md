@@ -1545,7 +1545,7 @@ PUT /api/v1/plans/{planId}/contents
 | `days[].contents[].sequence` | Integer | Y | 요청 배열 기준 순서 |
 | `days[].contents[].contentId` | String | Y | 콘텐츠 ID |
 | `days[].contents[].title` | String | Y | 콘텐츠명 |
-| `days[].contents[].travelTimeMinutes` | Integer | N | AI 재계산 전 `null` |
+| `days[].contents[].travelTimeMinutes` | Integer | N | 직전 콘텐츠가 바뀌거나 일자 첫 콘텐츠이면 `null`, 영향받지 않은 경로는 기존 값 유지 |
 | `createdAt` | LocalDateTime | Y | 생성 시각 |
 | `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
@@ -1631,8 +1631,8 @@ PUT /api/v1/plans/{planId}/contents
 ### 처리 기준
 
 - 서버가 `startDate + dayNumber - 1`로 날짜를 계산하고 `contentIds` 배열 순서를 `sequence`로 저장합니다.
-- 콘텐츠가 변경되면 기존 일자·시각·이동시간 배치는 더 이상 유효하지 않습니다.
-- 일자 또는 순서가 바뀐 이동 구간은 AI 재계산 전까지 이동시간을 `null`로 제공합니다.
+- 새 콘텐츠이거나 직전 콘텐츠가 바뀐 이동 구간은 AI 재계산 전까지 이동시간·이동거리를 `null`로 제공합니다.
+- 직전 콘텐츠가 동일한 경로의 이동시간·이동거리는 기존 값을 유지합니다.
 
 ## 12. 내 일정 삭제
 

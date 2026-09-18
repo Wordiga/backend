@@ -24,6 +24,7 @@ import org.springframework.web.server.ResponseStatusException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.ArrayDeque;
+import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -75,13 +76,12 @@ public class PlanService {
     public PlanDetailResponse updateContents(Long memberId, Long planId, PlanContentsUpdateRequest request) {
         Plan plan = owned(memberId, planId);
         validateDays(plan, request.getDays());
-        Map<String, ArrayDeque<PlanContent>> existingByContentId = plan.getPlanContents().stream()
-                .collect(Collectors.groupingBy(content -> content.getContent().getContentId(),
-                        LinkedHashMap::new, Collectors.toCollection(ArrayDeque::new)));
+        Map<String, ArrayDeque<ExistingContent>> existingByContentId = existingByContentId(plan);
         List<PlanContent> contents = new ArrayList<>();
         int contentCount = 0;
         for (PlanContentsUpdateRequest.Day day : request.getDays()) {
             int sequence = 1;
+            String previousContentId = null;
             for (String contentId : day.getContentIds()) {
                 ContentDetailDto c = tourismContentDetailService.getCommonDetail(contentId);
 
@@ -102,14 +102,20 @@ public class PlanService {
                         .build());
 
                 PlanContent planContent = PlanContent.create(plan, sequence++, day.getDayNumber(), snapshot);
-                PlanContent existing = existingByContentId.getOrDefault(c.getContentid(), new ArrayDeque<>()).pollFirst();
-                if (existing != null) planContent.copyDetailsFrom(existing);
+                ExistingContent existing = existingByContentId
+                        .getOrDefault(c.getContentid(), new ArrayDeque<>()).pollFirst();
+                if (existing != null) {
+                    planContent.copyDetailsFrom(existing.content());
+                    if (previousContentId == null || !java.util.Objects.equals(
+                            previousContentId, existing.previousContentId())) planContent.clearTravel();
+                }
                 if (planContent.getUnitAmount() == null) {
                     if (planContent.getEstimatedCost() == null) applyDefaultCost(planContent, plan.getParticipantCount());
                     else preserveLegacyCost(planContent, plan.getParticipantCount());
                 }
                 contents.add(planContent);
                 contentCount++;
+                previousContentId = c.getContentid();
             }
         }
         if (contentCount > 10) invalid("콘텐츠는 최대 10개까지 저장할 수 있습니다.");
@@ -117,6 +123,25 @@ public class PlanService {
         recalculateBudget(plan);
         return detail(plan);
     }
+
+    private Map<String, ArrayDeque<ExistingContent>> existingByContentId(Plan plan) {
+        Map<String, ArrayDeque<ExistingContent>> result = new LinkedHashMap<>();
+        List<PlanContent> sorted = plan.getPlanContents().stream()
+                .sorted(Comparator.comparing(PlanContent::getDayNumber).thenComparing(PlanContent::getSequence))
+                .toList();
+        Integer previousDay = null;
+        String previousContentId = null;
+        for (PlanContent content : sorted) {
+            if (!content.getDayNumber().equals(previousDay)) previousContentId = null;
+            result.computeIfAbsent(content.getContent().getContentId(), ignored -> new ArrayDeque<>())
+                    .addLast(new ExistingContent(content, previousContentId));
+            previousDay = content.getDayNumber();
+            previousContentId = content.getContent().getContentId();
+        }
+        return result;
+    }
+
+    private record ExistingContent(PlanContent content, String previousContentId) {}
 
     @Transactional
     public void deletePlan(Long memberId, Long planId) {
