@@ -112,7 +112,7 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
-    void calculatesMissingTravelDistanceAndPerPersonBudgetBreakdown() {
+    void preservesMissingAiTravelDistanceAndCalculatesPerPersonBudgetBreakdown() {
         Member member = memberRepository.save(Member.create("calculation@test.com", "계산", OAuthProvider.GOOGLE,
                 "calculation", null));
         PlanGenerateRequest request = new PlanGenerateRequest();
@@ -137,8 +137,7 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         PlanDetailResponse saved = planWriter.saveGenerated(member.getId(), request, ai, details, "천안시");
 
         assertThat(saved.getDays().getFirst().getContents()).extracting(PlanDetailResponse.Content::getTravelDistanceMeters)
-                .first().isEqualTo(0);
-        assertThat(saved.getDays().getFirst().getContents().get(1).getTravelDistanceMeters()).isPositive();
+                .containsOnlyNulls();
         assertThat(saved.getEstimatedBudget().totalAmount()).isEqualTo(250_000);
         assertThat(saved.getEstimatedBudget().perPersonAmount()).isEqualTo(25_000);
         assertThat(saved.getEstimatedBudget().breakdown())
