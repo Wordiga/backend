@@ -65,7 +65,7 @@ GET /api/v1/tourism/contents
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
 | `type` | Enum | N | `POPULAR`, `SEASONAL`, `RELATED`, `PERSONALIZED`, `FESTIVAL`; 기본값은 `POPULAR` | `POPULAR` |
-| `visitMonth` | String | N | 계절 정렬 기준 월 `YYYY-MM`, 미입력 시 현재 월 | `2026-08` |
+| `visitMonth` | String | C | 계절 정렬 기준 월 `YYYY-MM`; `FESTIVAL` 조회 시 필수 | `2026-08` |
 | `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
 | `contentTypeId` | String | N | 관광타입 ID | `12` |
 | `theme` | String | N | 화면 대분류 테마 코드 | `ATTRACTION_EXPERIENCE` |
@@ -163,6 +163,7 @@ GET /api/v1/tourism/contents
 - `participantCount`는 1~50이어야 합니다.
 - `PERSONALIZED`는 로그인이 필요합니다.
 - `RELATED`는 `referenceContentId`가 필요합니다.
+- `FESTIVAL`은 `visitMonth`가 필요합니다.
 
 ### 동작 및 정렬 기준
 
@@ -174,6 +175,7 @@ GET /api/v1/tourism/contents
 - `PERSONALIZED`에서 `participantCount`는 숙박 수용 가능 여부와 1인 예상 비용에 반영합니다. 수용 불가능한 숙박은 제외하고 수용 정보가 없는 숙박은 유지합니다. `capacitySatisfied=true`이면 수용 가능하다고 확인된 숙박만 남깁니다.
 - `RELATED`는 기준 콘텐츠명과 지역으로 한국관광공사 연관 관광지를 조회한 뒤 충청남도 콘텐츠 ID로 매칭합니다. 매칭 결과가 없으면 같은 시군구의 동일 카테고리 콘텐츠를 우선해 대체합니다.
 - 일반 목록에서는 축제(`contentTypeId=15`)를 제외하고 `type=FESTIVAL`로 별도 조회합니다.
+- `FESTIVAL`은 방문 월의 1일부터 말일까지를 `searchFestival2`에 전달하며 키워드 검색은 적용하지 않습니다.
 - 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
 - `POPULAR`, `SEASONAL`은 원천 API 순위를 유지하고 `PERSONALIZED`는 `recommendationScore DESC`로 정렬합니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.

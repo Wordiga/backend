@@ -56,7 +56,9 @@
 ## FESTIVAL
 
 - `GET /api/v1/tourism/contents?type=FESTIVAL&visitMonth=YYYY-MM`
-- `contentTypeId=15`만 반환하며 전년도 동월 지역 관광 서비스 수요와 계절 적합도로 정렬합니다.
+- `visitMonth`의 1일부터 말일까지를 `searchFestival2`의 행사 시작일·종료일로 전달합니다.
+- `contentTypeId=15`이며 해당 방문 월에 관람 가능한 축제만 반환합니다.
+- 키워드 검색은 적용하지 않으며 충청남도와 선택한 시군구를 원천 API 요청에서 제한합니다.
 - 일반 목록 및 일반 검색 결과에서는 축제를 제외합니다.
 
 ## 캐시
