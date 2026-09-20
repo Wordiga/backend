@@ -20,6 +20,7 @@ import java.util.List;
 
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -65,6 +66,15 @@ class PlanControllerExceptionTest {
         mockMvc.perform(get("/api/v1/plans").param("size", "51"))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         mockMvc.perform(get("/api/v1/plans").param("sort", "UNKNOWN"))
+                .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
+        verifyNoInteractions(planService);
+    }
+
+    @Test
+    void rejectsMoreThanEightContentsPerEditedDay() throws Exception {
+        mockMvc.perform(put("/api/v1/plans/9/contents").contentType("application/json").content("""
+                {"days":[{"dayNumber":1,"contentIds":["1","2","3","4","5","6","7","8","9"]}]}
+                """))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("INVALID_REQUEST"));
         verifyNoInteractions(planService);
     }

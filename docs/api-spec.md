@@ -65,7 +65,7 @@ GET /api/v1/tourism/contents
 | 이름 | 타입 | 필수 | 설명 | 예시 |
 |---|---|---|---|---|
 | `type` | Enum | N | `POPULAR`, `SEASONAL`, `RELATED`, `PERSONALIZED`, `FESTIVAL`; 기본값은 `POPULAR` | `POPULAR` |
-| `visitMonth` | String | N | 계절 정렬 기준 월 `YYYY-MM`, 미입력 시 현재 월 | `2026-08` |
+| `visitMonth` | String | C | 계절 정렬 기준 월 `YYYY-MM`; `FESTIVAL` 조회 시 필수 | `2026-08` |
 | `keyword` | String | N | 콘텐츠명 검색어 | `공주` |
 | `contentTypeId` | String | N | 관광타입 ID | `12` |
 | `theme` | String | N | 화면 대분류 테마 코드 | `ATTRACTION_EXPERIENCE` |
@@ -163,6 +163,7 @@ GET /api/v1/tourism/contents
 - `participantCount`는 1~50이어야 합니다.
 - `PERSONALIZED`는 로그인이 필요합니다.
 - `RELATED`는 `referenceContentId`가 필요합니다.
+- `FESTIVAL`은 `visitMonth`가 필요합니다.
 
 ### 동작 및 정렬 기준
 
@@ -174,6 +175,7 @@ GET /api/v1/tourism/contents
 - `PERSONALIZED`에서 `participantCount`는 숙박 수용 가능 여부와 1인 예상 비용에 반영합니다. 수용 불가능한 숙박은 제외하고 수용 정보가 없는 숙박은 유지합니다. `capacitySatisfied=true`이면 수용 가능하다고 확인된 숙박만 남깁니다.
 - `RELATED`는 기준 콘텐츠명과 지역으로 한국관광공사 연관 관광지를 조회한 뒤 충청남도 콘텐츠 ID로 매칭합니다. 매칭 결과가 없으면 같은 시군구의 동일 카테고리 콘텐츠를 우선해 대체합니다.
 - 일반 목록에서는 축제(`contentTypeId=15`)를 제외하고 `type=FESTIVAL`로 별도 조회합니다.
+- `FESTIVAL`은 방문 월의 1일부터 말일까지를 `searchFestival2`에 전달하며 키워드 검색은 적용하지 않습니다.
 - 수용 가능 숙소는 객실별 최대 인원·객실 수 또는 전체 수용 인원을 참가 인원과 비교합니다. 원천 수용 정보가 없으면 만족으로 간주하지 않습니다.
 - `POPULAR`, `SEASONAL`은 원천 API 순위를 유지하고 `PERSONALIZED`는 `recommendationScore DESC`로 정렬합니다.
 - 별도의 추천 API와 검색 API는 만들지 않습니다.
@@ -1155,6 +1157,8 @@ POST /api/v1/plans/generate
 - `selectedContentIds`는 중복 없이 1~10개입니다.
 - AI 응답의 일차는 1부터 중복 없이 이어져야 합니다.
 - AI 응답의 일수는 요청한 `stayDays`와 같아야 합니다.
+- AI 생성 결과는 일자별 최대 8개이며 전체 일정은 최대 `stayDays × 8`개입니다.
+- 전체 일정에서 서로 다른 숙소는 최대 1개이며, 같은 숙소는 여러 일자에 반복 배치할 수 있습니다.
 - 일자별 `sequence`는 1부터 중복 없이 이어져야 합니다.
 - 같은 날짜 안에서는 같은 콘텐츠를 중복 배치할 수 없고, 서로 다른 날짜에는 동일 숙소 등 같은 콘텐츠를 다시 배치할 수 있습니다.
 - AI 응답에서 사용자가 선택한 `saved_contents`가 누락되면 오류 로그를 남기며, 전달된 `regional_contents`도 일정에 포함할 수 있습니다.
@@ -1537,7 +1541,7 @@ PUT /api/v1/plans/{planId}/contents
 | `visitMonth` | String | Y | 방문 월 `YYYY-MM` |
 | `stayDays` | Integer | Y | 체류 일수 |
 | `participantCount` | Integer | Y | 참가 인원 |
-| `estimatedBudget` | EstimatedCost | N | 마지막 AI 생성 시 저장된 예상 예산이며 재생성 전까지 유지 |
+| `estimatedBudget` | EstimatedCost | N | 편집 후 콘텐츠별 저장 비용을 다시 합산한 예상 예산 |
 | `days` | PlanDay[] | Y | 일자별 일정 |
 | `days[].dayNumber` | Integer | Y | 일차 |
 | `days[].date` | LocalDate | Y | 일정 날짜 |
@@ -1545,7 +1549,7 @@ PUT /api/v1/plans/{planId}/contents
 | `days[].contents[].sequence` | Integer | Y | 요청 배열 기준 순서 |
 | `days[].contents[].contentId` | String | Y | 콘텐츠 ID |
 | `days[].contents[].title` | String | Y | 콘텐츠명 |
-| `days[].contents[].travelTimeMinutes` | Integer | N | AI 재계산 전 `null` |
+| `days[].contents[].travelTimeMinutes` | Integer | N | 직전 콘텐츠가 바뀌거나 일자 첫 콘텐츠이면 `null`, 영향받지 않은 경로는 기존 값 유지 |
 | `createdAt` | LocalDateTime | Y | 생성 시각 |
 | `updatedAt` | LocalDateTime | Y | 수정 시각 |
 
@@ -1570,6 +1574,12 @@ PUT /api/v1/plans/{planId}/contents
   ]
 }
 ```
+
+### Validation
+
+- 모든 일정 일차를 1부터 순서대로 전달해야 합니다.
+- `days[].contentIds`는 일자별 1~8개입니다.
+- 전체 일정에서 서로 다른 숙소는 최대 1개이며, 같은 숙소는 여러 일자에 반복 배치할 수 있습니다.
 
 ### Response Example
 
@@ -1625,14 +1635,15 @@ PUT /api/v1/plans/{planId}/contents
 ### Validation
 
 - `dayNumber`는 1부터 중복 없이 이어져야 합니다.
-- 모든 `contentIds`를 합친 실제 배치 항목 수는 1~10개이며, 같은 콘텐츠의 반복 배치를 허용합니다.
+- 각 일자의 `contentIds`는 1~8개이며, 같은 콘텐츠의 날짜별 반복 배치를 허용합니다.
+- 전체 일정에서 서로 다른 숙소는 최대 1개입니다.
 - 모든 콘텐츠는 충청남도 범위여야 합니다.
 
 ### 처리 기준
 
 - 서버가 `startDate + dayNumber - 1`로 날짜를 계산하고 `contentIds` 배열 순서를 `sequence`로 저장합니다.
-- 콘텐츠가 변경되면 기존 일자·시각·이동시간 배치는 더 이상 유효하지 않습니다.
-- 일자 또는 순서가 바뀐 이동 구간은 AI 재계산 전까지 이동시간을 `null`로 제공합니다.
+- 새 콘텐츠이거나 직전 콘텐츠가 바뀐 이동 구간은 AI 재계산 전까지 이동시간·이동거리를 `null`로 제공합니다.
+- 직전 콘텐츠가 동일한 경로의 이동시간·이동거리는 기존 값을 유지합니다.
 
 ## 12. 내 일정 삭제
 

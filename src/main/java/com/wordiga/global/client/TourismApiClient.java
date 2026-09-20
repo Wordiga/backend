@@ -138,6 +138,15 @@ public class TourismApiClient {
         ));
     }
 
+    public AreaBasedResponse fetchFestivals(String eventStartDate, String eventEndDate,
+                                            String lDongRegnCd, String lDongSignguCd,
+                                            int pageNo, int numOfRows) {
+        return execute(() -> client.fetchFestivals(
+                serviceKey(), mobileOs(), mobileApp(), "json", eventStartDate, eventEndDate,
+                pageNo, numOfRows, "Q", lDongRegnCd, lDongSignguCd
+        ));
+    }
+
     @Cacheable(cacheNames = "tourismCommon", key = "#contentId", sync = true)
     public ContentDetailDto fetchCommonDetail(String contentId) {
         ContentDetailResponse response = execute(() -> client.fetchCommonDetail(
@@ -352,6 +361,17 @@ public class TourismApiClient {
                 @RequestParam("keyword") String keyword, @RequestParam("pageNo") int pageNo,
                 @RequestParam("numOfRows") int numOfRows, @RequestParam("arrange") String arrange,
                 @RequestParam("lDongRegnCd") String lDongRegnCd, @RequestParam(value = "contentTypeId", required = false) String contentTypeId,
+                @RequestParam(value = "lDongSignguCd", required = false) String lDongSignguCd
+        );
+
+        @GetExchange("/KorService2/searchFestival2")
+        AreaBasedResponse fetchFestivals(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
+                @RequestParam("eventStartDate") String eventStartDate,
+                @RequestParam("eventEndDate") String eventEndDate,
+                @RequestParam("pageNo") int pageNo, @RequestParam("numOfRows") int numOfRows,
+                @RequestParam("arrange") String arrange, @RequestParam("lDongRegnCd") String lDongRegnCd,
                 @RequestParam(value = "lDongSignguCd", required = false) String lDongSignguCd
         );
 

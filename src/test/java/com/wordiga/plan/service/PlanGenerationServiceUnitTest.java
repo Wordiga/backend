@@ -172,6 +172,41 @@ class PlanGenerationServiceUnitTest {
     }
 
     @Test
+    void rejectsMoreThanEightContentsInOneDay() {
+        String[] ids = java.util.stream.IntStream.rangeClosed(1, 9)
+                .mapToObj(index -> "content-" + index).toArray(String[]::new);
+        PlanGenerateRequest request = request(ids);
+        for (String id : ids) when(tourismContentDetailService.getAiDetail(eq(id), any()))
+                .thenReturn(detail(id, id));
+        when(aiServerClient.generatePlan(any())).thenReturn(response(ids));
+
+        assertThatThrownBy(() -> service.generate(1L, request)).hasMessageContaining("일자별 최대 8개");
+        verifyNoInteractions(planWriter);
+    }
+
+    @Test
+    void rejectsDifferentLodgingsButAllowsSameLodgingAcrossDays() {
+        PlanGenerateRequest differentLodgings = request("hotel-a", "hotel-b");
+        differentLodgings.setStayDays(2);
+        when(tourismContentDetailService.getAiDetail("hotel-a", visitDate()))
+                .thenReturn(detail("hotel-a", "호텔 A", "32"));
+        when(tourismContentDetailService.getAiDetail("hotel-b", visitDate()))
+                .thenReturn(detail("hotel-b", "호텔 B", "32"));
+        when(aiServerClient.generatePlan(any())).thenReturn(responseDays(
+                day(1, "hotel-a"), day(2, "hotel-b")));
+
+        assertThatThrownBy(() -> service.generate(1L, differentLodgings)).hasMessageContaining("하나의 숙소");
+
+        PlanGenerateRequest sameLodging = request("hotel-a");
+        sameLodging.setStayDays(2);
+        when(aiServerClient.generatePlan(any())).thenReturn(responseDays(
+                day(1, "hotel-a"), day(2, "hotel-a")));
+        service.generate(1L, sameLodging);
+
+        verify(planWriter).saveGenerated(eq(1L), eq(sameLodging), any(), anyList(), isNull());
+    }
+
+    @Test
     void leavesWeatherOutOfPlanGenerationContentCalls() {
         PlanGenerateRequest request = request("A", "B");
         LocalDate targetDate = visitDate();
@@ -235,14 +270,25 @@ class PlanGenerationServiceUnitTest {
         return day;
     }
 
+    private AiPlanResponse responseDays(AiPlanResponse.Day... days) {
+        AiPlanResponse response = new AiPlanResponse();
+        response.setScheduleId(1L);
+        response.setDays(List.of(days));
+        return response;
+    }
+
     private TourismContentDetailResponse detail() {
         return detail("126508", "현충사");
     }
 
     private TourismContentDetailResponse detail(String id, String title) {
+        return detail(id, title, "12");
+    }
+
+    private TourismContentDetailResponse detail(String id, String title, String contentTypeId) {
         return TourismContentDetailResponse.builder().common(
                 com.wordiga.tourism.dto.detail.TourismCommonDetailDto.builder()
-                        .contentId(id).contentTypeId("12").title(title)
+                        .contentId(id).contentTypeId(contentTypeId).title(title)
                         .mapx(java.math.BigDecimal.valueOf(127.1)).mapy(java.math.BigDecimal.valueOf(36.8))
                         .lDongSignguCd("131")
                         .lclsSystm1("AC").lclsSystm2("AC01").build()).build();

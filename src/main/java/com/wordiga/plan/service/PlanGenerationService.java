@@ -43,7 +43,7 @@ public class PlanGenerationService {
         AiPlanResponse response = aiServerClient.generatePlan(
                 AiPlanRequest.from(request, details, regional, resolveTags(all)));
         normalizeResponse(response);
-        validateResponse(request, regional, response);
+        validateResponse(request, all, response);
         String sigunguCode = details.getFirst().getCommon().getLDongSignguCd();
         String sigunguName = resolveSigunguName(sigunguCode);
         return planWriter.saveGenerated(memberId, request, response, all, sigunguName);
@@ -123,7 +123,7 @@ public class PlanGenerationService {
         }
     }
 
-    private void validateResponse(PlanGenerateRequest r, List<TourismContentDetailResponse> regional,
+    private void validateResponse(PlanGenerateRequest r, List<TourismContentDetailResponse> allowedDetails,
                                   AiPlanResponse response) {
         if (response.getDays() == null || response.getDays().isEmpty())
             invalid(HttpStatus.BAD_GATEWAY, "AI 일정이 비어 있습니다.");
@@ -131,20 +131,32 @@ public class PlanGenerationService {
             invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 일수가 요청과 다릅니다.");
         Set<String> selected = new HashSet<>(r.getSelectedContentIds());
         Set<String> allowed = new HashSet<>(selected);
-        regional.forEach(detail -> allowed.add(detail.getCommon().getContentId()));
+        allowedDetails.forEach(detail -> allowed.add(detail.getCommon().getContentId()));
+        Set<String> lodgingIds = allowedDetails.stream()
+                .filter(detail -> "32".equals(detail.getCommon().getContentTypeId()))
+                .map(detail -> detail.getCommon().getContentId())
+                .collect(java.util.stream.Collectors.toSet());
+        Set<String> scheduledLodgingIds = new HashSet<>();
         Set<String> scheduled = new HashSet<>();
         int expectedDay = 1;
         for (AiPlanResponse.Day day : response.getDays()) {
             if (day.getDayNumber() == null || day.getDayNumber() != expectedDay++ || day.getContents() == null)
                 invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 날짜가 올바르지 않습니다.");
+            if (day.getContents().size() > 8)
+                invalid(HttpStatus.BAD_GATEWAY, "AI 일정은 일자별 최대 8개까지 생성할 수 있습니다.");
             Set<String> scheduledToday = new HashSet<>();
             int sequence = 1;
             for (AiPlanResponse.Content c : day.getContents())
                 if (c.getSequence() == null || c.getSequence() != sequence++ || c.getContentId() == null
                         || !allowed.contains(c.getContentId()) || !scheduledToday.add(c.getContentId()))
                     invalid(HttpStatus.BAD_GATEWAY, "AI 일정의 콘텐츠 순서가 올바르지 않습니다.");
-                else scheduled.add(c.getContentId());
+                else {
+                    scheduled.add(c.getContentId());
+                    if (lodgingIds.contains(c.getContentId())) scheduledLodgingIds.add(c.getContentId());
+                }
         }
+        if (scheduledLodgingIds.size() > 1)
+            invalid(HttpStatus.BAD_GATEWAY, "AI 일정에는 하나의 숙소만 사용할 수 있습니다.");
         if (!scheduled.containsAll(selected)) log.error("AI 일정에 선택 콘텐츠가 모두 포함되어야 합니다.");
     }
 

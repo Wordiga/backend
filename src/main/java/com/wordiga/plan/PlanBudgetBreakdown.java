@@ -36,4 +36,8 @@ public class PlanBudgetBreakdown {
         return new PlanBudgetBreakdown(plan, category, amount);
     }
 
+    public void updateAmount(Long amount) {
+        this.amount = amount;
+    }
+
 }

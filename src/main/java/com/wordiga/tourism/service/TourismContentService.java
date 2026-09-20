@@ -22,6 +22,7 @@ import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
+import java.time.YearMonth;
 import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
@@ -54,16 +55,20 @@ public class TourismContentService {
             String lDongSignguCd, String referenceContentId, Boolean capacitySatisfied,
             Integer participantCount, List<String> ageGroups, int page, int size) {
         if (type == ListType.PERSONALIZED)
-            return personalizedTourismContentService.get(
-                    memberId, visitDate, ageGroups, participantCount, capacitySatisfied,
-                    theme, categories, page, size);
+            return enrichMemberData(memberId, visitDate, ageGroups,
+                    personalizedTourismContentService.get(
+                            memberId, visitDate, ageGroups, participantCount, capacitySatisfied,
+                            theme, categories, page, size));
         if (type == ListType.RELATED)
             return enrichMemberData(memberId, visitDate, ageGroups,
                     related(referenceContentId, page, size));
+        if (type == ListType.FESTIVAL)
+            return enrichMemberData(memberId, visitDate, ageGroups,
+                    festivals(visitDate, lDongSignguCd, page, size, participantCount));
         if (keyword != null && !keyword.isBlank()) {
             return enrichMemberData(memberId, visitDate, ageGroups,
-                    filterCapacity(search(keyword.trim(), type == ListType.FESTIVAL ? "15" : contentTypeId,
-                                    lDongSignguCd, page, size, type == ListType.FESTIVAL, theme, categories,
+                    filterCapacity(search(keyword.trim(), contentTypeId,
+                                    lDongSignguCd, page, size, theme, categories,
                                     participantCount),
                             capacitySatisfied, participantCount, visitDate, ageGroups));
         }
@@ -100,6 +105,7 @@ public class TourismContentService {
     public List<TourismCategoryGroupDto> getCategories() {
         return Arrays.stream(TourismTheme.values())
                 .map(theme -> new TourismCategoryGroupDto(codeName(theme), Arrays.stream(TourismCategory.values())
+                        .filter(category -> category != TourismCategory.FESTIVAL)
                         .filter(category -> category.getTheme() == theme)
                         .map(this::codeName)
                         .toList()))
@@ -201,7 +207,7 @@ public class TourismContentService {
 
     private TourismContentListResponse search(
             String keyword, String contentTypeId, String lDongSignguCd, int page, int size,
-            boolean festivalsOnly, String theme, List<String> categories, Integer participantCount) {
+            String theme, List<String> categories, Integer participantCount) {
         AreaBasedResponse response = tourismApiClient.searchContent(
                 keyword,
                 contentTypeId,
@@ -211,7 +217,7 @@ public class TourismContentService {
                 size
         );
         List<AreaBasedItem> items = extractItems(response).stream()
-                .filter(item -> festivalsOnly == "15".equals(item.getContenttypeid()))
+                .filter(item -> !"15".equals(item.getContenttypeid()))
                 .filter(item -> matchesCategory(item, theme, categories)).toList();
         int totalCount = response == null || response.getResponse() == null
                 || response.getResponse().getBody() == null
@@ -233,6 +239,30 @@ public class TourismContentService {
                 .totalPages((totalCount + size - 1) / size)
                 .hasNext((long) (page + 1) * size < totalCount)
                 .build();
+    }
+
+    private TourismContentListResponse festivals(LocalDate visitDate, String lDongSignguCd,
+                                                  int page, int size, Integer participantCount) {
+        if (visitDate == null) throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.BAD_REQUEST, "축제 조회에는 방문 월이 필요합니다.");
+        YearMonth visitMonth = YearMonth.from(visitDate);
+        DateTimeFormatter formatter = DateTimeFormatter.BASIC_ISO_DATE;
+        AreaBasedResponse response = tourismApiClient.fetchFestivals(
+                visitMonth.atDay(1).format(formatter), visitMonth.atEndOfMonth().format(formatter),
+                tourismProperties.getRegion().getChungnamCode(), lDongSignguCd, page + 1, size);
+        List<AreaBasedItem> items = extractItems(response).stream()
+                .filter(item -> "15".equals(item.getContenttypeid()))
+                .toList();
+        int totalCount = response == null || response.getResponse() == null
+                || response.getResponse().getBody() == null ? items.size()
+                : response.getResponse().getBody().getTotalCount();
+        List<TourismContentDto> result = new ArrayList<>();
+        for (int index = 0; index < items.size(); index++)
+            result.add(toDto(items.get(index), rankScore(page * size + index), participantCount));
+        return TourismContentListResponse.builder()
+                .items(result).page(page).size(size).totalCount(totalCount)
+                .totalPages((totalCount + size - 1) / size)
+                .hasNext((long) (page + 1) * size < totalCount).build();
     }
 
     private TourismContentListResponse page(
