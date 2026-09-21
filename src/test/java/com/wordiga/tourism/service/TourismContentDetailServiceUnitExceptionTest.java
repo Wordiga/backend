@@ -54,6 +54,18 @@ class TourismContentDetailServiceUnitExceptionTest {
                 .hasMessageContaining("404");
     }
 
+    @Test
+    void rejectsCampingContent() {
+        ContentDetailDto content = new ContentDetailDto();
+        content.setLDongRegnCd("44");
+        content.setLclsSystm2("AC05");
+        when(tourismApiClient.fetchCommonDetail("camping")).thenReturn(content);
+
+        assertThatThrownBy(() -> service.getCommonDetail("camping"))
+                .isInstanceOf(ResponseStatusException.class)
+                .hasMessageContaining("404");
+    }
+
     private static TourismProperties tourismProperties() {
         TourismProperties properties = new TourismProperties();
         properties.getRegion().setChungnamCode("44");

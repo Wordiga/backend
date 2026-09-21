@@ -25,7 +25,7 @@ class TourismContentServiceUnitExceptionTest {
     void setUp() {
         TourismProperties properties = new TourismProperties();
         properties.getRegion().setChungnamCode("44");
-        service = new TourismContentService(tourismApiClient, properties, null, null, null);
+        service = new TourismContentService(tourismApiClient, properties, null, null, null, null);
     }
 
     @Test

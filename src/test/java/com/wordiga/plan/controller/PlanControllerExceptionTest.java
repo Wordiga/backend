@@ -4,6 +4,7 @@ import com.wordiga.global.security.JwtTokenProvider;
 import com.wordiga.member.repository.MemberRepository;
 import com.wordiga.plan.service.PlanGenerationService;
 import com.wordiga.plan.service.PlanService;
+import com.wordiga.plan.service.RainAlternativeService;
 import com.wordiga.proposal.service.ProposalService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -36,6 +37,8 @@ class PlanControllerExceptionTest {
     PlanGenerationService planGenerationService;
     @MockitoBean
     ProposalService proposalService;
+    @MockitoBean
+    RainAlternativeService rainAlternativeService;
     @MockitoBean
     JwtTokenProvider jwtTokenProvider;
     @MockitoBean

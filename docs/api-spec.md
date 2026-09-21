@@ -75,6 +75,7 @@ GET /api/v1/tourism/contents
 | `capacitySatisfied` | Boolean | N | `true`이면 참가 인원을 수용할 수 있는 숙박만 반환 | `true` |
 | `participantCount` | Integer | N | 숙박 수용 가능 여부·1인 예상 비용 계산 인원, 기본값은 `10` | `25` |
 | `ageGroups` | String[] | N | 개인화 추천의 연령 적합도 입력. 쉼표 구분 또는 반복 파라미터 사용 | `30S,40S` |
+| `stayDays` | Integer | N | 상세 조회와 동일한 만족도 계산에 사용하는 체류 일수(1~3일) | `2` |
 | `page` | Integer | N | 0부터 시작하는 페이지 기본값은 `0` | `0` |
 | `size` | Integer | N | 페이지 크기 기본값은 `20`, 최댓값은 `50` | `20` |
 
@@ -104,6 +105,7 @@ GET /api/v1/tourism/contents
 | `items[].category.code` | String | Y | 필터와 선택 상태에 사용하는 분류 코드 |
 | `items[].category.name` | String | Y | 화면 표시용 분류명 |
 | `items[].recommendationScore` | BigDecimal | Y | 정렬에 사용한 개인화 점수 |
+| `items[].satisfactionScore` | BigDecimal | N | 같은 방문 월·연령대·체류 일수 조건의 상세 `satisfaction.totalScore`. 원천 데이터가 모두 없으면 `null` |
 | `items[].estimatedCost` | Long | Y | 관광타입 기본 정책 기준 1인 예상 비용 |
 | `items[].cost` | ContentCost | Y | 상세 API 추가 호출 없이 관광타입 기본값으로 계산한 예상 비용 |
 | `items[].cost.unitAmount` | Long | Y | 과금 단위 1개의 예상 금액 |
@@ -254,7 +256,6 @@ GET /api/v1/tourism/categories
       {"code": "AC02", "name": "콘도미니엄"},
       {"code": "AC03", "name": "펜션/민박"},
       {"code": "AC04", "name": "모텔"},
-      {"code": "AC05", "name": "캠핑"},
       {"code": "AC06", "name": "호스텔"}
     ]
   },
@@ -1425,7 +1426,23 @@ GET /api/v1/plans/{planId}
 
 - 일자는 `date ASC`, 콘텐츠는 `sequence ASC`로 정렬합니다.
 
-## 9-1. 지역·방문 월 기준 월평균 기후 조회
+## 9-1. 우천 대체 장소 조회
+
+```http
+GET /api/v1/plans/{planId}/rain-alternatives
+```
+
+인증: 필수. 본인 일정만 조회할 수 있으며, 없는 일정 또는 타인 일정은 404를 반환합니다.
+
+| 이름 | 타입 | 필수 | 설명 |
+|---|---|---|---|
+| `planId` | Long (path) | Y | 대체 장소를 조회할 일정 ID |
+
+응답은 `planId`와 `items[]`를 반환합니다. `items[]`에는 대체 후보를 제공할 일정 콘텐츠만 포함되며, 각 항목은 `sourceContentId`, `isOutdoor`(`true` 또는 판정 불가인 `null`), `alternatives[]`를 포함합니다. `alternatives[]`에는 `contentId`, `title`, `thumbnailUrl`, 원본과의 직선거리 `distanceMeters`가 담깁니다. 후보가 없으면 `alternatives`는 빈 배열입니다.
+
+관광지·문화시설·축제·레포츠 중 실외 또는 판정 불가 콘텐츠만 원본으로 사용합니다. 쇼핑·여행코스·숙소·음식점은 대체 후보를 제공하지 않습니다. 후보는 동일 시군구의 실내 공연·전시시설 또는 공예체험으로 한정하고, 일정에 이미 포함된 콘텐츠와 캠핑을 제외합니다. 성격 유사도, 원본과의 거리 순으로 최대 3개를 반환하며 20km 밖 후보는 제외합니다. 콘텐츠 조회 API 전체에서 캠핑(`AC05`)은 제외하며 상세·위시·일정 선택 대상도 아닙니다.
+
+## 9-2. 지역·방문 월 기준 월평균 기후 조회
 
 ```http
 GET /api/v1/weather?lDongSignguCd=133&visitMonth=2026-09

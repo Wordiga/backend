@@ -5,6 +5,7 @@ import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
 import com.wordiga.global.util.KtoUtils;
 import com.wordiga.tourism.domain.TourismContentType;
+import com.wordiga.tourism.domain.TourismContentPolicy;
 import com.wordiga.tourism.dto.SatisfactionRequestDto;
 import com.wordiga.tourism.dto.detail.SeasonalImageDto;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
@@ -89,7 +90,7 @@ public class TourismContentDetailService {
 
     public ContentDetailDto getCommonDetail(String contentId) {
         ContentDetailDto common = tourismApiClient.fetchCommonDetail(contentId);
-        if (common == null || !isChungnam(common)) {
+        if (common == null || !isChungnam(common) || TourismContentPolicy.isCamping(common.getLclsSystm2())) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "충청남도 지역의 관광 콘텐츠를 찾을 수 없습니다.");
         }
         return common;

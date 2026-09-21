@@ -3,6 +3,7 @@ package com.wordiga.tourism.service;
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.dto.detail.SatisfactionDto;
+import com.wordiga.tourism.dto.SatisfactionRequestDto;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
@@ -18,11 +19,14 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 import java.time.LocalDate;
+import java.math.BigDecimal;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.ArgumentCaptor;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.verify;
@@ -50,7 +54,7 @@ class TourismContentServiceUnitTest {
         TourismProperties properties = new TourismProperties();
         properties.getRegion().setChungnamCode("44");
         tourismContentService = new TourismContentService(tourismApiClient, properties,
-                personalizedTourismContentService, detailService, wishRepository);
+                personalizedTourismContentService, detailService, satisfactionService, wishRepository);
     }
 
     @Test
@@ -85,6 +89,41 @@ class TourismContentServiceUnitTest {
     }
 
     @Test
+    void exposesDetailSatisfactionTotalForEachContentWithoutChangingRecommendationScore() {
+        AreaBasedItem attraction = item("12");
+        attraction.setContentid("attraction");
+        attraction.setLDongSignguCd("200");
+        AreaBasedItem lodging = item("32");
+        lodging.setContentid("lodging");
+        lodging.setLDongSignguCd("200");
+        when(tourismApiClient.searchContent("충남", null, "44", null, 1, 20))
+                .thenReturn(response(List.of(attraction, lodging), 2));
+        when(satisfactionService.calculate(any(SatisfactionRequestDto.class),
+                any(TourismSatisfactionService.CalculationCache.class)))
+                .thenReturn(SatisfactionDto.builder().totalScore(BigDecimal.valueOf(78.5)).build());
+
+        LocalDate visitDate = LocalDate.of(2026, 9, 1);
+        TourismContentListResponse result = tourismContentService.getContentListWithSatisfaction(
+                null, ListType.POPULAR, visitDate, "충남", null, null, List.of(), null,
+                null, null, 10, List.of("30S"), 1, 0, 20);
+
+        assertThat(result.getItems()).hasSize(2).allSatisfy(item -> {
+            assertThat(item.getSatisfactionScore()).isEqualByComparingTo("78.5");
+            assertThat(item.getRecommendationScore()).isNotNull();
+        });
+        ArgumentCaptor<SatisfactionRequestDto> requests = ArgumentCaptor.forClass(SatisfactionRequestDto.class);
+        verify(satisfactionService, org.mockito.Mockito.times(2)).calculate(
+                requests.capture(), any(TourismSatisfactionService.CalculationCache.class));
+        assertThat(requests.getAllValues()).allSatisfy(request -> {
+            assertThat(request.areaCode()).isEqualTo("44");
+            assertThat(request.localSignguCode()).isEqualTo("200");
+            assertThat(request.visitDate()).isEqualTo(visitDate);
+            assertThat(request.ageGroupRatios()).containsKey("30S");
+            assertThat(request.stayNights()).isEqualTo(1);
+        });
+    }
+
+    @Test
     void searchesLodgingsWithStayApiWhenKeywordIsMissing() {
         AreaBasedItem lodging = item("32");
         when(tourismApiClient.fetchLodgings("44", "200", 1, 20))
@@ -116,6 +155,25 @@ class TourismContentServiceUnitTest {
 
         assertThat(result.getItems()).extracting("contentTypeId").containsExactly("32");
         verify(tourismApiClient).searchContent("호텔", "32", "44", "200", 1, 20);
+    }
+
+    @Test
+    void excludesCampingFromLodgingAndGeneralSearch() {
+        AreaBasedItem camping = item("32");
+        camping.setLclsSystm2("AC05");
+        AreaBasedItem hotel = item("32");
+        hotel.setContentid("hotel");
+        hotel.setLclsSystm2("AC01");
+        when(tourismApiClient.fetchLodgings("44", "200", 1, 20))
+                .thenReturn(response(List.of(camping, hotel), 2));
+        when(tourismApiClient.searchContent("숙소", null, "44", "200", 1, 20))
+                .thenReturn(response(List.of(camping, hotel), 2));
+
+        assertThat(tourismContentService.getLodgings(null, null, "200", 0, 20).getItems())
+                .extracting("contentId").containsExactly("hotel");
+        assertThat(tourismContentService.getContentList(null, ListType.POPULAR, null,
+                "숙소", null, "200", null, null, null, 0, 20).getItems())
+                .extracting("contentId").containsExactly("hotel");
     }
 
     @Test
@@ -267,7 +325,7 @@ class TourismContentServiceUnitTest {
                 .containsExactly("콘도미니엄", "양식");
         assertThat(tourismContentService.getCategories()).hasSize(3)
                 .extracting(group -> group.categories().size())
-                .containsExactly(6, 6, 9);
+                .containsExactly(6, 5, 9);
     }
 
     @Test

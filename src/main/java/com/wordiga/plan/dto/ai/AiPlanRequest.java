@@ -6,6 +6,7 @@ import com.wordiga.plan.dto.PlanGenerateRequest;
 import com.wordiga.plan.service.PlanCostPolicy;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.dto.detail.TourismIntroDetailDto;
+import com.wordiga.tourism.domain.TourismContentPolicy;
 
 import java.time.YearMonth;
 import java.util.List;
@@ -89,17 +90,8 @@ public record AiPlanRequest(
                     common.getTel(), truncate(common.getOverview()), common.getFirstImage(), common.getFirstImage(),
                     PlanCostPolicy.estimate(detail, participantCount), null,
                     intro == null ? null : intro.getEventStartDate(), intro == null ? null : intro.getEventEndDate(),
-                    outdoor(tags));
-        }
-
-        private static Boolean outdoor(List<String> tags) {
-            if (tags == null || tags.isEmpty()) return null;
-            String joined = String.join(" ", tags);
-            if (java.util.stream.Stream.of("실내", "박물관", "미술관", "전시", "공연", "숙박", "음식점")
-                    .anyMatch(joined::contains)) return false;
-            if (java.util.stream.Stream.of("자연", "야외", "해수욕장", "산", "공원", "레포츠", "축제")
-                    .anyMatch(joined::contains)) return true;
-            return null;
+                    TourismContentPolicy.isOutdoor(common.getContentTypeId(),
+                            common.getLclsSystm1(), common.getLclsSystm2()));
         }
 
         private static String category(String type) {

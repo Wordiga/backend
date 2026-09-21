@@ -53,10 +53,11 @@ class TourismContentControllerTest {
         TourismContentDto item = TourismContentDto.builder()
                 .contentId("126508")
                 .title("현충사")
+                .satisfactionScore(java.math.BigDecimal.valueOf(78.5))
                 .isWished(true)
                 .build();
-        when(tourismContentService.getContentList(
-                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
+        when(tourismContentService.getContentListWithSatisfaction(
+                any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), any(), eq(0), eq(10)))
                 .thenReturn(TourismContentListResponse.builder()
                         .items(List.of(item))
                         .page(0)
@@ -68,17 +69,19 @@ class TourismContentControllerTest {
                         .param("type", "POPULAR")
                         .param("theme", "ATTRACTION_EXPERIENCE")
                         .param("category", "EX,HS")
+                        .param("stayDays", "2")
                         .param("page", "0")
                         .param("size", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].contentId").value("126508"))
                 .andExpect(jsonPath("$.items[0].title").value("현충사"))
+                .andExpect(jsonPath("$.items[0].satisfactionScore").value(78.5))
                 .andExpect(jsonPath("$.items[0].isWished").value(true))
                 .andExpect(jsonPath("$.items[0].wished").doesNotExist())
                 .andExpect(jsonPath("$.hasNext").value(false));
-        verify(tourismContentService).getContentList(any(), eq(com.wordiga.tourism.dto.ListType.POPULAR),
+        verify(tourismContentService).getContentListWithSatisfaction(any(), eq(com.wordiga.tourism.dto.ListType.POPULAR),
                 any(), any(), any(), eq("ATTRACTION_EXPERIENCE"), eq(List.of("EX", "HS")), any(), any(),
-                any(), eq(10), any(), eq(0), eq(10));
+                any(), eq(10), any(), eq(1), eq(0), eq(10));
     }
 
     @Test
