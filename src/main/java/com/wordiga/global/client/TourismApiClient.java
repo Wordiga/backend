@@ -138,6 +138,14 @@ public class TourismApiClient {
         ));
     }
 
+    public AreaBasedResponse fetchLodgings(String lDongRegnCd, String lDongSignguCd,
+                                           int pageNo, int numOfRows) {
+        return execute(() -> client.fetchLodgings(
+                serviceKey(), mobileOs(), mobileApp(), "json",
+                pageNo, numOfRows, "Q", lDongRegnCd, lDongSignguCd
+        ));
+    }
+
     public AreaBasedResponse fetchFestivals(String eventStartDate, String eventEndDate,
                                             String lDongRegnCd, String lDongSignguCd,
                                             int pageNo, int numOfRows) {
@@ -370,6 +378,15 @@ public class TourismApiClient {
                 @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
                 @RequestParam("eventStartDate") String eventStartDate,
                 @RequestParam("eventEndDate") String eventEndDate,
+                @RequestParam("pageNo") int pageNo, @RequestParam("numOfRows") int numOfRows,
+                @RequestParam("arrange") String arrange, @RequestParam("lDongRegnCd") String lDongRegnCd,
+                @RequestParam(value = "lDongSignguCd", required = false) String lDongSignguCd
+        );
+
+        @GetExchange("/KorService2/searchStay2")
+        AreaBasedResponse fetchLodgings(
+                @RequestParam("serviceKey") String serviceKey, @RequestParam("MobileOS") String mobileOs,
+                @RequestParam("MobileApp") String mobileApp, @RequestParam("_type") String type,
                 @RequestParam("pageNo") int pageNo, @RequestParam("numOfRows") int numOfRows,
                 @RequestParam("arrange") String arrange, @RequestParam("lDongRegnCd") String lDongRegnCd,
                 @RequestParam(value = "lDongSignguCd", required = false) String lDongSignguCd

@@ -54,6 +54,10 @@ public class TourismContentService {
             String theme, List<String> categories,
             String lDongSignguCd, String referenceContentId, Boolean capacitySatisfied,
             Integer participantCount, List<String> ageGroups, int page, int size) {
+        if (type == ListType.FESTIVAL)
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST,
+                    "축제·행사는 /api/v1/tourism/contents/festivals에서 조회해 주세요.");
         if (type == ListType.PERSONALIZED)
             return enrichMemberData(memberId, visitDate, ageGroups,
                     personalizedTourismContentService.get(
@@ -62,9 +66,6 @@ public class TourismContentService {
         if (type == ListType.RELATED)
             return enrichMemberData(memberId, visitDate, ageGroups,
                     related(referenceContentId, page, size));
-        if (type == ListType.FESTIVAL)
-            return enrichMemberData(memberId, visitDate, ageGroups,
-                    festivals(visitDate, lDongSignguCd, page, size, participantCount));
         if (keyword != null && !keyword.isBlank()) {
             return enrichMemberData(memberId, visitDate, ageGroups,
                     filterCapacity(search(keyword.trim(), contentTypeId,
@@ -77,15 +78,12 @@ public class TourismContentService {
         List<ScoredCandidate> candidates = switch (type) {
             case POPULAR -> fetchPopularCandidates(targetDate);
             case SEASONAL -> fetchSeasonalCandidates(targetDate);
-            case FESTIVAL -> fetchSeasonalCandidates(targetDate);
             default -> throw new IllegalStateException("지원하지 않는 추천 타입입니다.");
         };
 
         List<ScoredCandidate> filtered = candidates.stream()
-                .filter(candidate -> type == ListType.FESTIVAL
-                        ? "15".equals(candidate.item().getContenttypeid())
-                        : !"15".equals(candidate.item().getContenttypeid()))
-                .filter(candidate -> type == ListType.FESTIVAL || contentTypeId == null || contentTypeId.isBlank()
+                .filter(candidate -> !"15".equals(candidate.item().getContenttypeid()))
+                .filter(candidate -> contentTypeId == null || contentTypeId.isBlank()
                         || contentTypeId.equals(candidate.item().getContenttypeid()))
                 .filter(candidate -> matchesCategory(candidate.item(), theme, categories))
                 .filter(candidate -> lDongSignguCd == null || lDongSignguCd.isBlank()
@@ -100,6 +98,35 @@ public class TourismContentService {
         return enrichMemberData(memberId, visitDate, ageGroups,
                 filterCapacity(page(filtered, type, page, size, participantCount), capacitySatisfied, participantCount,
                         visitDate, ageGroups));
+    }
+
+    public TourismContentListResponse getPlaces(Long memberId, ListType type, String keyword,
+                                                 String lDongSignguCd, int page, int size) {
+        if (type == ListType.FESTIVAL || type == ListType.RELATED)
+            throw new org.springframework.web.server.ResponseStatusException(
+                    org.springframework.http.HttpStatus.BAD_REQUEST, "장소 목록 타입을 확인해 주세요.");
+        TourismContentListResponse response = getContentList(memberId, type, null, keyword, null,
+                null, List.of(), lDongSignguCd, null, null, DEFAULT_PARTICIPANT_COUNT,
+                null, page, size);
+        return excludeContentTypes(response, Set.of(
+                TourismContentType.FESTIVAL.getCode(), TourismContentType.LODGING.getCode()));
+    }
+
+    public TourismContentListResponse getLodgings(Long memberId, String keyword,
+                                                   String lDongSignguCd, int page, int size) {
+        AreaBasedResponse response = keyword == null || keyword.isBlank()
+                ? tourismApiClient.fetchLodgings(tourismProperties.getRegion().getChungnamCode(),
+                        lDongSignguCd, page + 1, size)
+                : tourismApiClient.searchContent(keyword.trim(), TourismContentType.LODGING.getCode(),
+                        tourismProperties.getRegion().getChungnamCode(), lDongSignguCd, page + 1, size);
+        return enrichMemberData(memberId, null, null,
+                externalPage(response, page, size, Set.of(TourismContentType.LODGING.getCode())));
+    }
+
+    public TourismContentListResponse getFestivals(Long memberId, LocalDate visitDate,
+                                                    String lDongSignguCd, int page, int size) {
+        return enrichMemberData(memberId, visitDate, null,
+                festivals(visitDate, lDongSignguCd, page, size, DEFAULT_PARTICIPANT_COUNT));
     }
 
     public List<TourismCategoryGroupDto> getCategories() {
@@ -263,6 +290,32 @@ public class TourismContentService {
                 .items(result).page(page).size(size).totalCount(totalCount)
                 .totalPages((totalCount + size - 1) / size)
                 .hasNext((long) (page + 1) * size < totalCount).build();
+    }
+
+    private TourismContentListResponse externalPage(AreaBasedResponse response, int page, int size,
+                                                     Set<String> includedContentTypes) {
+        List<AreaBasedItem> source = extractItems(response).stream()
+                .filter(item -> includedContentTypes.contains(item.getContenttypeid()))
+                .toList();
+        List<TourismContentDto> items = new ArrayList<>();
+        for (int index = 0; index < source.size(); index++)
+            items.add(toDto(source.get(index), rankScore(page * size + index)));
+        int totalCount = response == null || response.getResponse() == null
+                || response.getResponse().getBody() == null ? items.size()
+                : response.getResponse().getBody().getTotalCount();
+        return TourismContentListResponse.builder().items(items).page(page).size(size)
+                .totalCount(totalCount).totalPages((totalCount + size - 1) / size)
+                .hasNext((long) (page + 1) * size < totalCount).build();
+    }
+
+    private TourismContentListResponse excludeContentTypes(TourismContentListResponse response,
+                                                            Set<String> excludedContentTypes) {
+        List<TourismContentDto> items = response.getItems().stream()
+                .filter(item -> !excludedContentTypes.contains(item.getContentTypeId()))
+                .toList();
+        return TourismContentListResponse.builder().items(items).page(response.getPage()).size(response.getSize())
+                .totalCount(response.getTotalCount()).totalPages(response.getTotalPages())
+                .hasNext(response.isHasNext()).build();
     }
 
     private TourismContentListResponse page(
