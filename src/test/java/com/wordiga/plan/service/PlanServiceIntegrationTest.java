@@ -24,6 +24,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 
 import java.time.LocalDate;
+import java.time.LocalTime;
 import java.math.BigDecimal;
 import java.util.List;
 
@@ -183,6 +184,36 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
     }
 
     @Test
+    void keepsOnlyUnchangedTravelSegmentAfterReorderingAndReloadingPlan() {
+        Member member = memberRepository.save(Member.create("route-edit@test.com", "경로", OAuthProvider.GOOGLE,
+                "route-edit", null));
+        Plan plan = Plan.create(member, "경로 수정", LocalDate.of(2026, 8, 20),
+                LocalDate.of(2026, 8, 20), 10);
+        addRouteContent(plan, "123", 1, 0, 0);
+        addRouteContent(plan, "345", 2, 10, 1_000);
+        addRouteContent(plan, "567", 3, 20, 2_000);
+        addRouteContent(plan, "789", 4, 30, 3_000);
+        plan = planRepository.saveAndFlush(plan);
+        for (String id : List.of("123", "345", "567", "789"))
+            when(tourismContentDetailService.getCommonDetail(id)).thenReturn(content(id));
+        PlanContentsUpdateRequest update = new PlanContentsUpdateRequest();
+        update.setDays(List.of(day(1, "2026-08-20", "789", "345", "567", "123")));
+
+        planService.updateContents(member.getId(), plan.getId(), update);
+        PlanDetailResponse reloaded = planService.getPlan(member.getId(), plan.getId());
+
+        assertThat(reloaded.getDays().getFirst().getContents())
+                .extracting(PlanDetailResponse.Content::getContentId)
+                .containsExactly("789", "345", "567", "123");
+        assertThat(reloaded.getDays().getFirst().getContents())
+                .extracting(PlanDetailResponse.Content::getTravelTimeMinutes)
+                .containsExactly(null, null, 20, null);
+        assertThat(reloaded.getDays().getFirst().getContents())
+                .extracting(PlanDetailResponse.Content::getTravelDistanceMeters)
+                .containsExactly(null, null, 2_000, null);
+    }
+
+    @Test
     void assignsRegionalDateTitleAndSuffixAndIncludesScheduleIdInList() {
         Member member = memberRepository.save(Member.create("title@test.com", "제목", OAuthProvider.GOOGLE, "title", null));
         PlanGenerateRequest request = new PlanGenerateRequest();
@@ -243,6 +274,14 @@ class PlanServiceIntegrationTest extends PostgresIntegrationTest {
         content.setContentId(id);
         content.setTitle(id);
         return content;
+    }
+
+    private void addRouteContent(Plan plan, String id, int sequence, int travelMinutes, int travelMeters) {
+        TourismContentSnapshot snapshot = snapshotRepository.save(snapshot(id));
+        PlanContent content = PlanContent.create(plan, sequence, 1, snapshot);
+        content.updateAiDetails(null, 90, LocalTime.of(10, 0), LocalTime.of(11, 30),
+                travelMinutes, travelMeters, 0L);
+        plan.addContent(content);
     }
 
     private PlanContentsUpdateRequest.Day day(int number, String date, String id) {
