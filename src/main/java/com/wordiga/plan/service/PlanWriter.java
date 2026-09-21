@@ -74,7 +74,6 @@ public class PlanWriter {
         long total = 0;
 
         for (AiPlanResponse.Day day : ai.getDays()) {
-            TourismContentSnapshot previous = null;
             for (AiPlanResponse.Content c : day.getContents()) {
                 TourismContentSnapshot snapshot = snapshotRepository.findById(c.getContentId())
                         .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "콘텐츠 스냅샷을 찾을 수 없습니다."));
@@ -82,24 +81,19 @@ public class PlanWriter {
                 PlanContent planContent = PlanContent.create(plan, c.getSequence(), day.getDayNumber(), snapshot);
                 var detail = detailById.get(c.getContentId());
                 var cost = detail == null ? null : PlanCostPolicy.estimate(detail, request.getParticipantCount());
-                Integer travelDistance;
-                if (c.getTravelDistanceMeters() != null) travelDistance = c.getTravelDistanceMeters();
-                else if (previous == null) travelDistance = 0;
-                else travelDistance = distanceMeters(previous, snapshot);
                 planContent.updateAiDetails(
                         null,
                         c.getDurationMinutes(),
                         c.getStartTime(),
                         c.getEndTime(),
                         c.getTravelTimeMinutes(),
-                        travelDistance,
+                        c.getTravelDistanceMeters(),
                         cost == null ? null : cost.calculatedAmount()
                 );
                 if (cost != null) planContent.updateCost(cost.amount(), cost.unit(), cost.quantity(),
                         cost.calculatedAmount(), cost.calculatedAmount() / request.getParticipantCount(),
                         cost.fallbackApplied() ? CostSource.DEFAULT : CostSource.TOUR_API);
                 plan.addContent(planContent);
-                previous = snapshot;
                 if (cost != null) {
                     total += cost.calculatedAmount();
                     breakdown.merge(cost.category(), cost.calculatedAmount() / request.getParticipantCount(), Long::sum);
@@ -116,19 +110,6 @@ public class PlanWriter {
                 calculatedByBackend ? breakdown : aiBudget == null ? null : aiBudget.getBreakdown());
 
         return PlanDetailResponse.from(planRepository.save(plan));
-    }
-
-    private Integer distanceMeters(TourismContentSnapshot from, TourismContentSnapshot to) {
-        if (from.getMapx() == null || from.getMapy() == null || to.getMapx() == null || to.getMapy() == null)
-            return null;
-        double lat1 = Math.toRadians(from.getMapy().doubleValue());
-        double lat2 = Math.toRadians(to.getMapy().doubleValue());
-        double deltaLat = lat2 - lat1;
-        double deltaLon = Math.toRadians(to.getMapx().doubleValue() - from.getMapx().doubleValue());
-        double a = Math.sin(deltaLat / 2) * Math.sin(deltaLat / 2)
-                + Math.cos(lat1) * Math.cos(lat2) * Math.sin(deltaLon / 2) * Math.sin(deltaLon / 2);
-        a = Math.min(1, a);
-        return (int) Math.round(6_371_000 * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a)));
     }
 
     private String title(Long memberId, PlanGenerateRequest request, String sigunguName) {

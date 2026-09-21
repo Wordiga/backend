@@ -8,6 +8,7 @@ import tools.jackson.databind.annotation.JsonNaming;
 
 import java.util.List;
 import java.util.Map;
+import java.math.BigDecimal;
 
 @Data
 @Builder
@@ -82,11 +83,13 @@ public class AiProposalRequest {
     @JsonNaming(PropertyNamingStrategies.SnakeCaseStrategy.class)
     public record Item(Integer order, String startTime, String endTime, String contentId,
                        String title, String category, String address, String firstimage,
-                       Integer travelTimeFromPrevMin, String memo) {
+                       BigDecimal latitude, BigDecimal longitude,
+                       Integer travelTimeFromPrevMin, Integer travelDistanceMeters, String memo) {
         static Item from(PlanDetailResponse.Content source) {
             return new Item(source.getSequence(), time(source.getStartTime()), time(source.getEndTime()),
                     source.getContentId(), source.getTitle(), category(source.getContentTypeId()),
-                    source.getAddr1(), null, source.getTravelTimeMinutes(), source.getMemo());
+                    source.getAddr1(), source.getThumbnailUrl(), source.getMapy(), source.getMapx(),
+                    source.getTravelTimeMinutes(), source.getTravelDistanceMeters(), source.getMemo());
         }
 
         private static String time(java.time.LocalTime value) {
