@@ -55,6 +55,41 @@ public class TourismContentController implements TourismContentApi {
                 referenceContentId, capacitySatisfied, participantCount, ageGroups, page, size));
     }
 
+    @GetMapping("/places")
+    public ResponseEntity<TourismContentListResponse> getPlaces(
+            @AuthenticationPrincipal Long memberId,
+            @RequestParam(value = "type", defaultValue = "POPULAR") ListType type,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String lDongSignguCd,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(tourismContentService.getPlaces(
+                memberId, type, keyword, lDongSignguCd, page, size));
+    }
+
+    @GetMapping("/lodgings")
+    public ResponseEntity<TourismContentListResponse> getLodgings(
+            @AuthenticationPrincipal Long memberId,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String lDongSignguCd,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        return ResponseEntity.ok(tourismContentService.getLodgings(
+                memberId, keyword, lDongSignguCd, page, size));
+    }
+
+    @GetMapping("/festivals")
+    public ResponseEntity<TourismContentListResponse> getFestivals(
+            @AuthenticationPrincipal Long memberId,
+            @RequestParam String visitMonth,
+            @RequestParam(required = false) String lDongSignguCd,
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int size) {
+        LocalDate visitDate = visitDate(visitMonth);
+        return ResponseEntity.ok(tourismContentService.getFestivals(
+                memberId, visitDate, lDongSignguCd, page, size));
+    }
+
     @GetMapping("/{contentId}")
     public ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(
             @CurrentMemberId Long memberId,

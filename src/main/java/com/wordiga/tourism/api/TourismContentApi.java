@@ -39,6 +39,37 @@ public interface TourismContentApi {
             @Min(1) @Max(50) int size
     );
 
+    @Operation(summary = "일정 편집 장소 목록 조회",
+            description = "축제와 숙소를 제외한 충청남도 장소를 조회합니다.")
+    ResponseEntity<TourismContentListResponse> getPlaces(
+            @Parameter(hidden = true) Long memberId,
+            ListType type,
+            String keyword,
+            String lDongSignguCd,
+            @Min(0) int page,
+            @Min(1) @Max(50) int size
+    );
+
+    @Operation(summary = "일정 편집 숙소 목록 조회",
+            description = "충청남도 숙소만 조회합니다.")
+    ResponseEntity<TourismContentListResponse> getLodgings(
+            @Parameter(hidden = true) Long memberId,
+            String keyword,
+            String lDongSignguCd,
+            @Min(0) int page,
+            @Min(1) @Max(50) int size
+    );
+
+    @Operation(summary = "축제·행사 목록 조회",
+            description = "방문 월에 관람 가능한 충청남도 축제·행사를 조회합니다.")
+    ResponseEntity<TourismContentListResponse> getFestivals(
+            @Parameter(hidden = true) Long memberId,
+            @Parameter(description = "방문 월(YYYY-MM)", example = "2026-09") String visitMonth,
+            String lDongSignguCd,
+            @Min(0) int page,
+            @Min(1) @Max(50) int size
+    );
+
     @Operation(summary = "관광 콘텐츠 상세 조회",
             description = "공통/소개/반복 정보, 계절 이미지, 만족도 분석, 수용 인원 적합도를 통합 반환합니다.")
     ResponseEntity<TourismContentDetailResponse> getTourismContentDetail(

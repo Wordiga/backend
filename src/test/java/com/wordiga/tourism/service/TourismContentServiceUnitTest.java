@@ -85,6 +85,72 @@ class TourismContentServiceUnitTest {
     }
 
     @Test
+    void searchesLodgingsWithStayApiWhenKeywordIsMissing() {
+        AreaBasedItem lodging = item("32");
+        when(tourismApiClient.fetchLodgings("44", "200", 1, 20))
+                .thenReturn(response(List.of(lodging), 1));
+
+        TourismContentListResponse result = tourismContentService.getLodgings(null, null, "200", 0, 20);
+
+        assertThat(result.getItems()).extracting("contentTypeId").containsExactly("32");
+        verify(tourismApiClient).fetchLodgings("44", "200", 1, 20);
+    }
+
+    @Test
+    void treatsBlankLodgingKeywordAsMissing() {
+        when(tourismApiClient.fetchLodgings("44", "200", 1, 20)).thenReturn(null);
+
+        TourismContentListResponse result = tourismContentService.getLodgings(null, "  ", "200", 0, 20);
+
+        assertThat(result.getItems()).isEmpty();
+        assertThat(result.getTotalCount()).isZero();
+    }
+
+    @Test
+    void searchesLodgingsWithKeywordApiWhenKeywordIsPresent() {
+        AreaBasedItem lodging = item("32");
+        when(tourismApiClient.searchContent("호텔", "32", "44", "200", 1, 20))
+                .thenReturn(response(List.of(lodging), 1));
+
+        TourismContentListResponse result = tourismContentService.getLodgings(null, " 호텔 ", "200", 0, 20);
+
+        assertThat(result.getItems()).extracting("contentTypeId").containsExactly("32");
+        verify(tourismApiClient).searchContent("호텔", "32", "44", "200", 1, 20);
+    }
+
+    @Test
+    void excludesFestivalAndLodgingFromPlaces() {
+        AreaBasedItem attraction = item("12");
+        AreaBasedItem festival = item("15");
+        AreaBasedItem lodging = item("32");
+        when(tourismApiClient.searchContent("천안", null, "44", "200", 1, 20))
+                .thenReturn(response(List.of(attraction, festival, lodging), 3));
+
+        TourismContentListResponse result = tourismContentService.getPlaces(
+                null, ListType.POPULAR, "천안", "200", 0, 20);
+
+        assertThat(result.getItems()).extracting("contentTypeId").containsExactly("12");
+    }
+
+    @Test
+    void rejectsFestivalAndRelatedTypesFromPlaces() {
+        assertThatThrownBy(() -> tourismContentService.getPlaces(
+                null, ListType.FESTIVAL, null, null, 0, 20))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+        assertThatThrownBy(() -> tourismContentService.getPlaces(
+                null, ListType.RELATED, null, null, 0, 20))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class);
+    }
+
+    @Test
+    void rejectsFestivalTypeFromGeneralContents() {
+        assertThatThrownBy(() -> tourismContentService.getContentList(null, ListType.FESTIVAL, null,
+                null, null, null, null, null, null, 0, 20))
+                .isInstanceOf(org.springframework.web.server.ResponseStatusException.class)
+                .hasMessageContaining("/api/v1/tourism/contents/festivals");
+    }
+
+    @Test
     void marksContentsWishedForAuthenticatedMember() {
         AreaBasedItem wished = item("12");
         wished.setContentid("wished");
@@ -140,8 +206,8 @@ class TourismContentServiceUnitTest {
         when(tourismApiClient.fetchFestivals("20260701", "20260731", "44", null, 1, 20))
                 .thenReturn(response(List.of(item("12"), item("15")), 1));
 
-        TourismContentListResponse result = tourismContentService.getContentList(null, ListType.FESTIVAL,
-                LocalDate.of(2026, 7, 1), null, null, null, null, null, null, 0, 20);
+        TourismContentListResponse result = tourismContentService.getFestivals(
+                null, LocalDate.of(2026, 7, 1), null, 0, 20);
 
         assertThat(result.getItems()).extracting("contentTypeId").containsExactly("15");
         assertThat(result.getTotalCount()).isEqualTo(1);
@@ -277,14 +343,14 @@ class TourismContentServiceUnitTest {
     }
 
     @Test
-    void returnsFestivalsOnlyThroughFestivalType() {
+    void returnsFestivalsOnlyThroughDedicatedMethod() {
         AreaBasedItem festival = item("15");
         when(tourismApiClient.fetchFestivals("20261001", "20261031", "44", null, 1, 20))
                 .thenReturn(response(List.of(festival), 21));
         when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of());
 
-        TourismContentListResponse result = tourismContentService.getContentList(1L, ListType.FESTIVAL,
-                LocalDate.of(2026, 10, 1), "가을", null, null, null, null, null, null, 0, 20);
+        TourismContentListResponse result = tourismContentService.getFestivals(
+                1L, LocalDate.of(2026, 10, 1), null, 0, 20);
 
         assertThat(result.getItems()).extracting("contentTypeId").containsExactly("15");
         assertThat(result.getTotalCount()).isEqualTo(21);
@@ -293,8 +359,7 @@ class TourismContentServiceUnitTest {
 
     @Test
     void requiresVisitMonthForFestivalList() {
-        assertThatThrownBy(() -> tourismContentService.getContentList(null, ListType.FESTIVAL,
-                null, null, null, null, null, null, null, null, 0, 20))
+        assertThatThrownBy(() -> tourismContentService.getFestivals(null, null, null, 0, 20))
                 .hasMessageContaining("방문 월");
     }
 
@@ -307,8 +372,8 @@ class TourismContentServiceUnitTest {
                 .thenReturn(null, missingResponse, missingBody);
 
         for (int attempt = 0; attempt < 3; attempt++) {
-            TourismContentListResponse result = tourismContentService.getContentList(null, ListType.FESTIVAL,
-                    LocalDate.of(2026, 10, 1), null, null, null, null, null, null, null, 0, 20);
+            TourismContentListResponse result = tourismContentService.getFestivals(
+                    null, LocalDate.of(2026, 10, 1), null, 0, 20);
             assertThat(result.getItems()).isEmpty();
             assertThat(result.getTotalCount()).isZero();
         }

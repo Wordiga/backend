@@ -82,6 +82,42 @@ class TourismContentControllerTest {
     }
 
     @Test
+    void returnsPlacesForPlanEditing() throws Exception {
+        when(tourismContentService.getPlaces(any(), eq(com.wordiga.tourism.dto.ListType.POPULAR),
+                eq("카페"), eq("200"), eq(0), eq(20)))
+                .thenReturn(TourismContentListResponse.builder().items(List.of()).page(0).size(20).build());
+
+        mockMvc.perform(get("/api/v1/tourism/contents/places")
+                        .param("type", "POPULAR")
+                        .param("keyword", "카페")
+                        .param("lDongSignguCd", "200"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void returnsLodgingsForPlanEditing() throws Exception {
+        when(tourismContentService.getLodgings(any(), eq("호텔"), eq("200"), eq(0), eq(20)))
+                .thenReturn(TourismContentListResponse.builder().items(List.of()).page(0).size(20).build());
+
+        mockMvc.perform(get("/api/v1/tourism/contents/lodgings")
+                        .param("keyword", "호텔")
+                        .param("lDongSignguCd", "200"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void returnsFestivalsFromDedicatedEndpoint() throws Exception {
+        when(tourismContentService.getFestivals(any(), eq(LocalDate.of(2026, 9, 1)),
+                eq("200"), eq(0), eq(20)))
+                .thenReturn(TourismContentListResponse.builder().items(List.of()).page(0).size(20).build());
+
+        mockMvc.perform(get("/api/v1/tourism/contents/festivals")
+                        .param("visitMonth", "2026-09")
+                        .param("lDongSignguCd", "200"))
+                .andExpect(status().isOk());
+    }
+
+    @Test
     void returnsSixteenChungnamSigungu() throws Exception {
         List<SigunguResponse> sigungus = new java.util.ArrayList<>(List.of(
                 new SigunguResponse("110", "천안시 동남구"),
