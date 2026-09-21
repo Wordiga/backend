@@ -103,6 +103,7 @@ public class TourismApiClient {
 
     // ─── 지역별 관광 다양성 ───
 
+    @Cacheable(cacheNames = "tourismAnalytics", key = "'tourist:' + #baseYm + ':' + #areaCd + ':' + #signguCd + ':' + #touDivIxCd", sync = true)
     public AreaTouDivResponse fetchTouristDiversity(String baseYm, String areaCd,
                                                     String signguCd, String touDivIxCd) {
         return execute(() -> client.fetchTouristDiversity(
@@ -111,6 +112,7 @@ public class TourismApiClient {
         ));
     }
 
+    @Cacheable(cacheNames = "tourismAnalytics", key = "'diversity:' + #baseYm + ':' + #areaCd + ':' + #signguCd + ':' + #expDivIxCd", sync = true)
     public AreaExpDivResponse fetchExpenditureDiversity(String baseYm, String areaCd,
                                                         String signguCd, String expDivIxCd) {
         return execute(() -> client.fetchExpenditureDiversity(

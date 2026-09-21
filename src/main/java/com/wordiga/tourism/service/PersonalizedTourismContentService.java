@@ -8,6 +8,7 @@ import com.wordiga.plan.dto.ContentCostDto;
 import com.wordiga.tourism.dto.TourismContentDto;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.domain.TourismCategory;
+import com.wordiga.tourism.domain.TourismContentPolicy;
 import com.wordiga.tourism.dto.CodeNameDto;
 import com.wordiga.wish.service.WishPreferenceCacheService;
 import lombok.RequiredArgsConstructor;
@@ -129,6 +130,7 @@ public class PersonalizedTourismContentService {
             List<AreaBasedItem> items = tourismApiClient.fetchAreaBasedContent(regionCode, sigungu, limitPerSigungu);
 
             for (AreaBasedItem item : items) {
+                if (TourismContentPolicy.isCamping(item.getLclsSystm2())) continue;
                 if (candidateMap.containsKey(item.getContentid())) continue;
 
                 BigDecimal ageScore = ageScores.computeIfAbsent(sigungu,

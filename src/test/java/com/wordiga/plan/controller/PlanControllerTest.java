@@ -8,6 +8,8 @@ import com.wordiga.global.security.JwtTokenProvider;
 import com.wordiga.member.repository.MemberRepository;
 import com.wordiga.plan.service.PlanGenerationService;
 import com.wordiga.plan.service.PlanService;
+import com.wordiga.plan.service.RainAlternativeService;
+import com.wordiga.plan.dto.RainAlternativeResponse;
 import com.wordiga.proposal.service.ProposalService;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -41,6 +43,8 @@ class PlanControllerTest {
     PlanGenerationService planGenerationService;
     @MockitoBean
     ProposalService proposalService;
+    @MockitoBean
+    RainAlternativeService rainAlternativeService;
     @MockitoBean
     JwtTokenProvider jwtTokenProvider;
     @MockitoBean
@@ -92,6 +96,21 @@ class PlanControllerTest {
         mockMvc.perform(get("/api/v1/plans/9/proposals")).andExpect(status().isMethodNotAllowed());
         mockMvc.perform(delete("/api/v1/plans/9/proposals/3")).andExpect(status().isNoContent());
         verify(proposalService).delete(1L, 9L, 3L);
+    }
+
+    @Test
+    void returnsMappedRainAlternatives() throws Exception {
+        when(rainAlternativeService.get(1L, 9L)).thenReturn(new RainAlternativeResponse(9L, List.of(
+                new RainAlternativeResponse.Source("outdoor", true, List.of(
+                        new RainAlternativeResponse.Candidate("indoor", "박물관", "https://image", 1200))))));
+
+        mockMvc.perform(get("/api/v1/plans/9/rain-alternatives"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].sourceContentId").value("outdoor"))
+                .andExpect(jsonPath("$.items[0].isOutdoor").value(true))
+                .andExpect(jsonPath("$.items[0].alternatives[0].contentId").value("indoor"))
+                .andExpect(jsonPath("$.items[0].alternatives[0].thumbnailUrl").value("https://image"));
+        verify(rainAlternativeService).get(1L, 9L);
     }
 
     private PlanDetailResponse detail() {

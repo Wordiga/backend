@@ -6,6 +6,7 @@ import com.wordiga.proposal.dto.ProposalResponse;
 import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.plan.service.PlanGenerationService;
 import com.wordiga.plan.service.PlanService;
+import com.wordiga.plan.service.RainAlternativeService;
 import com.wordiga.proposal.service.ProposalService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -21,6 +22,7 @@ public class PlanController implements PlanApi {
     private final PlanService planService;
     private final PlanGenerationService planGenerationService;
     private final ProposalService proposalService;
+    private final RainAlternativeService rainAlternativeService;
 
     @PostMapping("/generate")
     public ResponseEntity<PlanDetailResponse> generatePlan(@CurrentMemberId Long memberId,
@@ -39,6 +41,12 @@ public class PlanController implements PlanApi {
     @GetMapping("/{planId}")
     public ResponseEntity<PlanDetailResponse> getPlan(@CurrentMemberId Long memberId, @PathVariable Long planId) {
         return ResponseEntity.ok(planService.getPlan(memberId, planId));
+    }
+
+    @GetMapping("/{planId}/rain-alternatives")
+    public ResponseEntity<RainAlternativeResponse> getRainAlternatives(
+            @CurrentMemberId Long memberId, @PathVariable Long planId) {
+        return ResponseEntity.ok(rainAlternativeService.get(memberId, planId));
     }
 
     @PatchMapping("/{planId}")

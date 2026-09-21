@@ -47,12 +47,14 @@ public class TourismContentController implements TourismContentApi {
             @RequestParam(required = false) Boolean capacitySatisfied,
             @RequestParam(defaultValue = "10") Integer participantCount,
             @RequestParam(required = false) List<String> ageGroups,
+            @RequestParam(required = false) Integer stayDays,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
 
-        return ResponseEntity.ok(tourismContentService.getContentList(
+        return ResponseEntity.ok(tourismContentService.getContentListWithSatisfaction(
                 memberId, type, visitDate(visitMonth), keyword, contentTypeId, theme, category, lDongSignguCd,
-                referenceContentId, capacitySatisfied, participantCount, ageGroups, page, size));
+                referenceContentId, capacitySatisfied, participantCount, ageGroups,
+                stayDays == null ? null : stayDays - 1, page, size));
     }
 
     @GetMapping("/places")

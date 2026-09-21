@@ -5,6 +5,7 @@ import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.AreaBasedItem;
 import com.wordiga.global.config.TourismProperties;
 import com.wordiga.tourism.domain.TourismContentType;
+import com.wordiga.tourism.domain.TourismContentPolicy;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -86,6 +87,7 @@ public class RegionalContentService {
     private List<CandidateWithDistance> sortedCandidates(
             List<AreaBasedItem> items, Category category, Set<String> excludedIds, Coordinate centroid) {
         return items.stream()
+                .filter(item -> !TourismContentPolicy.isCamping(item.getLclsSystm2()))
                 .filter(category::matches)
                 .filter(item -> item.getContentid() != null && !excludedIds.contains(item.getContentid()))
                 .collect(LinkedHashMap<String, AreaBasedItem>::new,

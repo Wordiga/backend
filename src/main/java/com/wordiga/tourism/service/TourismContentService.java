@@ -8,6 +8,7 @@ import com.wordiga.plan.dto.ContentCostDto;
 import com.wordiga.wish.repository.WishRepository;
 import com.wordiga.tourism.domain.TourismContentType;
 import com.wordiga.tourism.domain.TourismCategory;
+import com.wordiga.tourism.domain.TourismContentPolicy;
 import com.wordiga.tourism.domain.TourismTheme;
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.CodeNameDto;
@@ -40,7 +41,27 @@ public class TourismContentService {
     private final TourismProperties tourismProperties;
     private final PersonalizedTourismContentService personalizedTourismContentService;
     private final TourismContentDetailService detailService;
+    private final TourismSatisfactionService satisfactionService;
     private final WishRepository wishRepository;
+
+    public TourismContentListResponse getContentListWithSatisfaction(
+            Long memberId, ListType type, LocalDate visitDate, String keyword, String contentTypeId,
+            String theme, List<String> categories, String lDongSignguCd, String referenceContentId,
+            Boolean capacitySatisfied, Integer participantCount, List<String> ageGroups,
+            Integer stayNights, int page, int size) {
+        TourismContentListResponse response = getContentList(memberId, type, visitDate, keyword, contentTypeId,
+                theme, categories, lDongSignguCd, referenceContentId, capacitySatisfied,
+                participantCount, ageGroups, page, size);
+        Map<String, BigDecimal> ageRatios = TourismContentDetailService.parseAgeRatios(ageGroups);
+        var cache = new TourismSatisfactionService.CalculationCache();
+        for (TourismContentDto item : response.getItems()) {
+            var satisfaction = satisfactionService.calculate(new SatisfactionRequestDto(
+                    tourismProperties.getRegion().getChungnamCode(), item.getLDongSignguCd(),
+                    item.getTitle(), visitDate, ageRatios, stayNights), cache);
+            item.setSatisfactionScore(satisfaction == null ? null : satisfaction.getTotalScore());
+        }
+        return response;
+    }
 
     public List<SigunguResponse> getSigunguList() {
         List<SigunguItem> items = tourismApiClient.fetchSigunguList();
@@ -83,6 +104,7 @@ public class TourismContentService {
 
         List<ScoredCandidate> filtered = candidates.stream()
                 .filter(candidate -> !"15".equals(candidate.item().getContenttypeid()))
+                .filter(candidate -> !TourismContentPolicy.isCamping(candidate.item().getLclsSystm2()))
                 .filter(candidate -> contentTypeId == null || contentTypeId.isBlank()
                         || contentTypeId.equals(candidate.item().getContenttypeid()))
                 .filter(candidate -> matchesCategory(candidate.item(), theme, categories))
@@ -132,7 +154,7 @@ public class TourismContentService {
     public List<TourismCategoryGroupDto> getCategories() {
         return Arrays.stream(TourismTheme.values())
                 .map(theme -> new TourismCategoryGroupDto(codeName(theme), Arrays.stream(TourismCategory.values())
-                        .filter(category -> category != TourismCategory.FESTIVAL)
+                        .filter(category -> category != TourismCategory.FESTIVAL && category != TourismCategory.CAMPING)
                         .filter(category -> category.getTheme() == theme)
                         .map(this::codeName)
                         .toList()))
@@ -177,6 +199,7 @@ public class TourismContentService {
                     item.getRlteTatsNm(), null, areaCode, null, 1, 10);
             extractItems(search).stream()
                     .filter(candidate -> item.getRlteTatsNm().equals(candidate.getTitle()))
+                    .filter(candidate -> !TourismContentPolicy.isCamping(candidate.getLclsSystm2()))
                     .filter(candidate -> !referenceContentId.equals(candidate.getContentid()))
                     .findFirst()
                     .ifPresent(candidate -> resolved.putIfAbsent(candidate.getContentid(),
@@ -188,6 +211,7 @@ public class TourismContentService {
                     reference.getLclsSystm1(), reference.getLclsSystm2(), reference.getLclsSystm3());
             tourismApiClient.fetchAreaBasedContent(areaCode, reference.getLDongSignguCd(), 50).stream()
                     .filter(candidate -> !referenceContentId.equals(candidate.getContentid()))
+                    .filter(candidate -> !TourismContentPolicy.isCamping(candidate.getLclsSystm2()))
                     .sorted(Comparator.comparingInt((AreaBasedItem candidate) -> {
                         TourismCategory category = TourismCategory.resolve(
                                 candidate.getLclsSystm1(), candidate.getLclsSystm2(), candidate.getLclsSystm3());
@@ -245,6 +269,7 @@ public class TourismContentService {
         );
         List<AreaBasedItem> items = extractItems(response).stream()
                 .filter(item -> !"15".equals(item.getContenttypeid()))
+                .filter(item -> !TourismContentPolicy.isCamping(item.getLclsSystm2()))
                 .filter(item -> matchesCategory(item, theme, categories)).toList();
         int totalCount = response == null || response.getResponse() == null
                 || response.getResponse().getBody() == null
@@ -296,6 +321,7 @@ public class TourismContentService {
                                                      Set<String> includedContentTypes) {
         List<AreaBasedItem> source = extractItems(response).stream()
                 .filter(item -> includedContentTypes.contains(item.getContenttypeid()))
+                .filter(item -> !TourismContentPolicy.isCamping(item.getLclsSystm2()))
                 .toList();
         List<TourismContentDto> items = new ArrayList<>();
         for (int index = 0; index < source.size(); index++)

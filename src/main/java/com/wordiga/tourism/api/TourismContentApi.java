@@ -35,6 +35,7 @@ public interface TourismContentApi {
             Boolean capacitySatisfied,
             @Min(1) @Max(50) Integer participantCount,
             List<String> ageGroups,
+            @Parameter(description = "체류 일수. 상세 조회와 동일한 만족도 계산에 사용") @Min(1) @Max(3) Integer stayDays,
             @Min(0) int page,
             @Min(1) @Max(50) int size
     );

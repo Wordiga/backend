@@ -49,6 +49,9 @@ public class TourismContentDto {
     @Schema(description = "추천 점수")
     private BigDecimal recommendationScore;
 
+    @Schema(description = "상세 만족도 최종 점수와 동일한 값")
+    private BigDecimal satisfactionScore;
+
     @Schema(description = "관광타입 기본 정책 기준 1인 예상 비용")
     private Long estimatedCost;
 
