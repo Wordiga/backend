@@ -4,6 +4,8 @@ import com.wordiga.global.security.JwtTokenProvider;
 import com.wordiga.member.repository.MemberRepository;
 import com.wordiga.tourism.dto.SigunguResponse;
 import com.wordiga.tourism.dto.TourismContentDto;
+import com.wordiga.tourism.dto.TourismContentFestivalDto;
+import com.wordiga.tourism.dto.TourismContentFestivalListResponse;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.dto.detail.TourismCommonDetailDto;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
@@ -86,15 +88,22 @@ class TourismContentControllerTest {
 
     @Test
     void returnsPlacesForPlanEditing() throws Exception {
-        when(tourismContentService.getPlaces(any(), eq(com.wordiga.tourism.dto.ListType.POPULAR),
-                eq("카페"), eq("200"), eq(0), eq(20)))
-                .thenReturn(TourismContentListResponse.builder().items(List.of()).page(0).size(20).build());
+        when(tourismContentService.getPlacesWithSatisfaction(any(), eq(com.wordiga.tourism.dto.ListType.POPULAR),
+                eq(LocalDate.of(2026, 9, 1)), eq("카페"), eq("200"), eq(List.of("30S")), eq(1), eq(0), eq(20)))
+                .thenReturn(TourismContentListResponse.builder()
+                        .items(List.of(TourismContentDto.builder()
+                                .contentId("place").satisfactionScore(java.math.BigDecimal.valueOf(82.5)).build()))
+                        .page(0).size(20).build());
 
         mockMvc.perform(get("/api/v1/tourism/contents/places")
                         .param("type", "POPULAR")
+                        .param("visitMonth", "2026-09")
                         .param("keyword", "카페")
-                        .param("lDongSignguCd", "200"))
-                .andExpect(status().isOk());
+                        .param("lDongSignguCd", "200")
+                        .param("ageGroups", "30S")
+                        .param("stayDays", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].satisfactionScore").value(82.5));
     }
 
     @Test
@@ -112,12 +121,20 @@ class TourismContentControllerTest {
     void returnsFestivalsFromDedicatedEndpoint() throws Exception {
         when(tourismContentService.getFestivals(any(), eq(LocalDate.of(2026, 9, 1)),
                 eq("200"), eq(0), eq(20)))
-                .thenReturn(TourismContentListResponse.builder().items(List.of()).page(0).size(20).build());
+                .thenReturn(TourismContentFestivalListResponse.builder()
+                        .items(List.of(TourismContentFestivalDto.builder()
+                                .contentId("festival")
+                                .eventStartDate("2026-09-10")
+                                .eventEndDate("2026-09-12")
+                                .build()))
+                        .page(0).size(20).build());
 
         mockMvc.perform(get("/api/v1/tourism/contents/festivals")
                         .param("visitMonth", "2026-09")
                         .param("lDongSignguCd", "200"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items[0].eventStartDate").value("2026-09-10"))
+                .andExpect(jsonPath("$.items[0].eventEndDate").value("2026-09-12"));
     }
 
     @Test

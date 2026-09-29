@@ -12,6 +12,8 @@ public class AreaBasedItem {
     private String contentid;
     private String contenttypeid;
     private String title;
+    private String eventstartdate;
+    private String eventenddate;
     private String addr1;
     private String addr2;
     private String firstimage;

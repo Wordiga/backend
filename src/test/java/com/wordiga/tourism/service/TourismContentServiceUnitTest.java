@@ -2,6 +2,7 @@ package com.wordiga.tourism.service;
 
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.TourismContentListResponse;
+import com.wordiga.tourism.dto.TourismContentFestivalListResponse;
 import com.wordiga.tourism.dto.detail.SatisfactionDto;
 import com.wordiga.tourism.dto.SatisfactionRequestDto;
 import com.wordiga.global.client.TourismApiClient;
@@ -261,14 +262,27 @@ class TourismContentServiceUnitTest {
 
     @Test
     void festivalRecommendationExcludesOrdinaryContents() {
+        AreaBasedItem festival = item("15");
+        festival.setEventstartdate("20260703");
+        festival.setEventenddate("20260712");
+        AreaBasedItem missingDates = item("15");
+        missingDates.setContentid("missing-dates");
+        AreaBasedItem invalidDates = item("15");
+        invalidDates.setContentid("invalid-dates");
+        invalidDates.setEventstartdate("2026-07-03");
+        invalidDates.setEventenddate("");
         when(tourismApiClient.fetchFestivals("20260701", "20260731", "44", null, 1, 20))
-                .thenReturn(response(List.of(item("12"), item("15")), 1));
+                .thenReturn(response(List.of(item("12"), festival, missingDates, invalidDates), 3));
 
-        TourismContentListResponse result = tourismContentService.getFestivals(
+        TourismContentFestivalListResponse result = tourismContentService.getFestivals(
                 null, LocalDate.of(2026, 7, 1), null, 0, 20);
 
-        assertThat(result.getItems()).extracting("contentTypeId").containsExactly("15");
-        assertThat(result.getTotalCount()).isEqualTo(1);
+        assertThat(result.getItems()).extracting("contentTypeId").containsExactly("15", "15", "15");
+        assertThat(result.getItems().getFirst().getEventStartDate()).isEqualTo("2026-07-03");
+        assertThat(result.getItems().getFirst().getEventEndDate()).isEqualTo("2026-07-12");
+        assertThat(result.getItems().get(1).getEventStartDate()).isNull();
+        assertThat(result.getItems().get(2).getEventEndDate()).isNull();
+        assertThat(result.getTotalCount()).isEqualTo(3);
         assertThat(result.getTotalPages()).isEqualTo(1);
     }
 
@@ -407,7 +421,7 @@ class TourismContentServiceUnitTest {
                 .thenReturn(response(List.of(festival), 21));
         when(wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(1L)).thenReturn(List.of());
 
-        TourismContentListResponse result = tourismContentService.getFestivals(
+        TourismContentFestivalListResponse result = tourismContentService.getFestivals(
                 1L, LocalDate.of(2026, 10, 1), null, 0, 20);
 
         assertThat(result.getItems()).extracting("contentTypeId").containsExactly("15");
@@ -430,7 +444,7 @@ class TourismContentServiceUnitTest {
                 .thenReturn(null, missingResponse, missingBody);
 
         for (int attempt = 0; attempt < 3; attempt++) {
-            TourismContentListResponse result = tourismContentService.getFestivals(
+            TourismContentFestivalListResponse result = tourismContentService.getFestivals(
                     null, LocalDate.of(2026, 10, 1), null, 0, 20);
             assertThat(result.getItems()).isEmpty();
             assertThat(result.getTotalCount()).isZero();
