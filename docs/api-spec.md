@@ -188,10 +188,11 @@ GET /api/v1/tourism/contents
 GET /api/v1/tourism/contents/places
 ```
 
-- Query Parameter: `type`, `keyword`, `lDongSignguCd`, `page`, `size`
+- Query Parameter: `type`, `visitMonth(YYYY-MM)`, `keyword`, `lDongSignguCd`, `ageGroups`, `stayDays`, `page`, `size`
 - `type`은 `POPULAR`, `SEASONAL`, `PERSONALIZED`만 허용합니다.
 - 축제·행사(`contentTypeId=15`)와 숙소(`contentTypeId=32`)를 제외합니다.
 - 키워드가 있으면 관광공사 `searchKeyword2`, 없으면 기존 인기·계절·개인화 조회 로직을 사용합니다.
+- `satisfactionScore`는 상세 조회와 동일한 적합도 계산을 사용하며, 분석 API 응답과 한 요청 내 지역별 계산 결과를 캐시합니다.
 - 응답 형식은 관광 콘텐츠 목록 조회와 같습니다.
 
 ### 일정 편집 숙소 목록 조회
@@ -214,7 +215,7 @@ GET /api/v1/tourism/contents/festivals
 - Query Parameter: 필수 `visitMonth(YYYY-MM)`, 선택 `lDongSignguCd`, `page`, `size`
 - 방문 월의 1일부터 말일까지를 관광공사 `searchFestival2`에 전달합니다.
 - 축제·행사(`contentTypeId=15`)만 반환하며 키워드 검색은 지원하지 않습니다.
-- 응답 형식은 관광 콘텐츠 목록 조회와 같습니다.
+- 응답은 관광 콘텐츠 목록 필드와 `eventStartDate`, `eventEndDate`를 반환하며 날짜 형식은 `yyyy-MM-dd`입니다.
 
 ### 관광 테마·카테고리 목록 조회
 

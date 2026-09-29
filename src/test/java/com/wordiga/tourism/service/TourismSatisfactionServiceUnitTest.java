@@ -132,6 +132,22 @@ class TourismSatisfactionServiceUnitTest {
         verify(tourismApiClient, times(1)).fetchCulturalResourceDemand(anyString(), eq("44"), eq("44200"), eq("12"));
     }
 
+    @Test
+    void reusesAgeFitForTheSameRegionAndAgeGroups() {
+        mockPopularity();
+        mockAgeFit();
+        mockStayFit();
+        mockComfort(LocalDate.of(2026, 8, 20));
+        var cache = new TourismSatisfactionService.CalculationCache();
+        Map<String, BigDecimal> ages = Map.of("20S", BigDecimal.ONE);
+
+        service.calculate(request("현충사", ages), cache);
+        service.calculate(request("현충사", ages), cache);
+
+        verify(tourismApiClient, times(1)).fetchTouristDiversity(anyString(), eq("44"), eq("44200"), eq("3102"));
+        verify(tourismApiClient, times(1)).fetchExpenditureDiversity(anyString(), eq("44"), eq("44200"), eq("3202"));
+    }
+
     private void mockPopularity() {
         AreaCulResDemItem resource = new AreaCulResDemItem();
         resource.setCulResDemIxVal("80");

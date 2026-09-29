@@ -4,6 +4,7 @@ import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.tourism.api.TourismContentApi;
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.SigunguResponse;
+import com.wordiga.tourism.dto.TourismContentFestivalListResponse;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import com.wordiga.tourism.service.TourismContentDetailService;
@@ -61,12 +62,16 @@ public class TourismContentController implements TourismContentApi {
     public ResponseEntity<TourismContentListResponse> getPlaces(
             @AuthenticationPrincipal Long memberId,
             @RequestParam(value = "type", defaultValue = "POPULAR") ListType type,
+            @RequestParam(required = false) String visitMonth,
             @RequestParam(required = false) String keyword,
             @RequestParam(required = false) String lDongSignguCd,
+            @RequestParam(required = false) List<String> ageGroups,
+            @RequestParam(required = false) Integer stayDays,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size) {
-        return ResponseEntity.ok(tourismContentService.getPlaces(
-                memberId, type, keyword, lDongSignguCd, page, size));
+        return ResponseEntity.ok(tourismContentService.getPlacesWithSatisfaction(
+                memberId, type, visitDate(visitMonth), keyword, lDongSignguCd, ageGroups,
+                stayDays == null ? null : stayDays - 1, page, size));
     }
 
     @GetMapping("/lodgings")
@@ -81,7 +86,7 @@ public class TourismContentController implements TourismContentApi {
     }
 
     @GetMapping("/festivals")
-    public ResponseEntity<TourismContentListResponse> getFestivals(
+    public ResponseEntity<TourismContentFestivalListResponse> getFestivals(
             @AuthenticationPrincipal Long memberId,
             @RequestParam String visitMonth,
             @RequestParam(required = false) String lDongSignguCd,

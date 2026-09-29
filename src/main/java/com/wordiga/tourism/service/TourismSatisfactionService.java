@@ -51,7 +51,9 @@ public class TourismSatisfactionService {
                 k -> calculatePopularity(baseYm, request.areaCode(), signguCode));
 
         // 2. 연령 적합도 계산 (가중치 연산)
-        OptionalDouble ageFit = calculateAgeFit(baseYm, request.areaCode(), signguCode, request.ageGroupRatios());
+        OptionalDouble ageFit = cache.ageFit.computeIfAbsent(
+                new AgeKey(regionKey, request.ageGroupRatios()),
+                k -> calculateAgeFit(baseYm, request.areaCode(), signguCode, request.ageGroupRatios()));
 
         // 3. 체류 적합도 계산 (숙박 일수 반영)
         OptionalDouble stayFit = cache.stayFit.computeIfAbsent(
@@ -280,6 +282,7 @@ public class TourismSatisfactionService {
 
     public static final class CalculationCache {
         private final Map<RegionKey, OptionalDouble> popularity = new HashMap<>();
+        private final Map<AgeKey, OptionalDouble> ageFit = new HashMap<>();
         private final Map<StayKey, OptionalDouble> stayFit = new HashMap<>();
     }
 
@@ -287,6 +290,12 @@ public class TourismSatisfactionService {
     }
 
     private record StayKey(RegionKey region, Integer stayNights) {
+    }
+
+    private record AgeKey(RegionKey region, Map<String, BigDecimal> ageRatios) {
+        private AgeKey {
+            ageRatios = ageRatios == null ? Map.of() : Map.copyOf(ageRatios);
+        }
     }
 
     private record ScoreResult(OptionalDouble score, String missingReason) {

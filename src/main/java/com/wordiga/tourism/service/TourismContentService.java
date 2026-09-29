@@ -3,21 +3,16 @@ package com.wordiga.tourism.service;
 import com.wordiga.global.client.TourismApiClient;
 import com.wordiga.global.client.dto.*;
 import com.wordiga.global.config.TourismProperties;
-import com.wordiga.plan.service.PlanCostPolicy;
 import com.wordiga.plan.dto.ContentCostDto;
-import com.wordiga.wish.repository.WishRepository;
-import com.wordiga.tourism.domain.TourismContentType;
+import com.wordiga.plan.service.PlanCostPolicy;
 import com.wordiga.tourism.domain.TourismCategory;
 import com.wordiga.tourism.domain.TourismContentPolicy;
+import com.wordiga.tourism.domain.TourismContentType;
 import com.wordiga.tourism.domain.TourismTheme;
-import com.wordiga.tourism.dto.ListType;
-import com.wordiga.tourism.dto.CodeNameDto;
-import com.wordiga.tourism.dto.SatisfactionRequestDto;
+import com.wordiga.tourism.dto.*;
 import com.wordiga.tourism.dto.SigunguResponse;
-import com.wordiga.tourism.dto.TourismCategoryGroupDto;
-import com.wordiga.tourism.dto.TourismContentDto;
-import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.wish.Wish;
+import com.wordiga.wish.repository.WishRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -52,6 +47,11 @@ public class TourismContentService {
         TourismContentListResponse response = getContentList(memberId, type, visitDate, keyword, contentTypeId,
                 theme, categories, lDongSignguCd, referenceContentId, capacitySatisfied,
                 participantCount, ageGroups, page, size);
+        return addSatisfaction(response, visitDate, ageGroups, stayNights);
+    }
+
+    private TourismContentListResponse addSatisfaction(
+            TourismContentListResponse response, LocalDate visitDate, List<String> ageGroups, Integer stayNights) {
         Map<String, BigDecimal> ageRatios = TourismContentDetailService.parseAgeRatios(ageGroups);
         var cache = new TourismSatisfactionService.CalculationCache();
         for (TourismContentDto item : response.getItems()) {
@@ -106,10 +106,10 @@ public class TourismContentService {
                 .filter(candidate -> !"15".equals(candidate.item().getContenttypeid()))
                 .filter(candidate -> !TourismContentPolicy.isCamping(candidate.item().getLclsSystm2()))
                 .filter(candidate -> contentTypeId == null || contentTypeId.isBlank()
-                        || contentTypeId.equals(candidate.item().getContenttypeid()))
+                                     || contentTypeId.equals(candidate.item().getContenttypeid()))
                 .filter(candidate -> matchesCategory(candidate.item(), theme, categories))
                 .filter(candidate -> lDongSignguCd == null || lDongSignguCd.isBlank()
-                        || lDongSignguCd.equals(candidate.item().getLDongSignguCd()))
+                                     || lDongSignguCd.equals(candidate.item().getLDongSignguCd()))
                 .collect(
                         LinkedHashMap<String, ScoredCandidate>::new,
                         (items, candidate) -> items.putIfAbsent(candidate.item().getContentid(), candidate),
@@ -123,7 +123,7 @@ public class TourismContentService {
     }
 
     public TourismContentListResponse getPlaces(Long memberId, ListType type, String keyword,
-                                                 String lDongSignguCd, int page, int size) {
+                                                String lDongSignguCd, int page, int size) {
         if (type == ListType.FESTIVAL || type == ListType.RELATED)
             throw new org.springframework.web.server.ResponseStatusException(
                     org.springframework.http.HttpStatus.BAD_REQUEST, "장소 목록 타입을 확인해 주세요.");
@@ -134,20 +134,27 @@ public class TourismContentService {
                 TourismContentType.FESTIVAL.getCode(), TourismContentType.LODGING.getCode()));
     }
 
+    public TourismContentListResponse getPlacesWithSatisfaction(
+            Long memberId, ListType type, LocalDate visitDate, String keyword,
+            String lDongSignguCd, List<String> ageGroups, Integer stayNights, int page, int size) {
+        return addSatisfaction(getPlaces(memberId, type, keyword, lDongSignguCd, page, size),
+                visitDate, ageGroups, stayNights);
+    }
+
     public TourismContentListResponse getLodgings(Long memberId, String keyword,
-                                                   String lDongSignguCd, int page, int size) {
+                                                  String lDongSignguCd, int page, int size) {
         AreaBasedResponse response = keyword == null || keyword.isBlank()
                 ? tourismApiClient.fetchLodgings(tourismProperties.getRegion().getChungnamCode(),
-                        lDongSignguCd, page + 1, size)
+                lDongSignguCd, page + 1, size)
                 : tourismApiClient.searchContent(keyword.trim(), TourismContentType.LODGING.getCode(),
-                        tourismProperties.getRegion().getChungnamCode(), lDongSignguCd, page + 1, size);
+                tourismProperties.getRegion().getChungnamCode(), lDongSignguCd, page + 1, size);
         return enrichMemberData(memberId, null, null,
                 externalPage(response, page, size, Set.of(TourismContentType.LODGING.getCode())));
     }
 
-    public TourismContentListResponse getFestivals(Long memberId, LocalDate visitDate,
-                                                    String lDongSignguCd, int page, int size) {
-        return enrichMemberData(memberId, visitDate, null,
+    public TourismContentFestivalListResponse getFestivals(Long memberId, LocalDate visitDate,
+                                                           String lDongSignguCd, int page, int size) {
+        return enrichMemberDataFestival(memberId,
                 festivals(visitDate, lDongSignguCd, page, size, DEFAULT_PARTICIPANT_COUNT));
     }
 
@@ -241,6 +248,18 @@ public class TourismContentService {
         return response;
     }
 
+    private TourismContentFestivalListResponse enrichMemberDataFestival(
+            Long memberId, TourismContentFestivalListResponse response) {
+        Set<String> wishedContentIds = memberId == null ? Set.of()
+                : wishRepository.findByMemberIdOrderByCreatedAtDescIdDesc(memberId).stream()
+                  .map(Wish::getContentId)
+                  .collect(Collectors.toSet());
+        response.getItems().forEach(item -> {
+            item.setWished(wishedContentIds.contains(item.getContentId()));
+        });
+        return response;
+    }
+
     private TourismContentListResponse filterCapacity(TourismContentListResponse response,
                                                       Boolean required, Integer participantCount,
                                                       LocalDate visitDate, List<String> ageGroups) {
@@ -272,7 +291,7 @@ public class TourismContentService {
                 .filter(item -> !TourismContentPolicy.isCamping(item.getLclsSystm2()))
                 .filter(item -> matchesCategory(item, theme, categories)).toList();
         int totalCount = response == null || response.getResponse() == null
-                || response.getResponse().getBody() == null
+                         || response.getResponse().getBody() == null
                 ? items.size()
                 : response.getResponse().getBody().getTotalCount();
 
@@ -293,8 +312,8 @@ public class TourismContentService {
                 .build();
     }
 
-    private TourismContentListResponse festivals(LocalDate visitDate, String lDongSignguCd,
-                                                  int page, int size, Integer participantCount) {
+    private TourismContentFestivalListResponse festivals(LocalDate visitDate, String lDongSignguCd,
+                                                         int page, int size, Integer participantCount) {
         if (visitDate == null) throw new org.springframework.web.server.ResponseStatusException(
                 org.springframework.http.HttpStatus.BAD_REQUEST, "축제 조회에는 방문 월이 필요합니다.");
         YearMonth visitMonth = YearMonth.from(visitDate);
@@ -306,19 +325,19 @@ public class TourismContentService {
                 .filter(item -> "15".equals(item.getContenttypeid()))
                 .toList();
         int totalCount = response == null || response.getResponse() == null
-                || response.getResponse().getBody() == null ? items.size()
+                         || response.getResponse().getBody() == null ? items.size()
                 : response.getResponse().getBody().getTotalCount();
-        List<TourismContentDto> result = new ArrayList<>();
+        List<TourismContentFestivalDto> result = new ArrayList<>();
         for (int index = 0; index < items.size(); index++)
-            result.add(toDto(items.get(index), rankScore(page * size + index), participantCount));
-        return TourismContentListResponse.builder()
+            result.add(toFestivalDto(items.get(index), rankScore(page * size + index), participantCount));
+        return TourismContentFestivalListResponse.builder()
                 .items(result).page(page).size(size).totalCount(totalCount)
                 .totalPages((totalCount + size - 1) / size)
                 .hasNext((long) (page + 1) * size < totalCount).build();
     }
 
     private TourismContentListResponse externalPage(AreaBasedResponse response, int page, int size,
-                                                     Set<String> includedContentTypes) {
+                                                    Set<String> includedContentTypes) {
         List<AreaBasedItem> source = extractItems(response).stream()
                 .filter(item -> includedContentTypes.contains(item.getContenttypeid()))
                 .filter(item -> !TourismContentPolicy.isCamping(item.getLclsSystm2()))
@@ -327,7 +346,7 @@ public class TourismContentService {
         for (int index = 0; index < source.size(); index++)
             items.add(toDto(source.get(index), rankScore(page * size + index)));
         int totalCount = response == null || response.getResponse() == null
-                || response.getResponse().getBody() == null ? items.size()
+                         || response.getResponse().getBody() == null ? items.size()
                 : response.getResponse().getBody().getTotalCount();
         return TourismContentListResponse.builder().items(items).page(page).size(size)
                 .totalCount(totalCount).totalPages((totalCount + size - 1) / size)
@@ -335,7 +354,7 @@ public class TourismContentService {
     }
 
     private TourismContentListResponse excludeContentTypes(TourismContentListResponse response,
-                                                            Set<String> excludedContentTypes) {
+                                                           Set<String> excludedContentTypes) {
         List<TourismContentDto> items = response.getItems().stream()
                 .filter(item -> !excludedContentTypes.contains(item.getContentTypeId()))
                 .toList();
@@ -427,7 +446,7 @@ public class TourismContentService {
         TourismCategory resolved = TourismCategory.resolve(
                 item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
         if (theme != null && !theme.isBlank()
-                && (resolved == null || !theme.equals(resolved.getTheme().getCode()))) return false;
+            && (resolved == null || !theme.equals(resolved.getTheme().getCode()))) return false;
         if (categories == null || categories.isEmpty()) return true;
         Set<String> codes = categories.stream().filter(Objects::nonNull)
                 .flatMap(value -> Arrays.stream(value.split(","))).map(String::trim)
@@ -472,6 +491,36 @@ public class TourismContentService {
                 .cost(ContentCostDto.from(PlanCostPolicy.defaultEstimate(item.getContenttypeid(), participants),
                         participants))
                 .build();
+    }
+
+    private TourismContentFestivalDto toFestivalDto(
+            AreaBasedItem item, BigDecimal recommendationScore, Integer participantCount) {
+        int participants = participantCount == null ? DEFAULT_PARTICIPANT_COUNT : participantCount;
+        TourismCategory category = TourismCategory.resolve(
+                item.getLclsSystm1(), item.getLclsSystm2(), item.getLclsSystm3());
+        return TourismContentFestivalDto.builder()
+                .contentId(item.getContentid())
+                .contentTypeId(item.getContenttypeid())
+                .eventStartDate(formatFestivalDate(item.getEventstartdate()))
+                .eventEndDate(formatFestivalDate(item.getEventenddate()))
+                .title(item.getTitle())
+                .addr1(item.getAddr1())
+                .lDongSignguCd(item.getLDongSignguCd())
+                .mapx(parseBigDecimal(item.getMapx()))
+                .mapy(parseBigDecimal(item.getMapy()))
+                .firstImage(item.getFirstimage())
+                .theme(category == null ? null : codeName(category.getTheme()))
+                .category(category == null ? null : codeName(category))
+                .recommendationScore(recommendationScore)
+                .estimatedCost(PlanCostPolicy.defaultPerPersonAmount(item.getContenttypeid(), participants))
+                .cost(ContentCostDto.from(PlanCostPolicy.defaultEstimate(item.getContenttypeid(), participants),
+                        participants))
+                .build();
+    }
+
+    private String formatFestivalDate(String value) {
+        if (value == null || !value.matches("\\d{8}")) return null;
+        return LocalDate.parse(value, DateTimeFormatter.BASIC_ISO_DATE).toString();
     }
 
     private String convertToLDongSignguCd(String signguCd) {

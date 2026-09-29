@@ -3,6 +3,7 @@ package com.wordiga.tourism.api;
 import com.wordiga.global.security.CurrentMemberId;
 import com.wordiga.tourism.dto.ListType;
 import com.wordiga.tourism.dto.SigunguResponse;
+import com.wordiga.tourism.dto.TourismContentFestivalListResponse;
 import com.wordiga.tourism.dto.TourismContentListResponse;
 import com.wordiga.tourism.dto.detail.TourismContentDetailResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -45,8 +46,11 @@ public interface TourismContentApi {
     ResponseEntity<TourismContentListResponse> getPlaces(
             @Parameter(hidden = true) Long memberId,
             ListType type,
+            @Parameter(description = "방문 월(YYYY-MM)", example = "2026-09") String visitMonth,
             String keyword,
             String lDongSignguCd,
+            List<String> ageGroups,
+            @Parameter(description = "체류 일수. 적합도 계산에 사용") @Min(1) @Max(3) Integer stayDays,
             @Min(0) int page,
             @Min(1) @Max(50) int size
     );
@@ -63,7 +67,7 @@ public interface TourismContentApi {
 
     @Operation(summary = "축제·행사 목록 조회",
             description = "방문 월에 관람 가능한 충청남도 축제·행사를 조회합니다.")
-    ResponseEntity<TourismContentListResponse> getFestivals(
+    ResponseEntity<TourismContentFestivalListResponse> getFestivals(
             @Parameter(hidden = true) Long memberId,
             @Parameter(description = "방문 월(YYYY-MM)", example = "2026-09") String visitMonth,
             String lDongSignguCd,
